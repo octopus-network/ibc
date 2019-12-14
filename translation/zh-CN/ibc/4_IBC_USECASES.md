@@ -1,167 +1,167 @@
 # 4：IBC用例
 
-**This is a set of possible application-level use cases for the inter-blockchain communication protocol.**
+**这是区块链间通信协议的一组可能的应用层用例。**
 
 **有关IBC规范中使用的术语的定义，请参见[此处](./1_IBC_TERMINOLOGY.md) 。**
 
-**For an architectural overview, see [here](./2_IBC_ARCHITECTURE.md).**
+**有关架构的概述，请参见[此处](./2_IBC_ARCHITECTURE.md) 。**
 
 **有关广泛的协议设计原则，请参见[此处](./3_IBC_DESIGN_PRINCIPLES.md) 。**
 
 **有关设计模式的讨论，请参见[此处](./5_IBC_DESIGN_PATTERNS.md) 。**
 
-This is a far-from-comprehensive list of possible concrete application use-cases for the inter-blockchain communication protocol (IBC), listed here for inspiration & with the intent of providing inspiration and a set of viewpoints from which to evaluate the design of the protocol.
+这是区块链间通信协议（IBC）可能的具体应用用例的详尽清单，在此列出的目的是为了启发并意图提供灵感和一些视角，以从这些角度评估设计协议。
 
-For each use case, we define the requirements of the involved chains, the high-level packet handling logic, the application properties maintained across a combined-state view of the involved chains, and a list of potential involved zones with different comparative advantages or other application features.
+对于每个用例，我们定义相关链的要求，高级数据包处理逻辑，在相关链的组合状态视图中维护的应用程序属性以及在潜在领域和应用功能不同优势的比较列表。
 
 ## 资产转移
 
-Wherever compatible native asset representations exist, IBC can be used to transfer assets between two chains.
+只要存在兼容的原生资产表示形式，IBC即可用于在两个链之间转移资产。
 
-### Fungible tokens
+### 同质化通证
 
-IBC can be used to transfer fungible tokens between chains.
+IBC可用于在链之间转移同质化通证。
 
-#### Representations
+#### 表现形式
 
 比特币`UTXO` ，以太坊`ERC20` ，Cosmos SDK `sdk.Coins` 。
 
-#### Implementation
+#### 实现
 
-Two chains elect to "peg" two semantically compatible fungible token denominations to each other, escrowing, unescrowing, minting, and burning as necessary when sending & handling IBC packets.
+两条链选择相互“锚定”两个在语义兼容的同质化通证的面额，在发送和处理IBC数据包时根据需要进行托管，取消托管，铸造和销毁。
 
-There may be a starting "source zone", which starts with the entire token balance, and "target zone", which starts with zero token balance, or two zones may both start off with nonzero balances of a token (perhaps originated on a third zone), or two zones may elect to combine the supply and render fungible two previously disparate tokens.
+可能存在一个起始“源区域”，该区域起始时就拥有全部的通证数量，而一个“目标区域”，起始时通证余额为0，或者两个区域起始时通证余额都不为零（也许来自于第三方拥有通证的区域区域），或者两个区域可以选择合并供应并提供两个以前完全不同的通证以替代。
 
 #### 不变量
 
-Fungibility of any amount across all pegged representations, constant (or formulaic, in the case of a inflationary asset) total supply cumulative across chains, and tokens only exist in a spendable form on one chain at a time.
+在所有锚定表示形式中任何数量的通证都具有同质性，在整个链中累积的总供给是恒定的（或对于通货膨胀资产而言是公式化的），并且通证同一时刻只能以一种可消费的形式存在于一个链上。
 
-### Non-fungible tokens
+### 非同质化通证
 
-IBC can be used to transfer non-fungible tokens between chains.
+IBC可用于在链之间转移非同质化通证。
 
-#### Representations
+#### 表现形式
 
 以太坊`ERC721` ，Cosmos SDK `sdk.NFT` 。
 
-#### Implementation
+#### 实现
 
-Two chains elect to "peg" two semantically compatible non-fungible token namespaces to each other, escrowing, unescrowing, creating, and destroying as necessary when sending & handling IBC packets.
+两条链选择相互“锚定”两个语义兼容的非同质化通证名称空间，在发送和处理IBC数据包时根据需要进行托管，取消托管，创建和销毁。
 
-There may be a starting "source zone" which starts with particular tokens and contains token-associated logic (e.g. breeding CryptoKitties, redeeming digital ticket), or the associated logic may be packaged along with the NFT in a format which all involved chains can understand.
+可能有一个开始的“源区域”，该区域以特定的一些通证，并包含与通证相关的逻辑（例如，繁殖加密猫，兑换数字票证），或者可以将相关的逻辑与NFT一起打包为所有相关链都能理解的格式。
 
 #### 不变量
 
-Any given non-fungible token exists uniquely on one chain, owned by a particular account, at any point in time, and can always be transferred back to the "source" zone to perform associated actions (e.g. breeding a CryptoKitty) if applicable.
+任何给定的非同质化通证在任何时间点都唯一的存在于一个特定帐户拥有的一条链上，并且在适用的情况下，始终可以转移回“源”区域以执行关联的操作（例如，繁殖加密猫）。
 
 ### 涉及区域
 
-#### Vanilla payments
+#### 原始支付
 
-A "vanilla payments" zone, such as the Cosmos Hub, may allow incoming & outgoing fungible and/or non-fungible token transfers through IBC. Users might elect to keep assets on such a zone due to high security or high connectivity.
+诸如Cosmos Hub之类的“原始支付”区域可以允许通过IBC进行传入和传出的同质化或/和非同质化通证。由于高安全性或高连接性，用户可能选择将资产保留在此类区域中。
 
-#### Shielded payments
+#### 遮蔽支付
 
-A "shielded payments" zone, such as the Zcash blockchain (pending [UITs](https://github.com/zcash/zcash/issues/830)), may allow incoming & outgoing fungible and/or non-fungible token transfers through IBC. Tokens which are transferred to such a zone could then be shielded through the zero-knowledge circuit and held, transferred, traded, etc. Once users had accomplished their anonymity-requiring purposes, they could be transferred out and back over IBC to other zones.
+一个“遮蔽支付”区域，例如Zcash区块链（待处理的[UIT](https://github.com/zcash/zcash/issues/830) ）可以允许通过IBC进行传入和传出的同质化或/和非同质化通证。然后，可以通过零知识流程保护转移到此类区域的通证，并对其进行持有，传递，交易等。一旦用户完成了要求匿名的目的，就可以将其转移出去，并通过IBC转移回其他区域。
 
 #### 去中心化交易所
 
-A "decentralised exchange" zone may allow incoming & outgoing fungible and/or non-fungible token transfers through IBC, and allow tokens stored on that zone to be traded with each other through a decentralised exchange protocol in the style of Uniswap or 0x (or future such protocols).
+“去中心化交易所”区域可以允许通过IBC进行传入和传出同质化或/和非同质化通证，并允许通过类Uniswap或0x（或未来的此类协议）的去中心交易协议来交易存储在该区域上的通证。
 
 #### 去中心化金融
 
-A "decentralised finance" zone, such as the Ethereum blockchain, may allow incoming & outgoing fungible and/or non-fungible token transfers though IBC, and allow tokens stored on that zone to interact with a variety of decentralised financial products: synthetic stablecoins, collateralised loans, liquidity pools, etc.
+以太坊区块链等“去中心化金融”区域可以允许通过IBC进行传入和传出同质化或/和非同质化通证，并允许存储在该区域中的通证与多种去中心化金融产品进行交互：合成稳定币，抵押贷款，流动资金池等
 
 ## 多链合约
 
-IBC can be used to pass messages & data between contracts with logic split across several chains.
+IBC可用于在合约之间传递消息和数据，逻辑分布在多个链中。
 
-### Cross-chain contract calls
+### 跨链合约调用
 
-IBC can be used to execute arbitrary contract-to-contract calls between separate smart contract platform chains, with calldata and return data.
+IBC可用于在单独的智能合约平台链之间执行任意带有调用数据和返回数据的合约调用。
 
-#### Representations
+#### 表现形式
 
-Contracts: Ethereum `EVM`, `WASM` (various), Tezos `Michelson`, Agoric `Jessie`.
+合约：以太坊 `EVM` ， `WASM` （各种），Tezos `Michelson` ，Agoric `Jessie` 。
 
-Calldata: Ethereum `ABI`, generic serialisation formats such as RLP, Protobuf, or JSON.
+调用数据：以太坊`ABI` ，通用序列化格式，例如RLP，Protobuf或JSON。
 
-#### Implementation
+#### 实现
 
-A contract on one zone which intends to call a contract on another zone must serialise the calldata and address of the destination contract in an IBC packet, which can be relayed through an IBC connection to the IBC handler on the destination chain, which will call the specified contract, executing any associated logic, and return the result of the call (if applicable) back in a second IBC packet to the calling contract, which will need to handle it asynchronously.
+一个合约如果打算调用另一个区域上的合约，必须在IBC数据包中序列化目标合约的调用数据和地址，该数据可以通过IBC连接中继到目标链上的IBC处理程序，该IBC处理程序将调用指定的合约，执行任何关联的逻辑，然后将调用结果（如果适用）返回到第二个IBC数据包中，返回给调用合约，该合约需要异步处理。
 
-Implementing chains may elect to provide a "channel" object to contract developers, with a send end, receive end, configurable buffer size, etc. much like channels in multiprocess concurrent programming in languages such as Go or Haskell.
+实现链可以选择为合约开发人员提供“通道”对象，包括发送端，接收端，可配置的缓冲区大小等，这与使用Go或Haskell等语言进行的多进程并发编程中的通道非常相似。
 
 #### 不变量
 
-Contract-dependent.
+取决于不同合同。
 
 ### 跨链费用支付
 
-#### Representations
+#### 表现形式
 
-Same as "fungible tokens" as above.
+与上述“同质化通证”相同。
 
-#### Implementation
+#### 实现
 
-An account holding assets on one chain can be used to pay fees on another chain by sending tokens to an account on the first chain controlled by the validator set of the second chain and including a proof that tokens were so sent (on the first chain) in the transaction submitted to the second chain.
+使用一个链上持有的资产支付另一条链上的费用，可以通过将通证发送到第二条链的验证人集合控制的第一条链上的帐户上，并包括通证已发送（在第一条链上）的证明，一起在交易中提交给第二条链的方式实现。
 
 资金可以定期通过IBC连接从第一链发送回第二链，以进行费用支付。
 
 #### 不变量
 
-Correct fees paid on one of two chains but not both.
+在其中一条链上支付正确的费用，但不能同时在两链上。
 
-### Interchain collateralisation
+### 跨链抵押
 
-A subset of the validator set on one chain can elect to validate another chain and be held accountable for equivocation faults committed on that chain submitted over an IBC connection, and the second chain can delegate its validator update logic to the first chain through the same IBC connection.
+一条链上的验证人集合的子集可以选择验证另一条链，并对通过IBC连接处理提交在该链产生的歧义错误，第二条链可以通过同一IBC连接将其验证人更新逻辑委托给第一条链。
 
-#### Representations
+#### 表现形式
 
 ABCI `Evidence`和`ValidatorUpdate` 。
 
-#### Implementation
+#### 实现
 
-`ValidatorUpdate`s for a participating subset of the primary (collateralising) chain's validator set are relayed in IBC packets to the collateralised chain, which uses them directly to set its own validator set.
+主（抵押）链的验证人集合的参与子集的`ValidatorUpdate`通过IBC数据包中继到被抵押链，被抵押链直接使用它们设置自己的验证人集合。
 
-`Evidence` of any equivocations is relayed back from the collateralised chain to the primary chain so that the equivocating validator(s) can be slashed.
+任何歧义错误都通过`Evidence`从被抵押链传回了主链，从而可以惩罚引起歧义错误的验证人。
 
 #### 不变量
 
-Validators which commit an equivocation fault are slashable on at least one chain, and possibly the validator set of a collateralised chain is bound to the validator set of a primary (collateralising) chain.
+犯有歧义错误的验证人在至少一条链上是可以被惩罚的，并且可能将被抵押链的验证人集合绑定到主（抵押）链的验证人集合上。
 
 ## 分片
 
-IBC can be used to migrate smart contracts & data between blockchains with mutually comprehensible virtual machines & data formats, respectively.
+IBC可以在具有相互理解的虚拟机和数据格式的区块链之间迁移智能合约和数据。
 
 ### 代码迁移
 
-#### Representations
+#### 表现形式
 
-Same as "cross-chain contract calls" above, with the additional requirement that all involved code be serialisable and mutually comprehensible (executable) by the involved chains.
+与上面的“跨链合约调用”相同，另外要求所有涉及的代码必须是可序列化的，并且在所涉及的链上可以相互理解（可执行）。
 
-#### Implementation
+#### 实现
 
-Participating chains migrate contracts, which they can all execute, between themselves according to a known balancing ("sharding") algorithm, perhaps designed to equalise load or achieve efficient locality for frequently-interacting contracts.
+参与链在已知的平衡（“分片”）算法之间迁移了它们都可以在它们之间执行的合约，这些算法可能旨在均衡负载或使局部频繁交互合约更加高效。
 
-A routing system on top of core IBC will be required to correctly route cross-chain contract calls between contracts which may frequently switch chains.
+需要一个在核心IBC之上的路由系统来正确路由可能频繁切换链的合约之间的跨链调用。
 
 #### 不变量
 
-Semantics of code preserved, namespacing preserved by some sort of routing system.
+保留代码的语义，通过某种路由系统保留命名空间。
 
 ### 数据迁移
 
-IBC can be used to implement an arbitrary-depth multi-chain "cache" system where storage cost can be traded for access cost.
+IBC可用于实施任意深度的多链“缓存”系统，在该系统中，存储成本可以转变为访问成本。
 
-#### Representations
+#### 表现形式
 
 通用序列化格式，例如Amino，RLP，Protobuf，JSON。
 
-#### Implementation
+#### 实现
 
-An arbitrary-depth IBC-connection-linked-list of chains, with the first chain optimised for compute and later chains optimised for cheaper storage, can implement a hierarchical cache, where data unused for a period of time on any chain is migrated to the next chain in the list. When data is necessary (e.g. for a contract call or storage access), if it is not stored on the chain looking it up, it must be relayed over an IBC packet back to that chain (which can then re-cache it for some period).
+一个任意深度的IBC连接链表链，其中第一个链针对计算进行优化，后来的链针对存储成本进行优化，就可以实现分层缓存，其中任何一条链上一段时间未使用的数据都将迁移到列表中的下一个链。当需要数据时（例如，用于合约调用或存储访问），如果在存储链中没有查找到，则必须通过IBC数据包将其中继回该链（然后可以将其重新缓存一段时间 ）。
 
 #### 不变量
 
-All data can be accessed on the primary (compute) chain when requested, with a known bound of necessary IBC hops.
+当请求时，所有数据都可以在主（计算）链上访问到，并具有一个IBC跳数的已知边界。
