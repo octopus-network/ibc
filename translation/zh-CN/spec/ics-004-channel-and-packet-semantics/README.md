@@ -1,16 +1,16 @@
 ---
 ics: '4'
 title: 通道和数据包语义
-stage: draft
+stage: 草案
 category: IBC/TAO
-kind: instantiation
+kind: 实例化
 requires: 2, 3, 5, 24
 author: Christopher Goes <cwgoes@tendermint.com>
 created: '2019-03-07'
 modified: '2019-08-25'
 ---
 
-## Synopsis
+## 概要
 
 “通道”抽象为块间链通信协议提供消息传递语义，分为三类：排序，一次发送和模块许可。通道充当数据包在一条链上的模块与另一条链上的模块之间传递的通道，从而确保数据包仅执行一次，并按照其发送顺序进行传递（如有必要），并仅传递给相应的模块拥有目标链上渠道的另一端。每个通道都与一个特定的连接相关联，并且一个连接可以具有任意数量的关联通道，从而允许使用公共标识符并利用连接和轻客户端在所有通道上分摊报头验证的成本。
 
@@ -24,7 +24,7 @@ modified: '2019-08-25'
 
 为了向应用层提供所需的排序、有且只有一次发送和模块许可语义，区块链间通信协议必须实现一种抽象以强制执行这些语义——通道就是这种抽象。
 
-### Definitions
+### 定义
 
 `ConsensusState` 在 [ICS 2](../ics-002-client-semantics) 中被定义.
 
@@ -143,13 +143,13 @@ type OpaquePacket = object
 - 在有序通道上，应按相同的顺序发送和接收数据包：如果数据包 *x* 在链*A* 上的一个通道端在数据包 *y* 之前发送，则数据包 *x* 必须在数据链 *y上* 在相应的链束 *B* 通道端之前在数据包 y 之前接收。
 - 在无序通道上，可以以任何顺序发送和接收数据包。像有序数据包一样，无序数据包的超时是分别地对应目标链上的特定区块高度发生的。
 
-#### Permissioning
+#### 许可
 
 - 通道应该在握手期间被通道的两端都允许，并且此后不可变更（更高级别的逻辑可以通过标记端口的所有权来标记通道所有权）。只有与通道端关联的模块才能在其上发送或接收数据包。
 
-## Technical Specification
+## 技术指标
 
-### Dataflow visualisation
+### 数据流可视化
 
 客户端、连接、通道和数据包的体系结构：
 
@@ -233,14 +233,14 @@ type validateChannelIdentifier = (portIdentifier: Identifier, channelIdentifier:
 
 ![Channel State Machine](../../../../spec/ics-004-channel-and-packet-semantics/channel-state-machine.png)
 
-Initiator | Datagram | 作用链 | 先前状态 (A, B) | 作用后状态 (A, B)
+发起人 | 数据报 | 作用链 | 先前状态 (A, B) | 作用后状态 (A, B)
 --- | --- | --- | --- | ---
 参与者 | ChanOpenInit | A | (none, none) | (INIT, none)
 中继器进程 | ChanOpenTry | B | (INIT, none) | (INIT, TRYOPEN)
 中继器进程 | ChanOpenAck | A | (INIT, TRYOPEN) | (OPEN, TRYOPEN)
 中继器进程 | ChanOpenConfirm | B | (OPEN, TRYOPEN) | (OPEN, OPEN)
 
-Initiator | Datagram | 作用链 | 先前状态 (A, B) | 作用后状态 (A, B)
+发起人 | 数据报 | 作用链 | 先前状态 (A, B) | 作用后状态 (A, B)
 --- | --- | --- | --- | ---
 参与者 | ChanCloseInit | A | (OPEN, OPEN) | (CLOSED, OPEN)
 中继器进程 | ChanCloseConfirm | B | (CLOSED, OPEN) | (CLOSED, CLOSED)
@@ -480,7 +480,7 @@ function chanCloseConfirm(
 IBC 处理程序按顺序执行以下步骤：
 
 - 检查用于发送数据包的通道和连接是否打开
-- Checks that the calling module owns the sending port
+- 检查调用模块是否拥有发送端口
 - 检查数据包元数据与通道以及连接信息是否匹配
 - 检查目标链尚未达到指定的超时区块高度
 - 递增通道关联的发送序列号
@@ -529,7 +529,7 @@ function sendPacket(packet: Packet) {
 IBC 处理程序按顺序执行以下步骤：
 
 - 检查接收数据包的通道和连接是否打开
-- Checks that the calling module owns the receiving port
+- 检查调用模块是否拥有接收端口
 - 检查数据包元数据与通道及连接信息是否匹配
 - 检查数据包序列号是通道端希望接收的（对于有序通道而言）
 - 检查是否达到超时区块高度
@@ -652,7 +652,7 @@ function acknowledgePacket(
 
 在调用`timeoutPacket`的同时，调用模块可以执行适当的应用超时处理逻辑。
 
-In the case of an ordered channel, `timeoutPacket` checks the `recvSequence` of the receiving channel end and closes the channel if a packet has timed out.
+在有序通道的情况下， `timeoutPacket`检查接收通道端的`recvSequence` ，如果数据包已超时，则关闭通道。
 
 在无序通道的情况下， `timeoutPacket`检查是否存在确认（如果接收到数据包，则该确认将被写入）。Unordered channels are expected to continue in the face of timed-out packets.
 
@@ -723,9 +723,9 @@ function timeoutPacket(
 
 ##### 关闭时超时
 
-The `timeoutOnClose` function is called by a module in order to prove that the channel
-to which an unreceived packet was addressed has been closed, so the packet will never be received
-(even if the `timeoutHeight` has not yet been reached).
+该模块调用`timeoutOnClose`函数以证明该通道
+未收到的数据包已寻址到的地址已经关闭，因此永远不会收到该数据包
+（即使尚未达到`timeoutHeight` ）。
 
 ```typescript
 function timeoutOnClose(
@@ -792,7 +792,7 @@ function timeoutOnClose(
 
 模块调用`cleanupPacket`以从状态中删除收到的数据包承诺。接收端必须已经处理过该数据包（无论是定期清理或针对过去超时的清理）。
 
-In the ordered channel case, `cleanupPacket` cleans-up a packet on an ordered channel by proving that the packet has been received on the other end.
+在有序通道的情况下， `cleanupPacket`通过证明已在另一端接收到数据包来清理有序通道上的数据包。
 
 在无序通道的情况下， `cleanupPacket`通过证明关联的确认已经被写入来清理无序通道上的数据包。
 
@@ -856,21 +856,21 @@ function cleanupPacket(
 
 如果两台状态机同时彼此启动通道打开握手，并尝试使用相同的标识符，则两者都会失败，必须使用新的标识符。
 
-##### Identifier allocation
+##### 标识符分配
 
 在目标链上分配标识符存在不可避免的竞争条件。最好建议模块使用伪随机、不表意的标识符。设法声明另一个模块希望使用的标识符，但是令人烦恼的是，由于不能在握手阶段陷入中间人攻击，因此接收模块必须已经拥有握手所指向的端口。
 
-##### Timeouts / packet confirmation
+##### 超时/数据包确认
 
 数据包超时和数据包确认之间没有竞争条件，因为数据包在接收之前或已经超过了超时区块高度。
 
-##### Man-in-the-middle attacks during handshakes
+##### 握手期间的中间人攻击
 
 跨链状态的验证可防止连接握手和通道握手的中间人攻击，因为模块已知道所有信息（源、目标客户端、通道等），该信息将启动握手并在握手之前进行确认完成。
 
 ##### 有正在传输数据包时的连接/通道关闭
 
-If a connection or channel is closed while packets are in-flight, the packets can no longer be received on the destination chain and can be timed-out on the source chain.
+如果在传输数据包时关闭了连接或通道，则数据包将不再在目标链上被接收，并且可能在源链上超时。
 
 #### 查询通道
 
@@ -888,13 +888,13 @@ function queryChannel(connId: Identifier, chanId: Identifier): ChannelEnd | void
 - 假设链在超时后仍然存在，并且在发送链上出现了超时并有且仅有一次超时，数据报能够被有且只有一次地传送。
 - 通道握手不能受到区块链上的另一个模块或另一个链的 IBC 处理程序作为中间人进行的攻击。
 
-## Backwards Compatibility
+## 向后兼容
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 转发兼容性
 
-Data structures & encoding can be versioned at the connection or channel level. Channel logic is completely agnostic to packet data formats, which can be changed by the modules any way they like at any time.
+数据结构和编码可以在连接或通道级别进行版本控制。通道逻辑完全与分组数据格式无关，可以由模块在任何时候以自己喜欢的任何方式对其进行更改。
 
 ## 示例实现
 
@@ -912,12 +912,12 @@ Data structures & encoding can be versioned at the connection or channel level. 
 
 2019年7月16日-更改“多跳”路由未来的兼容性
 
-Jul 29, 2019 - Revisions to handle timeouts after connection closure
+2019年7月29日-修改以处理连接关闭后的超时
 
-Aug 13, 2019 - Various edits
+2019年8月13日-各种修改
 
-Aug 25, 2019 - Cleanup
+2019年8月25日-清理
 
-## Copyright
+## 版权
 
 All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
