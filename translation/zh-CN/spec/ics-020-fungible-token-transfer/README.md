@@ -4,7 +4,7 @@ title: 可互换代币转移
 stage: 草案
 category: IBC/APP
 requires: 25, 26
-kind: instantiation
+kind: 实例化
 author: Christopher Goes <cwgoes@tendermint.com>
 created: '2019-07-15'
 modified: '2019-08-25'
@@ -279,7 +279,7 @@ function onTimeoutPacketClose(packet: Packet) {
 
 #### 原理
 
-##### Correctness
+##### 正确性
 
 该实现保持了可互换性和总量不变。
 
