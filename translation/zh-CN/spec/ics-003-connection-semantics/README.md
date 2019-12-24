@@ -227,7 +227,7 @@ function verifyNextSequenceRecv(
 #### 标识符验证
 
 连接存储在唯一的`Identifier`前缀下。 
-可以提供验证函数`validateConnectionIdentifier`。
+可以提供验证函`数validateConnectionIdentifie`r。
 
 ```typescript
 type validateConnectionIdentifier = (id: Identifier) => boolean
@@ -318,7 +318,15 @@ function connOpenTry(
                                clientIdentifier, counterpartyClientIdentifier, version}
     abortTransactionUnless(connection.verifyConnectionState(proofHeight, proofInit, counterpartyConnectionIdentifier, expected))
     abortTransactionUnless(connection.verifyClientConsensusState(proofHeight, proofConsensus, counterpartyClientIdentifier, expectedConsensusState))
-    abortTransactionUnless(provableStore.get(connectionPath(desiredIdentifier)) === null)
+    previous = provableStore.get(connectionPath(desiredIdentifier))
+    abortTransactionUnless(
+      (previous === null) ||
+      (previous.state === INIT &&
+        previous.counterpartyConnectionIdentifier === counterpartyConnectionIdentifier &&
+        previous.counterpartyPrefix === counterpartyPrefix &&
+        previous.clientIdentifier === clientIdentifier &&
+        previous.counterpartyClientIdentifier === counterpartyClientIdentifier &&
+        previous.version === version))
     identifier = desiredIdentifier
     state = TRYOPEN
     provableStore.set(connectionPath(identifier), connection)
@@ -338,7 +346,7 @@ function connOpenAck(
   consensusHeight: uint64) {
     abortTransactionUnless(consensusHeight <= getCurrentHeight())
     connection = provableStore.get(connectionPath(identifier))
-    abortTransactionUnless(connection.state === INIT)
+    abortTransactionUnless(connection.state === INIT || connection.state === TRYOPEN)
     expectedConsensusState = getConsensusState(consensusHeight)
     expected = ConnectionEnd{TRYOPEN, identifier, getCommitmentPrefix(),
                              connection.counterpartyClientIdentifier, connection.clientIdentifier,
@@ -402,13 +410,13 @@ function queryClientConnections(id: Identifier): Set<Identifier> {
 
 只能在建立连接时选择的共识协议定义的`updateConsensusState`函数允许的情况下更新共识状态。
 
-## 示例实施
+## 示例实现
 
-快来了。
+即将发布。
 
-## 其他实施
+## 其他实现
 
-快来了。
+即将发布。
 
 ## 历史
 
