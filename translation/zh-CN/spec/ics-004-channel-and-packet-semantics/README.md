@@ -86,14 +86,14 @@ interface ChannelEnd {
 ```typescript
 enum ChannelState {
   INIT,
-  OPENTRY,
+  TRYOPEN,
   OPEN,
   CLOSED,
 }
 ```
 
 - 处于`INIT`状态的通道端，表示刚刚开始了握手的建立。
-- 处于`OPENTRY`状态的通道端，表示已在对应链上确认了握手这一步。
+- A channel end in `TRYOPEN` state has acknowledged the handshake step on the counterparty chain.
 - 处于`OPEN`状态的通道端，表示已完成握手，并为发送和接收数据包作好了准备。
 - 处于`CLOSED`状态的通道端，表示通道已关闭，不能再用于发送或接收数据包。
 
@@ -300,7 +300,16 @@ function chanOpenTry(
   proofHeight: uint64): CapabilityKey {
     abortTransactionUnless(validateChannelIdentifier(portIdentifier, channelIdentifier))
     abortTransactionUnless(connectionHops.length === 1) // for v1 of the IBC protocol
-    abortTransactionUnless(provableStore.get(channelPath(portIdentifier, channelIdentifier)) === null)
+    previous = provableStore.get(channelPath(portIdentifier, channelIdentifier))
+    abortTransactionUnless(
+      (previous === null) ||
+      (previous.state === INIT &&
+       previous.order === order &&
+       previous.counterpartyPortIdentifier === counterpartyPortIdentifier &&
+       previous.counterpartyChannelIdentifier === counterpartyChannelIdentifier &&
+       previous.connectionHops === connectionHops &&
+       previous.version === version)
+      )
     abortTransactionUnless(authenticate(privateStore.get(portPath(portIdentifier))))
     connection = provableStore.get(connectionPath(connectionHops[0]))
     abortTransactionUnless(connection !== null)
@@ -314,7 +323,7 @@ function chanOpenTry(
       counterpartyChannelIdentifier,
       expected
     ))
-    channel = ChannelEnd{OPENTRY, order, counterpartyPortIdentifier,
+    channel = ChannelEnd{TRYOPEN, order, counterpartyPortIdentifier,
                          counterpartyChannelIdentifier, connectionHops, version}
     provableStore.set(channelPath(portIdentifier, channelIdentifier), channel)
     key = generate()
@@ -336,12 +345,12 @@ function chanOpenAck(
   proofTry: CommitmentProof,
   proofHeight: uint64) {
     channel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
-    abortTransactionUnless(channel.state === INIT)
+    abortTransactionUnless(channel.state === INIT || channel.state === TRYOPEN)
     abortTransactionUnless(authenticate(privateStore.get(channelCapabilityPath(portIdentifier, channelIdentifier))))
     connection = provableStore.get(connectionPath(channel.connectionHops[0]))
     abortTransactionUnless(connection !== null)
     abortTransactionUnless(connection.state === OPEN)
-    expected = ChannelEnd{OPENTRY, channel.order, portIdentifier,
+    expected = ChannelEnd{TRYOPEN, channel.order, portIdentifier,
                           channelIdentifier, channel.connectionHops.reverse(), counterpartyVersion}
     abortTransactionUnless(connection.verifyChannelState(
       proofHeight,
@@ -366,7 +375,7 @@ function chanOpenConfirm(
   proofHeight: uint64) {
     channel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnless(channel !== null)
-    abortTransactionUnless(channel.state === OPENTRY)
+    abortTransactionUnless(channel.state === TRYOPEN)
     abortTransactionUnless(authenticate(privateStore.get(channelCapabilityPath(portIdentifier, channelIdentifier))))
     connection = provableStore.get(connectionPath(channel.connectionHops[0]))
     abortTransactionUnless(connection !== null)
@@ -462,8 +471,8 @@ function chanCloseConfirm(
     2. 通道握手的建立通过刚建立的连接从 *1* 发起到 *2*
     3.  数据报通过新创建的通道*从* 1 *被发送到 * 2 (此 ICS )
 3. 握手成功完成意味着：（如果任一握手失败，则连接/通道可以关闭且数据包会超时）
-    1. 成功完成连接建立握手（请参阅 [ICS 3](../ics-003-connection-semantics) ）（这需要中继器进程参与） 
-    2. 成功完成通道建立握手（此ICS）（这需要中继器进程的参与） 
+    1. 成功完成连接建立握手（请参阅 [ICS 3](../ics-003-connection-semantics) ）（这需要中继器进程参与）
+    2. 成功完成通道建立握手（此ICS）（这需要中继器进程的参与 
 4. 在状态机 *B* 的模块 *2* 上确认数据包（如果超过超时区块高度，则确认数据包超时）（这将需要中继器进程参与）
 5. 确认消息从状态机 *B* 上的模块 *2* 被中继回状态机 *A* 上的模块 *1*
 
