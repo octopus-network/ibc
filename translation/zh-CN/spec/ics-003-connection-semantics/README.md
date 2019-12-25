@@ -227,7 +227,7 @@ function verifyNextSequenceRecv(
 #### 标识符验证
 
 连接存储在唯一的`Identifier`前缀下。 
-可以提供验证函`数validateConnectionIdentifie`r。
+可以提供验证函数`validateConnectionIdentifier`。
 
 ```typescript
 type validateConnectionIdentifier = (id: Identifier) => boolean
@@ -400,11 +400,11 @@ function queryClientConnections(id: Identifier): Set<Identifier> {
 - 连接标识符是“先到先得”的：一旦连接被商定，两个链之间就会存在一对唯一的标识符。
 - 连接握手不能被另一条链的 IBC 处理程序作为中间人来进行干预。
 
-## 向后兼容
+## 向后兼容性
 
 不适用。
 
-## 转发兼容性
+## 向前兼容性
 
 此 ICS 的未来版本将在开放式握手中包括版本协商。建立连接并协商版本后，可以根据 ICS 6 协商将来的版本更新。
 
