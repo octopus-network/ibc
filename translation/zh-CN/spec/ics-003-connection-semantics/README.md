@@ -318,7 +318,15 @@ function connOpenTry(
                                clientIdentifier, counterpartyClientIdentifier, version}
     abortTransactionUnless(connection.verifyConnectionState(proofHeight, proofInit, counterpartyConnectionIdentifier, expected))
     abortTransactionUnless(connection.verifyClientConsensusState(proofHeight, proofConsensus, counterpartyClientIdentifier, expectedConsensusState))
-    abortTransactionUnless(provableStore.get(connectionPath(desiredIdentifier)) === null)
+    previous = provableStore.get(connectionPath(desiredIdentifier))
+    abortTransactionUnless(
+      (previous === null) ||
+      (previous.state === INIT &&
+        previous.counterpartyConnectionIdentifier === counterpartyConnectionIdentifier &&
+        previous.counterpartyPrefix === counterpartyPrefix &&
+        previous.clientIdentifier === clientIdentifier &&
+        previous.counterpartyClientIdentifier === counterpartyClientIdentifier &&
+        previous.version === version))
     identifier = desiredIdentifier
     state = TRYOPEN
     provableStore.set(connectionPath(identifier), connection)
@@ -338,7 +346,7 @@ function connOpenAck(
   consensusHeight: uint64) {
     abortTransactionUnless(consensusHeight <= getCurrentHeight())
     connection = provableStore.get(connectionPath(identifier))
-    abortTransactionUnless(connection.state === INIT)
+    abortTransactionUnless(connection.state === INIT || connection.state === TRYOPEN)
     expectedConsensusState = getConsensusState(consensusHeight)
     expected = ConnectionEnd{TRYOPEN, identifier, getCommitmentPrefix(),
                              connection.counterpartyClientIdentifier, connection.clientIdentifier,
@@ -392,23 +400,23 @@ function queryClientConnections(id: Identifier): Set<Identifier> {
 - 连接标识符是“先到先得”的：一旦连接被商定，两个链之间就会存在一对唯一的标识符。
 - 连接握手不能被另一条链的 IBC 处理程序作为中间人来进行干预。
 
-## 向后兼容
+## 向后兼容性
 
 不适用。
 
-## 转发兼容性
+## 向前兼容性
 
 此 ICS 的未来版本将在开放式握手中包括版本协商。建立连接并协商版本后，可以根据 ICS 6 协商将来的版本更新。
 
 只能在建立连接时选择的共识协议定义的`updateConsensusState`函数允许的情况下更新共识状态。
 
-## 示例实施
+## 示例实现
 
-快来了。
+即将发布。
 
-## 其他实施
+## 其他实现
 
-快来了。
+即将发布。
 
 ## 历史
 
