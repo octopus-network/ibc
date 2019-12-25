@@ -91,7 +91,7 @@ ICS 应该包含版权部分，按照 [Apache 2.0](https://www.apache.org/licens
 
 ## 格式化
 
-### 一般
+### 通用
 
 ICS 规范必须使用 GitHub 风格的 Markdown 编写。
 
