@@ -453,7 +453,7 @@ interface Header {
   sequence: uint64
   commitmentRoot: CommitmentRoot
   signature: Signature
-  newPublicKey: Maybe<PublicKey>;
+  newPublicKey: Maybe<PublicKey>
 }
 
 interface Evidence {
