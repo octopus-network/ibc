@@ -615,11 +615,11 @@ function checkMisbehaviourAndUpdateState(
 
 ## 示例实现
 
-敬请期待。
+即将发布。
 
 ## 其他实现
 
-敬请期待。
+即将发布。
 
 ## 历史
 
