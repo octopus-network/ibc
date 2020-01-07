@@ -440,8 +440,8 @@ function submitMisbehaviourToClient(
 ```typescript
 interface ClientState {
   frozen: boolean
-  pastPublicKeys: Set&lt;PublicKey&gt;
-  verifiedRoots: Map&lt;uint64, CommitmentRoot&gt;
+  pastPublicKeys: Set<PublicKey>
+  verifiedRoots: Map<uint64, CommitmentRoot>
 }
 
 interface ConsensusState {
@@ -453,7 +453,7 @@ interface Header {
   sequence: uint64
   commitmentRoot: CommitmentRoot
   signature: Signature
-  newPublicKey: Maybe&lt;PublicKey&gt;
+  newPublicKey: Maybe<PublicKey>;
 }
 
 interface Evidence {
@@ -465,7 +465,7 @@ interface Evidence {
 function commit(
   commitmentRoot: CommitmentRoot,
   sequence: uint64,
-  newPublicKey: Maybe&lt;PublicKey&gt;): Header {
+  newPublicKey: Maybe<PublicKey>): Header {
     signature = privateKey.sign(commitmentRoot, sequence, newPublicKey)
     header = {sequence, commitmentRoot, signature, newPublicKey}
     return header
