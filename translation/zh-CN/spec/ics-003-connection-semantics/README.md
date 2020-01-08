@@ -57,7 +57,7 @@ modified: '2019-08-25'
 
 一旦握手协商完成：
 
-- 已经在两条链上建立的连接对象包括由初始参与者指定的共识状态。
+- 在两个链上创建的连接对象均包含发起方指定的共识状态。
 - 其他连接对象不能通过重放数据报的方式在其他链上恶意的被创建。
 
 ## 技术指标
@@ -87,7 +87,7 @@ interface ConnectionEnd {
 
 - `state`字段描述连接端的当前状态。
 - `counterpartyConnectionIdentifier`字段标识与此连接关联的对方链上的连接端。
-- `clientIdentifier`字段标识了与这个连接相关的对方链的连接端。
+- `clientIdentifier`字段标识与此连接关联的客户端。
 - `counterpartyClientIdentifier`字段标识与此连接关联的对方链上的客户端。
 - `version`字段是不透明的字符串，可用于确定使用此连接的通道或数据包的编码或协议。
 
@@ -261,7 +261,7 @@ type pickVersion = ([]string) => string
 
 一个正确的协议执行流程如下：（注意所有的请求都是按照 ICS 25 来制定的）
 
-发起人 | 数据报 | 作用链 | 先前状态（A，B） | 连接建立后状态（A，B）
+发起人 | 数据报 | 作用链 | 先前状态（A，B） | 后状态（A，B）
 --- | --- | --- | --- | ---
 参与者 | `ConnOpenInit` | A | (none, none) | （INIT，none）
 中继器 | `ConnOpenTry` | B | （INIT，none） | （INIT，TRYOPEN）
