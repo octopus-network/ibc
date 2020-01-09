@@ -12,17 +12,17 @@ modified: '2019-08-25'
 
 ## 概要
 
-“通道”抽象为区块链间链通信协议提供消息传递语义，分为三类：排序、有且仅有一次传递和模块许可。通道充当数据包在一条链上的模块与另一条链上的模块之间传递的通道，从而确保数据包仅被执行一次，并按照其发送顺序进行传递（如有必要），并仅传递给相应的模块拥有目标链上通道的另一端。每个通道都与一个特定的连接关联，并且一个连接可以具有任意数量的关联通道，从而允许使用公共标识符，并利用连接和轻客户端在所有通道上分摊区块头验证的成本。
+“通道”抽象为区块链间通信协议提供消息传递语义，分为三类：排序、有且仅有一次传递和模块许可。通道充当数据包在一条链上的模块与另一条链上的模块之间传递的通道，从而确保数据包仅被执行一次，并按照其发送顺序进行传递（如有必要），并仅传递给拥有目标链上通道的另一端的相应的模块。每个通道都与一个特定的连接关联，并且一个连接可以具有任意数量的关联通道，从而允许使用公共标识符，并利用连接和轻客户端在所有通道上分摊区块头验证的成本。
 
-通道与负载无关。发送和接收 IBC 数据包的模块决定如何构造数据包数据，以及如何对传入的数据包数据进行操作，并且必须利用其自身的应用程序逻辑来根据数据包中的数据来确定要应用的状态。
+通道不关心其中传递的内容。发送和接收 IBC 数据包的模块决定如何构造数据包数据，以及如何对传入的数据包数据进行操作，并且必须利用其自身的应用程序逻辑来根据数据包中的数据来确定要应用的状态转换。
 
 ### 动机
 
-链间通信协议使用跨链消息传递模型。 外部中继进程将 IBC * 数据包* 从一条链中继到另一条链。链 `A` 和链 `B` 独立地确认新的块，并且从一个链到另一个链的数据包可能会被任意延迟、审查或重新排序。数据包对于中继器是可见的，并且可以通过任何中继进程从链中读取，然后提交给任何其他链。
+区块链间通信协议使用跨链消息传递模型。 外部中继器进程将 IBC *数据包*从一条链中继到另一条链。链`A`和链`B`独立的确认新的块，并且从一个链到另一个链的数据包可能会被任意延迟、审查或重新排序。数据包对于中继器是可见的，并且可以被任何中继器进程读取，然后被提交给任何其他链。
 
-> IBC 协议必须保证顺序（对于有序通道）和有且仅有一次投递，以允许应用程序推理两条链上已连接模块的组合状态。例如，一个应用程序可能希望允许单个通证化的资产在多个区块链之间转移并保留在多个区块链上，同时保留可替代性和供应量。当特定的IBC数据包提交到链` B `时，应用程序可以在链` B `上铸造资产凭据，并要求链` A `将等额的资产托管在链` A `上，直到以后凭相反的 IBC 数据包将凭证兑换回链` A `为止。这种顺序保证了正确的应用逻辑，可以确保两个链上的资产总量不变，并且在链` B `上铸造的所有资产凭证都可以在日后通过赎回回到链` A `上。
+> IBC 协议必须保证顺序（对于有序通道）和有且仅有一次传递，以允许应用程序探讨两条链上已连接模块的组合状态。例如，一个应用程序可能希望允许单个通证化的资产在多个区块链之间转移并保留在多个区块链上，同时保留同质化和供应量。当特定的 IBC 数据包提交到链`B`时，应用程序可以在链`B`上铸造资产凭据，并要求链`A`将等额的资产托管在链`A`上，直到以后以相反的 IBC 数据包将凭证兑换回链`A`为止。这种顺序保证配合正确的应用逻辑，可以确保两个链上的资产总量不变，并且在链`B`上铸造的任何资产凭证都可以之后兑换回链`A`上。
 
-为了向应用层提供所需的排序、有且只有一次发送和模块许可语义，区块链间通信协议必须实现一种抽象以强制执行这些语义——通道就是这种抽象。
+为了向应用层提供所需的排序、有且只有一次传递和模块许可语义，区块链间通信协议必须实现一种抽象以强制执行这些语义——通道就是这种抽象。
 
 ### 定义
 
@@ -30,19 +30,19 @@ modified: '2019-08-25'
 
 `Connection` 在 [ICS 3](../ics-003-connection-semantics) 中被定义.
 
-`Port`和`authenticate`在[ICS 5](../ics-005-port-allocation)中被定义。
+`Port`和`authenticate`在 [ICS 5](../ics-005-port-allocation) 中被定义。
 
-`hash`是一种通用的抗冲突哈希函数，其细节必须由使用通道的模块商定。
+`hash`是一种通用的抗碰撞哈希函数，其细节必须由使用通道的模块商定。
 
-`Identifier` ， `get` ， `set` ， `delete` ， `getCurrentHeight`和模块系统相关的原语在[ICS 24](../ics-024-host-requirements)中被定义。
+`Identifier` ， `get` ， `set` ， `delete` ， `getCurrentHeight`和模块系统相关的原语在 [ICS 24](../ics-024-host-requirements) 中被定义。
 
 *通道*是用于在单独的区块链上的特定模块之间进行有且仅有一次数据包传递的管道，该模块至少具备数据包发送端和数据包接收端。
 
 *双向*通道是数据包可以在两个方向上流动的通道：从`A`到`B`和从`B`到`A`
 
-*单向*通道是指数据包只能沿一个方向流动的通道：从`A`到`B` （或从`B`到`A` ，任意命名顺序）。
+*单向*通道是指数据包只能沿一个方向流动的通道：从`A`到`B` （或从`B`到`A` ，命名的顺序是任意的）。
 
-*有序*通道是指按照发送顺序完全传送数据包的通道。
+*有序*通道是指完全按照发送顺序传送数据包的通道。
 
 *无序*通道是指可以以任何顺序传送数据包的通道，该顺序可能与数据包的发送顺序不同。
 
@@ -53,13 +53,13 @@ enum ChannelOrder {
 }
 ```
 
-方向性和顺序是独立的，因此可以说是双向无序通道，单向有序通道等。
+方向和顺序是无关的，因此可以说双向无序通道，单向有序通道等。
 
 所有通道均提供有且仅有一次的数据包传送，这意味着在通道的一端发送的数据包最终将不多于且不少于一次地传送到另一端。
 
-该规范仅涉及*双向*通道。 *单向*通道可以使用几乎完全相同的协议，并将在以后的ICS中进行概述。
+该规范仅涉及*双向*通道。*单向*通道可以使用几乎完全相同的协议，并将在以后的ICS中进行概述。
 
-通道的末端是一条链上存储通道元数据的数据结构：
+通道端是一条链上存储通道元数据的数据结构：
 
 ```typescript
 interface ChannelEnd {
@@ -76,9 +76,9 @@ interface ChannelEnd {
 - `ordering`字段指示通道是有序的还是无序的。
 - `counterpartyPortIdentifier`标识通道另一端的对应链上的端口号。
 - `counterpartyChannelIdentifier`标识对应链的通道端。
-- `nextSequenceSend`是单独存储的，用于追踪下一个将要发送的数据包的序列号。
-- `nextSequenceRecv`是单独存储的，追踪要接收的下一个数据包的序列号。
-- `connectionHops`按顺序存储连接标识符列表，在此通道上发送的数据包将沿该标识符行进。目前，此列表的长度必须为1。将来可能会支持多跳通道。
+- `nextSequenceSend`是单独存储的，追踪下一个要发送的数据包的序号。
+- `nextSequenceRecv`是单独存储的，追踪要接收的下一个数据包的序号。
+- `connectionHops`按顺序的存储在此通道上发送的数据包将途径的连接标识符列表。目前，此列表的长度必须为 1。将来可能会支持多跳通道。
 - `version`字符串存储一个不透明的通道版本号，该版本号在握手期间已达成共识。这可以确定模块级别的配置，例如通道使用哪种数据包编码。核心 IBC 协议不会使用该版本号。
 
 通道端具有以下*状态* ：
@@ -93,11 +93,11 @@ enum ChannelState {
 ```
 
 - 处于`INIT`状态的通道端，表示刚刚开始了握手的建立。
-- A channel end in `TRYOPEN` state has acknowledged the handshake step on the counterparty chain.
+- 处于`TRYOPEN`状态的通道端表示已确认对方链的握手。
 - 处于`OPEN`状态的通道端，表示已完成握手，并为发送和接收数据包作好了准备。
 - 处于`CLOSED`状态的通道端，表示通道已关闭，不能再用于发送或接收数据包。
 
-链间通信协议中的`Packet`是如下定义的特定接口：
+区块链间通信协议中的`Packet`是如下定义的特定接口：
 
 ```typescript
 interface Packet {
@@ -111,17 +111,17 @@ interface Packet {
 }
 ```
 
-- `sequence`对应于发送和接收的顺序，其中数据包的发送和接受必须按照对应的序列号顺序来进行。
-- `timeoutHeight`标示目标链上不再处理数据包之后的共识高度，用于记录已经超时的区块高度。
+- `sequence`对应于发送和接收的顺序，其中序号靠前的数据包必须比序号靠后的数据包先发送或接收。
+- `timeoutHeight`指示目标链上的一个共识高度，此高度后不再处理数据包，而是计为已超时。
 - `sourcePort`标识发送链上的端口号。
 - `sourceChannel`标识发送链上的通道端。
 - `destPort`标识接收链上的端口号。
 - `destChannel`标识接收链上的通道端。
 - `data`是不透明的值，可以由关联模块的应用程序逻辑定义。
 
-请注意， `Packet`永远不会直接序列化。而是在某些函数调用中使用的中间结构，可能需要由调用 IBC 处理程序的模块来创建或处理该中间结构。
+请注意，`Packet`永远不会直接序列化。而是在某些函数调用中使用的中间结构，可能需要由调用 IBC 处理程序的模块来创建或处理该中间结构。
 
-`OpaquePacket`是一个数据包，但是被状态机主机掩盖为一种模糊的数据类型，因此，除了将其传递给 IBC 处理程序之外，模块无法对其进行任何操作。 IBC 处理程序可以将`Packet`转换为`OpaquePacket` ，反之亦然。
+`OpaquePacket`是一个数据包，但是被主机状态机掩盖为一种模糊的数据类型，因此，除了将其传递给 IBC 处理程序之外，模块无法对其进行任何操作。IBC 处理程序可以将`Packet`转换为`OpaquePacket` ，或反过来。
 
 ```typescript
 type OpaquePacket = object
@@ -135,13 +135,13 @@ type OpaquePacket = object
 
 #### 有且仅有一次传递
 
-- 在通道的一端发送的 IBC 数据包应准确地传递到另一端。
-- 对于有且仅有一次安全性，不需要网络同步假设。如果其中一条链或两条链都停止了，则数据包最多只能传递一次，并且一旦链恢复，数据包就应该能够再次流动。
+- 在通道的一端发送的 IBC 数据包应仅一次的传递到另一端。
+- 对于有且仅有一次安全性，不需要网络同步假设。如果其中一条链或两条链都挂起了，则数据包最多传递不超过一次，并且一旦链恢复，数据包就应该能够再次流转。
 
 #### 按序
 
-- 在有序通道上，应按相同的顺序发送和接收数据包：如果数据包 *x* 在链*A* 上的一个通道端在数据包 *y* 之前发送，则数据包 *x* 必须在数据链 *y上* 在相应的链束 *B* 通道端之前在数据包 y 之前接收。
-- 在无序通道上，可以以任何顺序发送和接收数据包。像有序数据包一样，无序数据包的超时是分别地对应目标链上的特定区块高度发生的。
+- 在有序通道上，应按相同的顺序发送和接收数据包：如果数据包*x*在链`A`通道端的数据包*y*之前发送，则数据包*x*必须在相应的链`B`通道端的数据包*y*之前收到。
+- 在无序通道上，可以以任何顺序发送和接收数据包。像有序数据包一样，无序数据包具有单独的根据目标链高度指定的超时高度。
 
 #### 许可
 
@@ -159,7 +159,7 @@ type OpaquePacket = object
 
 #### 存储路径
 
-通道的结构存储在结合端口标识符和通道标识符的唯一的存储路径前缀下：
+通道的结构存储在一个结合了端口标识符和通道标识符的唯一存储路径前缀下：
 
 ```typescript
 function channelPath(portIdentifier: Identifier, channelIdentifier: Identifier): Path {
@@ -167,7 +167,7 @@ function channelPath(portIdentifier: Identifier, channelIdentifier: Identifier):
 }
 ```
 
-与通道关联的功能密钥存储在`channelCapabilityPath` ：
+与通道关联的能力键存储在`channelCapabilityPath` ：
 
 ```typescript
 function channelCapabilityPath(portIdentifier: Identifier, channelIdentifier: Identifier): Path {
@@ -175,7 +175,7 @@ function channelCapabilityPath(portIdentifier: Identifier, channelIdentifier: Id
 }
 ```
 
-`nextSequenceSend`和`nextSequenceRecv`无符号整数计数器分开进行存储，因此可以单独证明它们：
+无符号整数计数器`nextSequenceSend`和`nextSequenceRecv`是分开存储的，因此可以单独证明它们：
 
 ```typescript
 function nextSequenceSendPath(portIdentifier: Identifier, channelIdentifier: Identifier): Path {
@@ -187,7 +187,7 @@ function nextSequenceRecvPath(portIdentifier: Identifier, channelIdentifier: Ide
 }
 ```
 
-对数据包数据字段的恒定大小承诺存储在数据包序列号下：
+固定大小的加密承诺数据包数据字段存储在数据包序号下：
 
 ```typescript
 function packetCommitmentPath(portIdentifier: Identifier, channelIdentifier: Identifier, sequence: uint64): Path {
@@ -195,7 +195,7 @@ function packetCommitmentPath(portIdentifier: Identifier, channelIdentifier: Ide
 }
 ```
 
-0 表示存储路径的缺失。
+存储区中缺失的路径相当于占用零位。
 
 数据包确认数据存储在`packetAcknowledgementPath` ：
 
@@ -205,12 +205,12 @@ function packetAcknowledgementPath(portIdentifier: Identifier, channelIdentifier
 }
 ```
 
-无序通道必须始终向该路径写入确认信息（甚至是空的），使得此类确认的缺失可以用作超时证明。有序通道可以写一个确认信息，但不是必须的。
+无序通道必须始终向该路径写入确认信息（甚至是空的），使得此类确认信息的缺失可以用作超时证明。有序通道也可以写一个确认信息，但不是必须的。
 
 ### 版本控制
 
-在握手过程中，通道的两端在与该通道关联的版本字节串上达成一致。 此版本字节串的内容对于 IBC 核心协议不透明。
-状态机主机可以利用版本数据来标示其支持的 IBC / APP 协议，认同数据包编码格式，或在 IBC 协议之上协商与自定义逻辑有关的其他通道元数据。
+在握手过程中，通道的两端在与该通道关联的版本字节串上达成一致。 此版本字节串的内容对于 IBC 核心协议保持也应该保持不透明。
+状态机主机可以利用版本数据来标示其支持的 IBC / APP 协议，确认数据包编码格式，或在协商与 IBC 协议之上自定义逻辑有关的其他通道元数据。
 
 状态机主机可以安全地忽略版本数据或指定一个空字符串。
 
@@ -221,7 +221,7 @@ function packetAcknowledgementPath(portIdentifier: Identifier, channelIdentifier
 #### 标识符验证
 
 通道存储在唯一的`(portIdentifier, channelIdentifier)`前缀下。
-或将提供验证函数`validatePortIdentifier` 。
+可以提供验证函数`validatePortIdentifier` 。
 
 ```typescript
 type validateChannelIdentifier = (portIdentifier: Identifier, channelIdentifier: Identifier) => boolean
@@ -247,11 +247,11 @@ type validateChannelIdentifier = (portIdentifier: Identifier, channelIdentifier:
 
 ##### 建立握手
 
-模块调用`chanOpenInit`函数，以与另一个链上的模块初始化通道建立握手。
+与另一个链上的模块发起通道建立握手的模块调用`chanOpenInit`函数。
 
 建立通道必须提供本地通道标识符、本地端口、远程端口和远程通道标识符的标识符。
 
-当打开握手完成后，发起握手的模块将拥有在账本上已创建通道的一端，而对应的另一条链的模块将拥有通道的另一端。创建通道后，所有权就无法更改（尽管更高级别的抽象可以实现并提供此功能）。
+当建立握手完成后，发起握手的模块将拥有在账本上已创建通道的一端，而对应的另一条链的模块将拥有通道的另一端。创建通道后，所有权就无法更改（尽管更高级别的抽象可以实现并提供此功能）。
 
 ```typescript
 function chanOpenInit(
@@ -284,7 +284,7 @@ function chanOpenInit(
 }
 ```
 
-模块调用`chanOpenInit`函数，以与另一个链上的模块初始化通道建立握手。
+模块调用`chanOpenTry`函数，以接受由另一条链上的模块发起的通道建立握手的第一步。
 
 ```typescript
 function chanOpenTry(
@@ -334,8 +334,7 @@ function chanOpenTry(
 }
 ```
 
-发起握手的模块调用`chanOpenAck` ，以确认握手请求已
-被对应另一条链上的模块所接受。
+握手发起模块调用`chanOpenAck` ，以确认对方链的模块已接受发起的请求。
 
 ```typescript
 function chanOpenAck(
@@ -365,7 +364,8 @@ function chanOpenAck(
 }
 ```
 
-握手接受模块调用`chanOpenConfirm`函数以确认在另一条链上握手发起模块的答复，并完成通道建立握手。
+握手接受模块调用`chanOpenConfirm`函数以确认
+在另一条链上进行握手发起模块的确认信息，并完成通道创建握手。
 
 ```typescript
 function chanOpenConfirm(
@@ -398,9 +398,9 @@ function chanOpenConfirm(
 
 两个模块中的任意一个通过调用`chanCloseInit`函数来关闭其通道端。一旦一端关闭，通道将无法重新打开。
 
-在调用`chanCloseInit`的同时，可以选择调用其他模块去执行恰当的应用逻辑。
+调用模块可以在调用`chanCloseInit`时自动执行适当的应用程序逻辑。
 
-通道关闭后，任何传递中的数据包都可以是超时的。
+通道关闭后，任何传递中的数据包都会超时。
 
 ```typescript
 function chanCloseInit(
@@ -418,9 +418,9 @@ function chanCloseInit(
 }
 ```
 
-一旦一端关闭了连接，另一端的模块调用`chanCloseConfirm`函数以关闭其通道端。
+一旦一端已经关闭，对方模块调用`chanCloseConfirm`函数以关闭其通道端。
 
-在调用`chanCloseConfirm`的同时，可以选择调用其他模块去执行恰当的应用逻辑。
+在调用`chanCloseConfirm`的同时，模块可以自动执行其他恰当的应用逻辑。
 
 一旦通道关闭，通道将无法重新打开。
 
@@ -464,15 +464,15 @@ function chanCloseConfirm(
 1. 以任何顺序初始客户端和端口设置
     1. 在 *A上* 为 *B* 创建客户端（请参阅 [ICS 2](../ics-002-client-semantics) ）
     2. 在* B*上 为* *A 创建客户端（请参阅[ ICS 2](../ics-002-client-semantics) )
-    3.  模*块* 1 绑定到端口（请参阅[ ICS 5](../ics-005-port-allocation) ）
+    3. 模*块* 1 绑定到端口（请参阅[ ICS 5](../ics-005-port-allocation) ）
     4. *模*块 2 绑定到端口（请参阅[ ICS 5](../ics-005-port-allocation) ），该端口通过不同信号端口与*模块 1 *通信
 2. 建立连接和通道，乐观发送，以便
     1. 连接握手的建立通过模块 *1* 从链 *A* 发起到链 *B* （请参阅 [ICS 3](../ics-003-connection-semantics) ）
     2. 通道握手的建立通过刚建立的连接从 *1* 发起到 *2*
-    3.  数据报通过新创建的通道*从* 1 *被发送到 * 2 (此 ICS )
+    3. 数据报通过新创建的通道*从* 1 *被发送到 * 2 (此 ICS )
 3. 握手成功完成意味着：（如果任一握手失败，则连接/通道可以关闭且数据包会超时）
     1. 成功完成连接建立握手（请参阅 [ICS 3](../ics-003-connection-semantics) ）（这需要中继器进程参与）
-    2. 成功完成通道建立握手（此ICS）（这需要中继器进程的参与 
+    2. 成功完成通道建立握手（此ICS）（这需要中继器进程的参与
 4. 在状态机 *B* 的模块 *2* 上确认数据包（如果超过超时区块高度，则确认数据包超时）（这将需要中继器进程参与）
 5. 确认消息从状态机 *B* 上的模块 *2* 被中继回状态机 *A* 上的模块 *1*
 
