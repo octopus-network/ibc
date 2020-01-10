@@ -398,7 +398,7 @@ function chanOpenConfirm(
 
 两个模块中的任意一个通过调用`chanCloseInit`函数来关闭其通道端。一旦一端关闭，通道将无法重新打开。
 
-调用模块可以在调用`chanCloseInit`时自动执行适当的应用程序逻辑。
+调用模块可以在调用`chanCloseInit`时原子性的执行适当的应用程序逻辑。
 
 通道关闭后，任何传递中的数据包都会超时。
 
@@ -420,7 +420,7 @@ function chanCloseInit(
 
 一旦一端已经关闭，对方模块调用`chanCloseConfirm`函数以关闭其通道端。
 
-在调用`chanCloseConfirm`的同时，模块可以自动执行其他恰当的应用逻辑。
+在调用`chanCloseConfirm`的同时，模块可以原子性的执行其他恰当的应用逻辑。
 
 一旦通道关闭，通道将无法重新打开。
 
@@ -455,24 +455,24 @@ function chanCloseConfirm(
 
 ![Packet State Machine](../../../../spec/ics-004-channel-and-packet-semantics/packet-state-machine.png)
 
-##### 数据包旅程
+##### 一个数据包的日常
 
-对于要从机器* A *上的模块* 1 *发送到机器* B *上的模块* 2 *的数据包，必须遵循以下步骤顺序，从头开始。
+以下的步骤发生在一个数据包从机器 *A* 上的模块 *1* 发送到机器 *B* 上的模块 *2*，从头开始。
 
 该模块可以通过 [ICS 25](../ics-025-handler-interface) 或 [ICS 26](../ics-026-routing-module) 接入 IBC 处理程序。
 
 1. 以任何顺序初始客户端和端口设置
-    1. 在 *A上* 为 *B* 创建客户端（请参阅 [ICS 2](../ics-002-client-semantics) ）
-    2. 在* B*上 为* *A 创建客户端（请参阅[ ICS 2](../ics-002-client-semantics) )
-    3.  模*块* 1 绑定到端口（请参阅[ ICS 5](../ics-005-port-allocation) ）
-    4. *模*块 2 绑定到端口（请参阅[ ICS 5](../ics-005-port-allocation) ），该端口通过不同信号端口与*模块 1 *通信
-2. 建立连接和通道，乐观发送，以便
-    1. 连接握手的建立通过模块 *1* 从链 *A* 发起到链 *B* （请参阅 [ICS 3](../ics-003-connection-semantics) ）
-    2. 通道握手的建立通过刚建立的连接从 *1* 发起到 *2*
-    3.  数据报通过新创建的通道*从* 1 *被发送到 * 2 (此 ICS )
-3. 握手成功完成意味着：（如果任一握手失败，则连接/通道可以关闭且数据包会超时）
-    1. 成功完成连接建立握手（请参阅 [ICS 3](../ics-003-connection-semantics) ）（这需要中继器进程参与）
-    2. 成功完成通道建立握手（此ICS）（这需要中继器进程的参与
+    1. 在 *A* 上为 *B* 创建客户端（请参阅 [ICS 2](../ics-002-client-semantics) ）
+    2. 在 *B* 上为 *A* 创建客户端（请参阅 [ICS 2](../ics-002-client-semantics) ）
+    3. 模块 *1* 绑定到端口（请参阅 [ICS 5](../ics-005-port-allocation) ）
+    4. 模块 *2* 绑定到端口（请参阅 [ICS 5](../ics-005-port-allocation) ），该端口以带外方式（out-of-band）传输到模块 *1*
+2. 建立连接和通道，按顺序乐观发送（optimistic send）
+    1. 模块 *1* 自 *A* 向 *B* 创建连接握手（请参见 [ICS 3](../ics-003-connection-semantics) ）
+    2. 使用新创建的连接（此 ICS），自 *1* 向 *2* 开始创建通道握手
+    3. 通过新创建的通道自 *1* 向 *2* 发送的数据包（此 ICS）
+3. 握手成功完成（如果任一握手失败，则连接/通道可以关闭且数据包超时）
+    1. 连接握手成功完成（请参阅 [ICS 3](../ics-003-connection-semantics) ）（这需要中继器进程参与）
+    2. 通道握手成功完成（此 ICS）（这需要中继器进程的参与）
 4. 在状态机 *B* 的模块 *2* 上确认数据包（如果超过超时区块高度，则确认数据包超时）（这将需要中继器进程参与）
 5. 确认消息从状态机 *B* 上的模块 *2* 被中继回状态机 *A* 上的模块 *1*
 
@@ -482,9 +482,9 @@ function chanCloseConfirm(
 
 ##### 发送数据包
 
-`sendPacket`函数由模块调用，以便在调用模块拥有的通道端将 IBC 数据包发送到另一条链上的相应模块。
+`sendPacket`函数由模块调用，以便在调用模块的通道端将 IBC 数据包发送到另一条链上的相应模块。
 
-在调用{code1}sendPacket{/code1}的同时，调用模块必须同时原子化地执行应用逻辑。
+在调用`sendPacket`的同时，调用模块必须同时原子性的执行应用逻辑。
 
 IBC 处理程序按顺序执行以下步骤：
 
@@ -492,16 +492,16 @@ IBC 处理程序按顺序执行以下步骤：
 - 检查调用模块是否拥有发送端口
 - 检查数据包元数据与通道以及连接信息是否匹配
 - 检查目标链尚未达到指定的超时区块高度
-- 递增通道关联的发送序列号
-- 存储对数据包数据和数据包超时信息的固定大小承诺
+- 递增通道关联的发送序号
+- 存储对数据包数据和数据包超时信息的固定大小加密承诺
 
-请注意，完整的数据包不会存储在链的状态中——仅仅存储数据和超时信息的简短哈希承诺。数据包数据从交易的执行中计算得出，并可能作为中继器可以索引的日志输出而返回。
+请注意，完整的数据包不会存储在链的状态中——仅仅存储数据和超时信息的简短哈希加密承诺。数据包数据可以从交易的执行中计算得出，并可能作为中继器可以索引的日志输出出来。
 
 ```typescript
 function sendPacket(packet: Packet) {
     channel = provableStore.get(channelPath(packet.sourcePort, packet.sourceChannel))
 
-    // 乐观消息发送在握手启动之后是被允许的
+    // 一旦握手开始，允许乐观发送
     abortTransactionUnless(channel !== null)
     abortTransactionUnless(channel.state !== CLOSED)
     abortTransactionUnless(authenticate(privateStore.get(channelCapabilityPath(packet.sourcePort, packet.sourceChannel))))
@@ -518,33 +518,33 @@ function sendPacket(packet: Packet) {
     nextSequenceSend = provableStore.get(nextSequenceSendPath(packet.sourcePort, packet.sourceChannel))
     abortTransactionUnless(packet.sequence === nextSequenceSend)
 
-    // 所有的断言通过，我们可以更改状态
+    // 所有断言都通过了，我们可以改变状态
 
     nextSequenceSend = nextSequenceSend + 1
     provableStore.set(nextSequenceSendPath(packet.sourcePort, packet.sourceChannel), nextSequenceSend)
     provableStore.set(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence), hash(packet.data, packet.timeout))
 
-    // 日志输出一个数据包已经被发送了
+    // 记录数据包已经发送的日志
     emitLogEntry("sendPacket", {sequence: packet.sequence, data: packet.data, timeout: packet.timeout})
 }
 ```
 
 #### 接受数据包
 
-模块调用`recvPacket`函数，以接收和处理在对应的链的通道端发送的 IBC 数据包。
+模块调用`recvPacket`函数以接收和处理在对应的链的通道端发送的 IBC 数据包。
 
-在调用`recvPacket`函数的同时，调用模块必须原子性地执行应用逻辑，可能需要事先计算出数据包确认消息的值。
+在调用`recvPacket`函数的同时，调用模块必须原子性的执行应用逻辑，可能需要事先计算出数据包确认消息的值。
 
 IBC 处理程序按顺序执行以下步骤：
 
 - 检查接收数据包的通道和连接是否打开
 - 检查调用模块是否拥有接收端口
 - 检查数据包元数据与通道及连接信息是否匹配
-- 检查数据包序列号是通道端希望接收的（对于有序通道而言）
-- 检查是否达到超时区块高度
-- 在传出链的状态中检查数据包承诺的存在性证明
-- 在数据包的存储路径上设置唯一不透明确认值（如果是确认为非空值，或是无序通道的情况下）
-- 递增通道端关联的数据包接收序列号（仅顺序通道）
+- 检查数据包序号是通道端期望接收的（对于有序通道而言）
+- 检查尚未打到超时高度
+- 在传出链的状态下检查数据包数据的加密承诺包含证明
+- 在数据包唯一的存储路径上设置一个不透明确认值（如果确认信息为非空或是无序通道）
+- 递增与通道端关联的数据包接收序号（仅限有序通道）
 
 ```typescript
 function recvPacket(
@@ -575,7 +575,7 @@ function recvPacket(
       hash(packet.data, packet.timeout)
     ))
 
-    // all assertions passed (except sequence check), we can alter state
+    // 通过了所有断言（除了序号检查），我们可以更改状态
 
     if (acknowledgement.length > 0 || channel.order === UNORDERED)
       provableStore.set(
@@ -590,20 +590,20 @@ function recvPacket(
       provableStore.set(nextSequenceRecvPath(packet.destPort, packet.destChannel), nextSequenceRecv)
     }
 
-    // log that a packet has been received & acknowledged
+    // 记录数据包已经接受和确认的日志
     emitLogEntry("recvPacket", {sequence: packet.sequence, timeout: packet.timeout, data: packet.data, acknowledgement})
 
-    // return transparent packet
+    // 返回透明的数据包
     return packet
 }
 ```
 
 #### 确认
 
-`acknowledgePacket`函数会由某个模块来调用，来处理之前发出的数据包返回的确认信息。
-`acknowledgePacket`也会清理不再需要的数据包承诺，因为数据包已经收到并被处理了。
+模块会调用`acknowledgePacket`函数来处理先前由对方链上对方模块的通道上的调用模块发送的数据包的确认。
+`acknowledgePacket`还会清除数据包的加密承诺，因为数据包已经收到并处理，所以这个不再需要。
 
-在调用`acknowledgePacket`的同时，调用模块可以原子性地执行适当的应用层确认处理逻辑。
+在调用`acknowledgePacket`的同时，调用模块可以原子性的执行适当的应用程序确认处理逻辑。
 
 ```typescript
 function acknowledgePacket(
@@ -612,7 +612,7 @@ function acknowledgePacket(
   proof: CommitmentProof,
   proofHeight: uint64): Packet {
 
-    // abort transaction unless that channel is open, calling module owns the associated port, and the packet fields match
+    // 除非通道已经创建，调用模块拥有关联的端口，并且数据包字段匹配，否则终止交易
     channel = provableStore.get(channelPath(packet.sourcePort, packet.sourceChannel))
     abortTransactionUnless(channel !== null)
     abortTransactionUnless(channel.state === OPEN)
@@ -624,11 +624,11 @@ function acknowledgePacket(
     abortTransactionUnless(connection.state === OPEN)
     abortTransactionUnless(packet.sourcePort === channel.counterpartyPortIdentifier)
 
-    // verify we sent the packet and haven't cleared it out yet
+    // 验证我们发送了数据包并且没有清除加密承诺
     abortTransactionUnless(provableStore.get(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
            === hash(packet.data, packet.timeout))
 
-    // abort transaction unless correct acknowledgement on counterparty chain
+    // 验证对方链上的确认信息正确，否者终止交易
     abortTransactionUnless(connection.verifyPacketAcknowledgement(
       proofHeight,
       proof,
@@ -638,34 +638,34 @@ function acknowledgePacket(
       hash(acknowledgement)
     ))
 
-    // all assertions passed, we can alter state
+    // 通过了所有断言，我们可以改变状态
 
-    // delete our commitment so we can't "acknowledge" again
+    // 删除加密承诺，使我们不可以再一次确认
     provableStore.delete(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
 
-    // return transparent packet
+    // 返回透明数据包
     return packet
 }
 ```
 
 #### 超时
 
-应用程序语义可能需要定义超时：超时是链在将一笔交易视作错误之前将等待其被处理多长时间的上限。由于这两个链本地时钟的不同，因此这是一个明显的双花攻击的媒介——攻击者可能在超时时间之前延迟发送确认消息或不发送数据包——因此应用程序本身无法安全地实现天真的超时逻辑。
+应用程序语义可能需要定义超时：超时是链在将一笔交易视作错误之前将等待多长时间的上限。由于这两个链本地时间的不同，因此这是一个明显的双花攻击的方向——攻击者可能延迟发送确认消息或在超时时间后发送数据包——因此应用程序本身无法安全的实现的思考不充分的超时逻辑。
 
-请注意，为了避免任何可能的“双花”攻击，超时算法要求目标链正在运行并且是可访问的。一个人不能在一个完整的网络分区中证明任何事情，并且必须等待连接。必须在接收者链上证明超时，而不仅仅是在发送链上不作出响应。
+请注意，为了避免任何可能的“双花”攻击，超时算法要求目标链正在运行并且是可访问的。一个人不能在一个网络完全分区（network parition）的情况下证明任何事情，并且必须等待连接。必须在接收者链上证明已经超时，而不仅仅是以发送链没有收到响应作为判断。
 
 ##### 发送端
 
 `timeoutPacket`函数由最初尝试将数据包发送到对方链的模块调用，
-如果在没有提交数据包的情况下对方链达到超时区块高度，证明该数据包无法再执行，并允许调用模块安全地执行适当的状态转换。
+如果在没有提交数据包的情况下对方链达到超时区块高度，证明该数据包无法再执行，并允许调用模块安全的执行适当的状态转换。
 
-在调用`timeoutPacket`的同时，调用模块可以执行适当的应用超时处理逻辑。
+在调用`timeoutPacket`的同时，调用模块可以原子性的执行适当的应用超时处理逻辑。
 
-在有序通道的情况下， `timeoutPacket`检查接收通道端的`recvSequence` ，如果数据包已超时，则关闭通道。
+在有序通道的情况下，`timeoutPacket`检查接收通道端的`recvSequence` ，如果数据包已超时，则关闭通道。
 
-在无序通道的情况下， `timeoutPacket`检查是否存在确认（如果接收到数据包，则该确认将被写入）。Unordered channels are expected to continue in the face of timed-out packets.
+在无序通道的情况下， `timeoutPacket`检查是否存在确认（如果接收到数据包，则该确认将被写入）。面对超时的数据包，无序通道预期会继续工作。
 
-如果关联被强制建立在超时区块高度及后续数据包之间，则可以安全地批量地执行超时数据包之前的所有超时。该规范暂时省略了细节。
+如果后续数据包的超时高度之间有依赖关系，则可以执行所有数据包的安全批量超时而不是使用超时数据包。该规范暂时省略了细节。
 
 ```typescript
 function timeoutPacket(
@@ -682,21 +682,21 @@ function timeoutPacket(
     abortTransactionUnless(packet.destChannel === channel.counterpartyChannelIdentifier)
 
     connection = provableStore.get(connectionPath(channel.connectionHops[0]))
-    // note: the connection may have been closed
+    // 注意：连接可能已经关闭了
     abortTransactionUnless(packet.destPort === channel.counterpartyPortIdentifier)
 
-    // check that timeout height has passed on the other end
+    // 检查对端已经超过了超时高度
     abortTransactionUnless(proofHeight >= packet.timeoutHeight)
 
-    // check that packet has not been received
+    // 检查数据包还没被收到
     abortTransactionUnless(nextSequenceRecv < packet.sequence)
 
-    // verify we actually sent this packet, check the store
+    // 验证确实发送了数据包，检查存储
     abortTransactionUnless(provableStore.get(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
            === hash(packet.data, packet.timeout))
 
     if channel.order === ORDERED
-      // ordered channel: check that the recv sequence is as claimed
+      // 有序通道：检查接收序号和声称的一样
       abortTransactionUnless(connection.verifyNextSequenceRecv(
         proofHeight,
         proof,
@@ -705,7 +705,7 @@ function timeoutPacket(
         nextSequenceRecv
       ))
     else
-      // unordered channel: verify absence of acknowledgement at packet index
+      // 无序通道：验证数据包索引的确认信息是缺失的
       abortTransactionUnless(connection.verifyPacketAcknowledgementAbsence(
         proofHeight,
         proof,
@@ -714,27 +714,25 @@ function timeoutPacket(
         packet.sequence
       ))
 
-    // all assertions passed, we can alter state
+    // 所有断言通过，我们可以改变状态
 
-    // delete our commitment
+    // 删除我们的加密承诺
     provableStore.delete(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
 
     if channel.order === ORDERED {
-      // ordered channel: close the channel
+      // 有序通道：关闭通道
       channel.state = CLOSED
       provableStore.set(channelPath(packet.sourcePort, packet.sourceChannel), channel)
     }
 
-    // return transparent packet
+    // 返回透明数据包
     return packet
 }
 ```
 
 ##### 关闭时超时
 
-该模块调用`timeoutOnClose`函数以证明该通道
-未收到的数据包已寻址到的地址已经关闭，因此永远不会收到该数据包
-（即使尚未达到`timeoutHeight` ）。
+该模块调用`timeoutOnClose`函数以证明未被收到的数据包的地址的通道已经关闭，因此永远不会收到该数据包（即使尚未达到`timeoutHeight` ）。
 
 ```typescript
 function timeoutOnClose(
@@ -745,19 +743,19 @@ function timeoutOnClose(
   nextSequenceRecv: Maybe<uint64>): Packet {
 
     channel = provableStore.get(channelPath(packet.sourcePort, packet.sourceChannel))
-    // note: the channel may have been closed
+    // 注意：通道可能已经关闭了
     abortTransactionUnless(authenticate(privateStore.get(channelCapabilityPath(packet.sourcePort, packet.sourceChannel))))
     abortTransactionUnless(packet.destChannel === channel.counterpartyChannelIdentifier)
 
     connection = provableStore.get(connectionPath(channel.connectionHops[0]))
-    // note: the connection may have been closed
+    // 注意：连接可能已经关闭了
     abortTransactionUnless(packet.destPort === channel.counterpartyPortIdentifier)
 
-    // verify we actually sent this packet, check the store
+    // 验证我们确实发送了数据包，检查存储
     abortTransactionUnless(provableStore.get(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
            === hash(packet.data, packet.timeout))
 
-    // check that the opposing channel end has closed
+    // 检查对方通道端已经关闭
     expected = ChannelEnd{CLOSED, channel.order, channel.portIdentifier,
                           channel.channelIdentifier, channel.connectionHops.reverse(), channel.version}
     abortTransactionUnless(connection.verifyChannelState(
@@ -769,7 +767,7 @@ function timeoutOnClose(
     ))
 
     if channel.order === ORDERED
-      // ordered channel: check that the recv sequence is as claimed
+      // 有序通道：检查接受序号和声称的一致
       abortTransactionUnless(connection.verifyNextSequenceRecv(
         proofHeight,
         proof,
@@ -778,7 +776,7 @@ function timeoutOnClose(
         nextSequenceRecv
       ))
     else
-      // unordered channel: verify absence of acknowledgement at packet index
+      // 无序通道：验证数据包索引的确认信息是缺失的
       abortTransactionUnless(connection.verifyPacketAcknowledgementAbsence(
         proofHeight,
         proof,
@@ -787,23 +785,23 @@ function timeoutOnClose(
         packet.sequence
       ))
 
-    // all assertions passed, we can alter state
+    // 通过了所有断言，我们可以修改状态
 
-    // delete our commitment
+    // 删除我们的加密承诺
     provableStore.delete(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
 
-    // return transparent packet
+    // 返回透明数据包
     return packet
 }
 ```
 
 ##### 状态清理
 
-模块调用`cleanupPacket`以从状态中删除收到的数据包承诺。接收端必须已经处理过该数据包（无论是定期清理或针对过去超时的清理）。
+模块调用`cleanupPacket`以从状态中删除收到的数据包承诺。接收端必须已经处理过该数据包（无论是正常处理还是超时）。
 
 在有序通道的情况下， `cleanupPacket`通过证明已在另一端接收到数据包来清理有序通道上的数据包。
 
-在无序通道的情况下， `cleanupPacket`通过证明关联的确认已经被写入来清理无序通道上的数据包。
+在无序通道的情况下， `cleanupPacket`通过证明已写入关联的确认信息清理无序通道上的数据包。
 
 ```typescript
 function cleanupPacket(
@@ -819,18 +817,18 @@ function cleanupPacket(
     abortTransactionUnless(packet.destChannel === channel.counterpartyChannelIdentifier)
 
     connection = provableStore.get(connectionPath(channel.connectionHops[0]))
-    // note: the connection may have been closed
+    // 注意：连接可能已经关闭
     abortTransactionUnless(packet.destPort === channel.counterpartyPortIdentifier)
 
-    // abortTransactionUnless packet has been received on the other end
+    // 终止交易除非对端已经收到数据包
     abortTransactionUnless(nextSequenceRecv > packet.sequence)
 
-    // verify we actually sent the packet, check the store
+    // 验证我们确实发送了数据包，检查存储
     abortTransactionUnless(provableStore.get(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
                === hash(packet.data, packet.timeout))
 
     if channel.order === ORDERED
-      // check that the recv sequence is as claimed
+      // 检查接收序号和声称的一致
       abortTransactionUnless(connection.verifyNextSequenceRecv(
         proofHeight,
         proof,
@@ -839,7 +837,7 @@ function cleanupPacket(
         nextSequenceRecvOrAcknowledgement
       ))
     else
-      // abort transaction unless acknowledgement on the other end
+      // 终止交易除非对端有确认信息
       abortTransactionUnless(connection.verifyPacketAcknowledgement(
         proofHeight,
         proof,
@@ -849,37 +847,37 @@ function cleanupPacket(
         nextSequenceRecvOrAcknowledgement
       ))
 
-    // all assertions passed, we can alter state
+    // 通过了所有断言，我们可以改变状态
 
-    // clear the store
+    // 清理存储
     provableStore.delete(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
 
-    // return transparent packet
+    // 返回透明数据包
     return packet
 }
 ```
 
-#### 关于竞态的推理
+#### 关于竞争条件的探讨
 
 ##### 同时发生握手尝试
 
-如果两台状态机同时彼此启动通道打开握手，并尝试使用相同的标识符，则两者都会失败，必须使用新的标识符。
+如果两台状态机同时彼此发起通道创建握手，或尝试使用相同的标识符，则两者都会失败，必须使用新的标识符。
 
 ##### 标识符分配
 
-在目标链上分配标识符存在不可避免的竞争条件。最好建议模块使用伪随机、不表意的标识符。设法声明另一个模块希望使用的标识符，但是令人烦恼的是，由于不能在握手阶段陷入中间人攻击，因此接收模块必须已经拥有握手所指向的端口。
+在目标链上分配标识符存在不可避免的竞争条件。最好建议模块使用伪随机，无价值的标识符。设法声明另一个模块希望使用的标识符，但是，尽管令人烦恼，但不能在握手期间中间人攻击，因为接收模块必须已经拥有握手所针对的端口。
 
 ##### 超时/数据包确认
 
-数据包超时和数据包确认之间没有竞争条件，因为数据包在接收之前或已经超过了超时区块高度。
+数据包超时和数据包确认之间没有竞争条件，因为数据包只能在接收之前检查超过或没超过超时区块高度。
 
 ##### 握手期间的中间人攻击
 
-跨链状态的验证可防止连接握手和通道握手的中间人攻击，因为模块已知道所有信息（源、目标客户端、通道等），该信息将启动握手并在握手之前进行确认完成。
+跨链状态的验证可防止连接握手和通道握手的中间人攻击，因为模块已知道所有信息（源客户端、目标客户端、通道等），该信息将启动握手之前进行确认完成。
 
 ##### 有正在传输数据包时的连接/通道关闭
 
-如果在传输数据包时关闭了连接或通道，则数据包将不再在目标链上被接收，并且可能在源链上超时。
+如果在传输数据包时关闭了连接或通道，则数据包将不再被目标链接收，并且在源链上超时。
 
 #### 查询通道
 
@@ -893,17 +891,17 @@ function queryChannel(connId: Identifier, chanId: Identifier): ChannelEnd | void
 
 ### 属性和不变性
 
-- 通道和端口标识符的唯一组合是“先到先得”的：分配了一对标识符组合后，只有拥有相应端口的模块才能在该通道上发送或接收。
-- 假设链在超时后仍然存在，并且在发送链上出现了超时并有且仅有一次超时，数据报能够被有且只有一次地传送。
-- 通道握手不能受到区块链上的另一个模块或另一个链的 IBC 处理程序作为中间人进行的攻击。
+- 通道和端口标识符的唯一组合是先到先服务的：分配了一对标示符后，只有拥有相应端口的模块才能在该通道上发送或接收。
+- 假设链在超时窗口后依然有活性，则数据包只传送一次，并且在超时的情况下，只在发送链上超时一次。
+- 通道握手不能受到区块链上的另一个模块或另一个区块链的 IBC 处理程序的中间人攻击。
 
-## 向后兼容
+## 向后兼容性
 
 不适用。
 
-## 转发兼容性
+## 向前兼容性
 
-数据结构和编码可以在连接或通道级别进行版本控制。通道逻辑完全与分组数据格式无关，可以由模块在任何时候以自己喜欢的任何方式对其进行更改。
+数据结构和编码可以在连接或通道级别进行版本控制。通道逻辑完全不依赖于数据包数据格式，可以由模块在任何时候以自己喜欢的方式对其进行更改。
 
 ## 示例实现
 
@@ -929,4 +927,4 @@ function queryChannel(connId: Identifier, chanId: Identifier): ChannelEnd | void
 
 ## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
