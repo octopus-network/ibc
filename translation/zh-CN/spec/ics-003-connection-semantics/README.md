@@ -1,5 +1,5 @@
 ---
-ics: '3'
+ics: 3
 title: 连接语义
 stage: 草案
 category: IBC/TAO
@@ -7,8 +7,8 @@ kind: 实例化
 requires: 2、24
 required-by: 4、25
 author: Christopher Gos <cwgoes@tendermint.com>，Juwoon Yun <joon@tendermint.com>
-created: '2019-03-07'
-modified: '2019-08-25'
+created: 2019-03-07
+modified: 2019-08-25
 ---
 
 ## 概要
@@ -143,9 +143,10 @@ function verifyClientConsensusState(
   height: uint64,
   proof: CommitmentProof,
   clientIdentifier: Identifier,
+  consensusStateHeight: uint64,
   consensusState: ConsensusState) {
     client = queryClient(connection.clientIdentifier)
-    return client.verifyClientConsensusState(connection, height, connection.counterpartyPrefix, proof, clientIdentifier, consensusState)
+    return client.verifyClientConsensusState(connection, height, connection.counterpartyPrefix, proof, clientIdentifier, consensusStateHeight, consensusState)
 }
 
 function verifyConnectionState(
@@ -317,7 +318,8 @@ function connOpenTry(
     connection = ConnectionEnd{state, counterpartyConnectionIdentifier, counterpartyPrefix,
                                clientIdentifier, counterpartyClientIdentifier, version}
     abortTransactionUnless(connection.verifyConnectionState(proofHeight, proofInit, counterpartyConnectionIdentifier, expected))
-    abortTransactionUnless(connection.verifyClientConsensusState(proofHeight, proofConsensus, counterpartyClientIdentifier, expectedConsensusState))
+    abortTransactionUnless(connection.verifyClientConsensusState(
+      proofHeight, proofConsensus, counterpartyClientIdentifier, consensusHeight, expectedConsensusState))
     previous = provableStore.get(connectionPath(desiredIdentifier))
     abortTransactionUnless(
       (previous === null) ||
@@ -352,7 +354,8 @@ function connOpenAck(
                              connection.counterpartyClientIdentifier, connection.clientIdentifier,
                              version}
     abortTransactionUnless(connection.verifyConnectionState(proofHeight, proofTry, connection.counterpartyConnectionIdentifier, expected))
-    abortTransactionUnless(connection.verifyClientConsensusState(proofHeight, proofConsensus, connection.counterpartyClientIdentifier, expectedConsensusState))
+    abortTransactionUnless(connection.verifyClientConsensusState(
+      proofHeight, proofConsensus, connection.counterpartyClientIdentifier, consensusHeight, expectedConsensusState))
     connection.state = OPEN
     abortTransactionUnless(getCompatibleVersions().indexOf(version) !== -1)
     connection.version = version
