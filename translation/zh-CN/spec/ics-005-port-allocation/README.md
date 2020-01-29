@@ -42,22 +42,22 @@ modified: 2019-08-25
 
 作为一个有用的比较，以下对 TCP 的类比大致准确：
 
-IBC Concept | TCP/IP Concept | Differences
+IBC 概念 | TCP/IP 概念 | 差异性
 --- | --- | ---
-IBC | TCP | Many, see the architecture documents describing IBC
-Port (e.g. "bank") | Port (e.g. 80) | No low-number reserved ports, ports are strings
-Module (e.g. "bank") | Application (e.g. Nginx) | Application-specific
-Client | - | No direct analogy, a bit like L2 routing and a bit like TLS
-Connection | - | No direct analogy, folded into connections in TCP
-Channel | Connection | Any number of channels can be opened to or from a port simultaneously
+IBC | TCP | 很多，请参阅描述 IBC 的体系结构文档
+端口（例如“bank”） | 端口（例如 80） | 没有数字较小的保留端口，端口为字符串
+模块（例如“bank”） | 应用程序（例如 Nginx） | 特定于应用
+客户端 | - | 没有直接的类比，有点像 L2 路由，也有点像 TLS
+连接 | - | 没有直接的类比，合并进了 TCP 的连接
+通道 | 连接 | 可以同时打开或关闭任意数量的通道
 
 ## 技术指标
 
 ### 数据结构
 
-The host state machine MUST support either object-capability reference or source authentication for modules.
+主机状态机必须支持对象能力引用或模块的源认证。
 
-In the former object-capability case, the IBC handler must have the ability to generate *object-capabilities*, unique, opaque references which can be passed to a module and will not be duplicable by other modules. Two examples are store keys as used in the Cosmos SDK ([reference](https://github.com/cosmos/cosmos-sdk/blob/97eac176a5d533838333f7212cbbd79beb0754bc/store/types/store.go#L275)) and object references as used in Agoric's Javascript runtime ([reference](https://github.com/Agoric/SwingSet)).
+在前一种支持对象能力的情况下，IBC 处理程序必须支持生成*对象能力* ，唯一，不透明引用的能力可以传递给某个模块，而其他模块则无法复制。两个示例是 Cosmos SDK（ [参考](https://github.com/cosmos/cosmos-sdk/blob/97eac176a5d533838333f7212cbbd79beb0754bc/store/types/store.go#L275) ）中使用的存储密钥和 Agoric 的 Javascript 运行时中使用的对象引用（ [参考](https://github.com/Agoric/SwingSet) ）。
 
 ```typescript
 type CapabilityKey object
@@ -69,7 +69,7 @@ function newCapabilityPath(): CapabilityKey {
 }
 ```
 
-In the latter source authentication case, the IBC handler must have the ability to securely read the *source identifier* of the calling module, a unique string for each module in the host state machine, which cannot be altered by the module or faked by another module. An example is smart contract addresses as used by Ethereum ([reference](https://ethereum.github.io/yellowpaper/paper.pdf)).
+在后一种源身份验证的情况下，IBC 处理程序必须具有安全读取调用模块的*源标识符*的能力， 主机状态机中每个模块的唯一字符串，不能由该模块更改或由另一个模块伪造。 一个示例是以太坊（ [参考](https://ethereum.github.io/yellowpaper/paper.pdf) ）使用的智能合约地址。
 
 ```typescript
 type SourceIdentifier string
