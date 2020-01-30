@@ -55,7 +55,7 @@ IBC | TCP | 很多，请参阅描述 IBC 的体系结构文档
 
 ### 数据结构
 
-主机状态机必须支持对象能力引用或模块的源认证。
+主机状态机务必支持对象能力引用或模块的源认证。
 
 在前一种支持对象能力的情况下，IBC 处理程序必须支持生成*对象能力* ，唯一，不透明引用的能力可以传递给某个模块，而其他模块则无法复制。两个示例是 Cosmos SDK（ [参考](https://github.com/cosmos/cosmos-sdk/blob/97eac176a5d533838333f7212cbbd79beb0754bc/store/types/store.go#L275) ）中使用的存储密钥和 Agoric 的 Javascript 运行时中使用的对象引用（ [参考](https://github.com/Agoric/SwingSet) ）。
 
@@ -81,9 +81,9 @@ function callingModuleIdentifier(): SourceIdentifier {
 }
 ```
 
-`generate` and `authenticate` functions are then defined as follows.
+`generate`和`authenticate`函数的定义如下。
 
-In the former case, `generate` returns a new object-capability key, which must be returned by the outer-layer function, and `authenticate` requires that the outer-layer function take an extra argument `capability`, which is an object-capability key with uniqueness enforced by the host state machine. Outer-layer functions are any functions exposed by the IBC handler ([ICS 25](../ics-025-handler-interface)) or routing module ([ICS 26](../ics-026-routing-module)) to modules.
+在前一种情况下， `generate`返回一个新的对象能力键，该键必须由外层函数返回，并且`authenticate`需要外层函数接受一个额外的参数`capability` ，这是由主机状态机规定的唯一性的对象能力键。外层函数是 IBC 处理程序（ [ICS 25](../ics-025-handler-interface) ）或路由模块（ [ICS 26](../ics-026-routing-module) ）公开给模块的任何函数。
 
 ```
 function generate(): CapabilityKey {
@@ -97,7 +97,7 @@ function authenticate(key: CapabilityKey): boolean {
 }
 ```
 
-In the latter case, `generate` returns the calling module's identifier and `authenticate` merely checks it.
+在后一种情况下， `generate`返回调用模块的标识符，`authenticate`仅对其进行 检查。
 
 ```typescript
 function generate(): SourceIdentifier {
@@ -113,7 +113,7 @@ function authenticate(id: SourceIdentifier): boolean {
 
 #### 储存路径
 
-`portPath` takes an `Identifier` and returns the store path under which the object-capability reference or owner module identifier associated with a port should be stored.
+`portPath`接受一个`Identifier`参数并返回存储路径，在该路径下应存储与端口关联的对象能力引用或所有者模块标识符。
 
 ```typescript
 function portPath(id: Identifier): Path {
@@ -125,19 +125,19 @@ function portPath(id: Identifier): Path {
 
 #### 标识符验证
 
-Owner module identifier for ports are stored under a unique `Identifier` prefix. The validation function `validatePortIdentifier` MAY be provided.
+端口的所有者模块标识符存储在唯一的`Identifier`前缀下。 可以提供验证函数`validatePortIdentifier` 。
 
 ```typescript
 type validatePortIdentifier = (id: Identifier) => boolean
 ```
 
-If not provided, the default `validatePortIdentifier` function will always return `true`.
+如果未提供，默认的`validatePortIdentifier`函数将始终返回`true` 。
 
 #### 绑定到端口
 
-The IBC handler MUST implement `bindPort`. `bindPort` binds to an unallocated port, failing if the port has already been allocated.
+IBC 处理程序必须实现`bindPort` 。 `bindPort`绑定到未分配的端口，如果该端口已被分配，则失败。
 
-If the host state machine does not implement a special module manager to control port allocation, `bindPort` SHOULD be available to all modules. If it does, `bindPort` SHOULD only be callable by the module manager.
+如果主机状态机未实现特殊的模块管理器来控制端口分配，则`bindPort`应该对所有模块都可用。否则`bindPort`应该只能由模块管理器调用。
 
 ```typescript
 function bindPort(id: Identifier) {
@@ -151,9 +151,9 @@ function bindPort(id: Identifier) {
 
 #### 转让端口所有权
 
-If the host state machine supports object-capabilities, no additional protocol is necessary, since the port reference is a bearer capability. If it does not, the IBC handler MAY implement the following `transferPort` function.
+如果主机状态机支持对象能力，则不需要附加协议，因为端口引用是承载能力。否则 IBC 处理程序可以实现以下`transferPort`函数。
 
-`transferPort` SHOULD be available to all modules.
+`transferPort`应该对所有模块都可用。
 
 ```typescript
 function transferPort(id: Identifier) {
@@ -165,11 +165,11 @@ function transferPort(id: Identifier) {
 
 #### 释放端口
 
-The IBC handler MUST implement the `releasePort` function, which allows a module to release a port such that other modules may then bind to it.
+IBC 处理程序必须实现`releasePort`函数，该函数允许模块释放端口，以便其他模块随后可以绑定到该端口。
 
-`releasePort` SHOULD be available to all modules.
+`releasePort`应该对所有模块都可用。
 
-> Warning: releasing a port will allow other modules to bind to that port and possibly intercept incoming channel opening handshakes. Modules should release ports only when doing so is safe.
+> 警告：释放端口将允许其他模块绑定到该端口，并可能拦截传入的通道创建握手请求。仅在安全的情况下，模块才应释放端口。
 
 ```typescript
 function releasePort(id: Identifier) {
@@ -180,7 +180,7 @@ function releasePort(id: Identifier) {
 
 ### 属性和不变量
 
-- By default, port identifiers are first-come-first-serve: once a module has bound to a port, only that module can utilise the port until the module transfers or releases it. A module manager can implement custom logic which overrides this.
+- 默认情况下，端口标识符是先到先服务的：模块绑定到端口后，只有该模块才能使用该端口，直到模块转移或释放它为止。模块管理器可以实现自定义逻辑，以覆盖此逻辑。
 
 ## 向后兼容性
 
@@ -188,7 +188,7 @@ function releasePort(id: Identifier) {
 
 ## 向前兼容性
 
-Port binding is not a wire protocol, so interfaces can change independently on separate chains as long as the ownership semantics are unaffected.
+端口绑定不是线协议（wire protocol），因此只要所有权语义不受影响，接口就可以在单独的链上独立更改。
 
 ## 示例实现
 
