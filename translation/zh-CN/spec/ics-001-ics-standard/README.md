@@ -120,7 +120,7 @@ interface Connection {
 }
 ```
 
-用于算法的伪代码应以简单的Typescript作为函数编写。
+用于算法的伪代码应以简单的 Typescript 作为函数编写。
 
 示例伪代码算法：
 
