@@ -223,11 +223,11 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
 
 ## 示例实现
 
-即将发布。
+即将到来。
 
 ## 其他实现
 
-即将发布。
+即将到来。
 
 ## 历史
 
