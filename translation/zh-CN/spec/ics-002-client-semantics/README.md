@@ -602,4 +602,4 @@ function checkMisbehaviourAndUpdateState(
 
 ## 版权
 
-本文中的所有内容均遵守 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)许可。
+本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
