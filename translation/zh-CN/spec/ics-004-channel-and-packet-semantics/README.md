@@ -906,11 +906,11 @@ function queryChannel(connId: Identifier, chanId: Identifier): ChannelEnd | void
 
 ## 示例实现
 
-即将发布。
+即将到来。
 
 ## 其他实现
 
-即将发布。
+即将到来。
 
 ## 发布历史
 
