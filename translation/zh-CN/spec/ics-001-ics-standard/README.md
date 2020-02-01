@@ -1,12 +1,12 @@
 ---
-ics: '1'
+ics: 1
 title: ICS 规范标准
 stage: 草案
 category: 元标准
 kind: 元标准
 author: Christopher Goes <cwgoes@tendermint.com>
-created: '2019-02-12'
-modified: '2019-08-25'
+created: 2019-02-12
+modified: 2019-08-25
 ---
 
 ## 什么是ICS？
@@ -153,4 +153,4 @@ function startRound(round) {
 
 ## 版权
 
-本文中的所有内容均遵守 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可。
+本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
