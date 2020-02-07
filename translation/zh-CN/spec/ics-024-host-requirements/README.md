@@ -182,6 +182,14 @@ if provableStore.get(path) === value {
 
 对于主机状态机， `getCommitmentPrefix`的返回值必须是恒定的。
 
+### 时间戳访问
+
+主机链必须提供当前的 Unix 时间戳，可通过`currentTimestamp()`访问：
+
+```typescript
+type currentTimestamp = () => uint64
+```
+
 ### 端口系统
 
 主机状态机必须实现一个端口系统，其中 IBC 处理程序可以允许主机状态机中的不同模块绑定到唯一命名的端口。端口使用`Identifier`标示 。
