@@ -16,7 +16,7 @@ modified: 2019-12-19
 
 ### 动机
 
-使用 Tendermint 共识算法的各种状态机可能希望与其他使用 IBC 的状态机或单机交互。
+使用 Tendermint 共识算法的各种状态机可能希望与其他使用 IBC 的状态机或单机进行交互。
 
 ### 定义
 
@@ -24,7 +24,7 @@ modified: 2019-12-19
 
 `currentTimestamp`如 [ICS 24](../ics-024-host-requirements) 中所定义。
 
-Tendermint 轻客户端使用 ICS 8 中定义的通用莫克尔证明格式。
+Tendermint 轻客户端使用 ICS 8 中定义的通用默克尔证明格式。
 
 `hash`是一种通用的抗碰撞哈希函数，可以轻松的配置。
 
@@ -79,7 +79,7 @@ interface Header {
 
 ### 证据
 
-`Evidence`类型用于检测不良行为并冻结客户端-以防止进一步的数据包流。 Tendermint 客户端`Evidence`包括两个相同高度并且轻客户端认为都是有效的区块头。
+`Evidence`类型用于检测不良行为并冻结客户端-以防止进一步的数据包流。 Tendermint 客户端的`Evidence`包括两个相同高度并且轻客户端认为都是有效的区块头。
 
 ```typescript
 interface Evidence {
@@ -117,9 +117,9 @@ function latestClientHeight(clientState: ClientState): uint64 {
 }
 ```
 
-### 有效性判定式
+### 合法性判定式
 
-Tendermint 客户端有效性检查使用 [Tendermint 规范中](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md)描述的二分算法。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
+Tendermint 客户端合法性检查使用 [Tendermint 规范中](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md)描述的二分算法。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
 
 ```typescript
 function checkValidityAndUpdateState(
@@ -147,7 +147,7 @@ function checkValidityAndUpdateState(
 
 ### 不良行为判定式
 
-Tendermint 客户端的不良行为检查将确定在相同高度的两个冲突区块头是否都会通过轻客户端的验证。
+Tendermint 客户端的不良行为检查决定于在相同高度的两个冲突区块头是否都会通过轻客户端的验证。
 
 ```typescript
 function checkMisbehaviourAndUpdateState(
@@ -175,7 +175,7 @@ function checkMisbehaviourAndUpdateState(
 
 ### 状态验证函数
 
-Tendermint 客户端状态验证函数对照先前已验证的承诺根检查莫克尔证明。
+Tendermint 客户端状态验证函数对照先前已验证的承诺根检查默克尔证明。
 
 ```typescript
 function verifyClientConsensusState(
