@@ -4,7 +4,7 @@ title: 连接语义
 stage: 草案
 category: IBC/TAO
 kind: 实例化
-requires: 2, 241
+requires: 2, 24
 required-by: 4, 25
 author: Christopher Goes <cwgoes@tendermint.com>, Juwoon Yun <joon@tendermint.com>
 created: 2019-03-07
