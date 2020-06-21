@@ -172,7 +172,7 @@ type checkMisbehaviourAndUpdateState = (bytes) => Void
 type ClientState = bytes
 ```
 
-客户类型必须定义一个方法用提供的共识状态初始化一个客户状态，并适当的写入到内部状态中。
+客户类型必须定义一个方法用提供的共识状态初始化一个客户端状态，并根据情况写入到内部状态中。
 
 ```typescript
 type initialise = (consensusState: ConsensusState) => ClientState
