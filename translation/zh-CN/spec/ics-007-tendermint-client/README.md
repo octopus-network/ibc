@@ -34,7 +34,7 @@ Tendermint 轻客户端使用 ICS 8 中定义的通用默克尔证明格式。
 
 #### 关于“可能被欺骗了”逻辑的注释
 
-“可能被欺骗了”检测的基本思想是，它使我们更加保守，当我们知道网络上其他地方的另一个轻客户端使用了稍微不同的更新模式时，冻结我们的轻客户端。因为可能已经被欺骗了，即使我们没有。
+“可能被欺骗了”检测的基本思想是，它使我们更加保守，当我们知道网络上其他地方的另一个轻客户端使用了稍微不同的更新模式时，会冻结我们的轻客户端。因为可能已经被欺骗了，即使我们实际没有被欺骗。
 
 考虑三个链`A` ， `B`和`C`的拓扑，以及`A_1`和`A_2`两个链`A`的客户端，它们分别在链`B`和`C`上运行。依次发生以下事件：
 
@@ -54,7 +54,7 @@ Tendermint 轻客户端使用 ICS 8 中定义的通用默克尔证明格式。
 
 ## 技术指标
 
-该规范依赖于 [Tendermint 共识算法](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)和[轻客户端算法](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md)的正确实例化。
+该规范依赖于[Tendermint 共识算法](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)和[轻客户端算法](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md)的正确实例化。
 
 ### 客户端状态
 
