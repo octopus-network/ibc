@@ -32,9 +32,29 @@ Tendermint 轻客户端使用 ICS 8 中定义的通用默克尔证明格式。
 
 该规范必须满足 ICS 2 中定义的客户端接口。
 
+#### 关于“可能被欺骗了”逻辑的注释
+
+“可能被欺骗了”检测的基本思想是，它使我们更加保守，当我们知道网络上其他地方的另一个轻客户端使用了稍微不同的更新模式时，会冻结我们的轻客户端。因为可能已经被欺骗了，即使我们实际没有被欺骗。
+
+考虑三个链`A` ， `B`和`C`的拓扑，以及`A_1`和`A_2`两个链`A`的客户端，它们分别在链`B`和`C`上运行。依次发生以下事件：
+
+- 链`A`在高度`h_0` 处生成一个块（正确）。
+- 客户端`A_1`和`A_2`被更新到高度为`h_0`的块。
+- 链`A`在高度`h_0 + n` 生成一个块（正确）。
+- 客户端`A_1`已更新到高度为`h_0 + n`的块（客户端`A_2`尚未更新）。
+- 链`A`生成了第二个 （矛盾的） 高度为`h_0 + k`的区块，并且`k <= n`。
+
+*如果没有* “可能被欺骗了”，则客户端`A_2`会冻结（因为在高度`h_0 + k`处有两个有效块，它们比`A_2`的最新的区块头要新），但是*无法*冻结`A_1` ，因为`A_1`已经超过了`h_0 + k` 。
+
+可以说，这是不利的，因为`A_1`只是“幸运”的被更新了，而`A_2`没有，并且明显一些拜占庭式的错误已经发生，应该由人或治理体系来干预处理。 “可能被欺骗了”的想法是通过让`A_1`从可配置的过去区块头开始以检测不良行为来侦测此类错误（因此，在这种情况下， `A_1`若能够从`h_0`开始检测，那么也将被冻结 ）。
+
+这有一个灵活的参数，即`A_1`希望从多久前开始检查（当已更新到`h_0 + n`，`n`会是多大时，`A_1`仍然会愿意查找`h_0` ）？还存在一个反作用的担忧，即在解除绑定期之后，双签被认为是无成本的，我们并不想为 IBC 客户开放一个拒绝服务攻击的媒介。
+
+因此，必要条件是`A_1`应该查找已存储的最早的区块头，但还应对证据进行“解除期限”检查，如果证据早于解除期限，则应避免冻结客户端（相对于客户端的本地时间戳）。如果担心时钟偏斜，可以添加一个轻微的增量。
+
 ## 技术指标
 
-该规范依赖于 [Tendermint 共识算法](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)和[轻客户端算法](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md)的正确实例化。
+该规范依赖于[Tendermint 共识算法](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)和[轻客户端算法](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md)的正确实例化。
 
 ### 客户端状态
 
@@ -97,14 +117,16 @@ Tendermint 客户端初始化要求（主观选择的）最新的共识状态，
 function initialise(
   consensusState: ConsensusState, validatorSet: List<Pair<Address, uint64>>,
   height: uint64, trustingPeriod: uint64, unbondingPeriod: uint64): ClientState {
-  assert(trustingPeriod < unbondingPeriod)
+    assert(trustingPeriod < unbondingPeriod)
+    assert(height > 0)
+    set("clients/{identifier}/consensusStates/{height}", consensusState)
     return ClientState{
       validatorSet,
       latestHeight: height,
       latestTimestamp: consensusState.timestamp,
       trustingPeriod,
       unbondingPeriod,
-      pastHeaders: Map.singleton(latestHeight, consensusState)
+      frozenHeight: null
     }
 }
 ```
@@ -119,26 +141,30 @@ function latestClientHeight(clientState: ClientState): uint64 {
 
 ### 合法性判定式
 
-Tendermint 客户端合法性检查使用 [Tendermint 规范中](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md)描述的二分算法。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
+Tendermint 客户端合法性检查使用[Tendermint 规范中](https://github.com/tendermint/spec/tree/master/spec/consensus/light-client)描述的二分算法。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
 
 ```typescript
 function checkValidityAndUpdateState(
   clientState: ClientState,
   header: Header) {
-    // assert trusting period has not yet passed
+    // assert trusting period has not yet passed. This should fatally terminate a connection.
     assert(currentTimestamp() - clientState.latestTimestamp < clientState.trustingPeriod)
-    // assert header timestamp is not in the future (& transitively that is not past the trusting period)
-    assert(header.timestamp <= currentTimestamp())
+    // assert header timestamp is less than trust period in the future. This should be resolved with an intermediate header.
+    assert(header.timestamp - clientState.latestTimeStamp < trustingPeriod)
     // assert header timestamp is past current timestamp
     assert(header.timestamp > clientState.latestTimestamp)
     // assert header height is newer than any we know
     assert(header.height > clientState.latestHeight)
     // call the `verify` function
     assert(verify(clientState.validatorSet, clientState.latestHeight, header))
+    // update validator set
+    clientState.validatorSet = header.validatorSet
     // update latest height
     clientState.latestHeight = header.height
+    // update latest timestamp
+    clientState.latestTimestamp = header.timestamp
     // create recorded consensus state, save it
-    consensusState = ConsensusState{validatorSet, header.commitmentRoot, header.timestamp}
+    consensusState = ConsensusState{header.validatorSet, header.commitmentRoot, header.timestamp}
     set("clients/{identifier}/consensusStates/{header.height}", consensusState)
     // save the client
     set("clients/{identifier}", clientState)
@@ -160,7 +186,7 @@ function checkMisbehaviourAndUpdateState(
     // fetch the previously verified commitment root & validator set
     consensusState = get("clients/{identifier}/consensusStates/{evidence.fromHeight}")
     // assert that the timestamp is not from more than an unbonding period ago
-    assert(currentTimestamp() - consensusState.timestamp < clientState.unbondingPeriod)
+    assert(currentTimestamp() - evidence.timestamp < clientState.unbondingPeriod)
     // check if the light client "would have been fooled"
     assert(
       verify(consensusState.validatorSet, evidence.fromHeight, evidence.h1) &&
