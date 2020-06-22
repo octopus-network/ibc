@@ -141,7 +141,7 @@ function latestClientHeight(clientState: ClientState): uint64 {
 
 ### 合法性判定式
 
-Tendermint 客户端合法性检查使用[ Tendermint 规范中](https://github.com/tendermint/spec/tree/master/spec/consensus/light-client)描述的二分算法。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
+Tendermint 客户端合法性检查使用[Tendermint 规范中](https://github.com/tendermint/spec/tree/master/spec/consensus/light-client)描述的二分算法。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
 
 ```typescript
 function checkValidityAndUpdateState(
