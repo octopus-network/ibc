@@ -78,7 +78,7 @@ interface ChannelEnd {
 - `counterpartyChannelIdentifier`标识对应链的通道端。
 - `nextSequenceSend`是单独存储的，追踪下一个要发送的数据包的序号。
 - `nextSequenceRecv`是单独存储的，追踪要接收的下一个数据包的序号。
-- `nextSequenceAck`是单独存储的，追踪要确认的下一个数据包的序列号。
+- `nextSequenceAck`是单独存储的，追踪要确认的下一个数据包的序号。
 - `connectionHops`按顺序的存储在此通道上发送的数据包将途径的连接标识符列表。目前，此列表的长度必须为 1。将来可能会支持多跳通道。
 - `version`字符串存储一个不透明的通道版本号，该版本号在握手期间已达成共识。这可以确定模块级别的配置，例如通道使用哪种数据包编码。核心 IBC 协议不会使用该版本号。
 
@@ -178,7 +178,7 @@ function channelCapabilityPath(portIdentifier: Identifier, channelIdentifier: Id
 }
 ```
 
-`nextSequenceSend` ， `nextSequenceRecv`和`nextSequenceAck`无符号整数计数器是分别存储的，因此可以单独证明它们：
+无符号整数计数器`nextSequenceSend` ， `nextSequenceRecv`和`nextSequenceAck`是分别存储的，因此可以单独证明它们：
 
 ```typescript
 function nextSequenceSendPath(portIdentifier: Identifier, channelIdentifier: Identifier): Path {
@@ -670,7 +670,7 @@ function acknowledgePacket(
 
 ##### 发送端
 
-一个模块最初尝试将数据包发送到对方模块，但在该模块中对方链已经超过超时高度或超时时间戳而且未提交数据包，模块可以调用` timeoutPacket `函数，以证明数据包将不再执行，并允许调用模块安全的执行适当的状态转换。
+`timeoutPacket`函数由最初尝试将数据包发送到对方链的模块在没有提交数据包的情况下对方链达到超时区块高度或超过超时时间戳的情况下调用，以证明该数据包无法再执行，并允许调用模块安全的执行适当的状态转换。
 
 在调用`timeoutPacket`的同时，调用模块可以原子性的执行适当的应用超时处理逻辑。
 
