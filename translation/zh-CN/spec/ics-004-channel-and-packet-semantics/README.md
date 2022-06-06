@@ -26,15 +26,15 @@ modified: 2019-08-25
 
 ### 定义
 
-`ConsensusState` 在 [ICS 2](../ics-002-client-semantics) 中被定义.
+`ConsensusState` 在 [ICS 2](../core/ics-002-client-semantics) 中被定义.
 
-`Connection` 在 [ICS 3](../ics-003-connection-semantics) 中被定义.
+`Connection` 在 [ICS 3](../core/ics-003-connection-semantics) 中被定义.
 
 `Port`和`authenticateCapability`在 [ICS 5](../ics-005-port-allocation) 中被定义。
 
 `hash`是一种通用的抗碰撞哈希函数，其细节必须由使用通道的模块商定。 `hash`在不同的链可以有不同的定义。
 
-`Identifier` ， `get` ， `set` ， `delete` ， `getCurrentHeight`和模块系统相关的原语在 [ICS 24](../ics-024-host-requirements) 中被定义。
+`Identifier` ， `get` ， `set` ， `delete` ， `getCurrentHeight`和模块系统相关的原语在 [ICS 24](../core/ics-024-host-requirements) 中被定义。
 
 *通道*是用于在单独的区块链上的特定模块之间进行仅一次数据包传递的管道，该模块至少具备数据包发送端和数据包接收端。
 
@@ -465,16 +465,16 @@ function chanCloseConfirm(
 该模块可以通过 [ICS 25](../ics-025-handler-interface) 或 [ICS 26](../ics-026-routing-module) 接入 IBC 处理程序。
 
 1. 以任何顺序初始客户端和端口设置
-    1. 在 *A* 上为 *B* 创建客户端（请参阅 [ICS 2](../ics-002-client-semantics) ）
-    2. 在 *B* 上为 *A* 创建客户端（请参阅 [ICS 2](../ics-002-client-semantics) ）
+    1. 在 *A* 上为 *B* 创建客户端（请参阅 [ICS 2](../core/ics-002-client-semantics) ）
+    2. 在 *B* 上为 *A* 创建客户端（请参阅 [ICS 2](../core/ics-002-client-semantics) ）
     3. 模块 *1* 绑定到端口（请参阅 [ICS 5](../ics-005-port-allocation) ）
     4. 模块 *2* 绑定到端口（请参阅 [ICS 5](../ics-005-port-allocation) ），该端口以带外方式（out-of-band）传输到模块 *1*
 2. 建立连接和通道，按顺序乐观发送（optimistic send）
-    1. 模块 *1* 自 *A* 向 *B* 创建连接握手（请参见 [ICS 3](../ics-003-connection-semantics) ）
+    1. 模块 *1* 自 *A* 向 *B* 创建连接握手（请参见 [ICS 3](../core/ics-003-connection-semantics) ）
     2. 使用新创建的连接（此 ICS），自 *1* 向 *2* 开始创建通道握手
     3. 通过新创建的通道自 *1* 向 *2* 发送数据包（此 ICS）
 3. 握手成功完成（如果任一握手失败，则连接/通道可以关闭且数据包超时）
-    1. 连接握手成功完成（请参阅 [ICS 3](../ics-003-connection-semantics) ）（这需要中继器进程参与）
+    1. 连接握手成功完成（请参阅 [ICS 3](../core/ics-003-connection-semantics) ）（这需要中继器进程参与）
     2. 通道握手成功完成（此 ICS）（这需要中继器进程的参与）
 4. 在状态机 *B* 的模块 *2* 上确认数据包（如果超过超时区块高度，则确认数据包超时）（这将需要中继器进程参与）
 5. 确认消息从状态机 *B* 上的模块 *2* 被中继回状态机 *A* 上的模块 *1*

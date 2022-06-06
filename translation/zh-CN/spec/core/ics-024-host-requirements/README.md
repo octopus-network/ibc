@@ -101,22 +101,22 @@ type delete = (path: Path) => void
 
 只要 IBC 处理程序对所需的特定键具有独占访问权，私有存储的某些部分就可以安全的用于其他目的。 只要在此定义的键格式和实际私有存储实现中格式之间存在双向映射，私有存储中使用的键就可以安全的变化。
 
-请注意，下面列出的与客户端相关的路径反映了 [ICS 7](../ics-007-tendermint-client) 中定义的 Tendermint 客户端，对于其他客户端类型可能有所不同。
+请注意，下面列出的与客户端相关的路径反映了 [ICS 7](../../ics-007-tendermint-client) 中定义的 Tendermint 客户端，对于其他客户端类型可能有所不同。
 
 存储 | 路径格式 | 值格式 | 定义在
 --- | --- | --- | ---
 provableStore | "clients/{identifier}/clientType" | ClientType | [ICS 2](../ics-002-client-semantics)
-privateStore | "clients/{identifier}/clientState" | ClientState | [ICS 2](../ics-007-tendermint-client)
-provableStore | "clients/{identifier}/consensusState/{height}" | ConsensusState | [ICS 7](../ics-007-tendermint-client)
+privateStore | "clients/{identifier}/clientState" | ClientState | [ICS 2](../../ics-007-tendermint-client)
+provableStore | "clients/{identifier}/consensusState/{height}" | ConsensusState | [ICS 7](../../ics-007-tendermint-client)
 privateStore | "clients/{identifier}/connections | []Identifier | [ICS 3](../ics-003-connection-semantics)
 provableStore | "connections/{identifier}" | ConnectionEnd | [ICS 3](../ics-003-connection-semantics)
-privateStore | "ports/{identifier}" | CapabilityKey | [ICS 5](../ics-005-port-allocation)
-provableStore | "channelEnds/ports/{identifier}/channels/{identifier}" | ChannelEnd | [ICS 4](../ics-004-channel-and-packet-semantics)
-provableStore | "seqSends/ports/{identifier}/channels/{identifier}/nextSequenceSend" | uint64 | [ICS 4](../ics-004-channel-and-packet-semantics)
-provableStore | "seqRecvs/ports/{identifier}/channels/{identifier}/nextSequenceRecv" | uint64 | [ICS 4](../ics-004-channel-and-packet-semantics)
-provableStore | "seqAcks/ports/{identifier}/channels/{identifier}/nextSequenceAck" | uint64 | [ICS 4](../ics-004-channel-and-packet-semantics)
-provableStore | "commitments/ports/{identifier}/channels/{identifier}/packets/{sequence}" | bytes | [ICS 4](../ics-004-channel-and-packet-semantics)
-provableStore | "acks/ports/{identifier}/channels/{identifier}/acknowledgements/{sequence}" | bytes | [ICS 4](../ics-004-channel-and-packet-semantics)
+privateStore | "ports/{identifier}" | CapabilityKey | [ICS 5](../../ics-005-port-allocation)
+provableStore | "channelEnds/ports/{identifier}/channels/{identifier}" | ChannelEnd | [ICS 4](../../ics-004-channel-and-packet-semantics)
+provableStore | "seqSends/ports/{identifier}/channels/{identifier}/nextSequenceSend" | uint64 | [ICS 4](../../ics-004-channel-and-packet-semantics)
+provableStore | "seqRecvs/ports/{identifier}/channels/{identifier}/nextSequenceRecv" | uint64 | [ICS 4](../../ics-004-channel-and-packet-semantics)
+provableStore | "seqAcks/ports/{identifier}/channels/{identifier}/nextSequenceAck" | uint64 | [ICS 4](../../ics-004-channel-and-packet-semantics)
+provableStore | "commitments/ports/{identifier}/channels/{identifier}/packets/{sequence}" | bytes | [ICS 4](../../ics-004-channel-and-packet-semantics)
+provableStore | "acks/ports/{identifier}/channels/{identifier}/acknowledgements/{sequence}" | bytes | [ICS 4](../../ics-004-channel-and-packet-semantics)
 
 ### 模块布局
 
@@ -212,13 +212,13 @@ type currentTimestamp = () => uint64
 - 单个模块可以绑定到多个端口
 - 端口的分配是先到先得的，已知模块的“预留”端口可以在状态机第一次启动的时候绑定。
 
-可以通过每个端口的唯一引用（对象能力）（例如 Cosmos SDK），源身份验证（例如以太坊）或某种其他访问控制方法（在任何情况下，由主机状态机实施）来实现此许可。 详细信息，请参见 [ICS 5](../ics-005-port-allocation) 。
+可以通过每个端口的唯一引用（对象能力）（例如 Cosmos SDK），源身份验证（例如以太坊）或某种其他访问控制方法（在任何情况下，由主机状态机实施）来实现此许可。 详细信息，请参见 [ICS 5](../../ics-005-port-allocation) 。
 
 希望利用特定 IBC 特性的模块可以实现某些处理程序功能，例如，向和另一个状态机上的相关模块的通道握手过程添加其他逻辑。
 
 ### 数据报提交
 
-实现路由模块的主机状态机可以定义一个`submitDatagram`函数，以将[数据报](../../ibc/1_IBC_TERMINOLOGY.md) （将包含在交易中）直接提交给路由模块（在 [ICS 26](../ics-026-routing-module) 中定义）：
+实现路由模块的主机状态机可以定义一个`submitDatagram`函数，以将[数据报](../../../ibc/1_IBC_TERMINOLOGY.md) （将包含在交易中）直接提交给路由模块（在 [ICS 26](../../ics-026-routing-module) 中定义）：
 
 ```typescript
 type submitDatagram = (datagram: Datagram) => void

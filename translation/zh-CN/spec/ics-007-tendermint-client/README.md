@@ -20,9 +20,9 @@ modified: 2019-12-19
 
 ### 定义
 
-函数和术语如 [ICS 2](../ics-002-client-semantics) 中所定义。
+函数和术语如 [ICS 2](../core/ics-002-client-semantics) 中所定义。
 
-`currentTimestamp`如 [ICS 24](../ics-024-host-requirements) 中所定义。
+`currentTimestamp`如 [ICS 24](../core/ics-024-host-requirements) 中所定义。
 
 Tendermint 轻客户端使用 ICS 8 中定义的通用默克尔证明格式。
 

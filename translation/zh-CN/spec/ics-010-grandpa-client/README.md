@@ -21,7 +21,7 @@ GRANDPA（GHOST-based Recursive Ancestor Deriving Prefix Agreement）是 Polkado
 
 ### 定义
 
-功能和术语如 [ICS 2](../ics-002-client-semantics) 中所定义。
+功能和术语如 [ICS 2](../core/ics-002-client-semantics) 中所定义。
 
 ### 所需属性
 

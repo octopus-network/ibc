@@ -13,20 +13,23 @@ modified: 2020-01-13
 
 ## 概要
 
-该标准规定了实现区块链间通信（IBC）协议的状态器的共识算法所必须满足的属性。 这些属性对更高层协议抽象中的有效安全的验证而言是必需的。IBC 中用于验证远端状态机的状态更新的算法称为“合法性判定式”。将合法性判定式与一种可信状态（例如：一种被验证者认可的状态）配对，即实现了远端状态机基于本地状态机上的“轻客户端”（“轻客户端”经常简称为“客户端”）功能。并将其与验证者认为正确的状态配对形成“轻客户端”（通常简称为“客户端”）。
+该标准规定了实现区块链间通信（IBC）协议的状态机的共识算法所必须满足的属性。这些属性对更高层协议抽象中的有效安全的验证而言是必需的。IBC 中用于验证远端状态机的状态更新的算法称为“合法性判定式”。将合法性判定式与一种可信状态（例如：一种被验证者认可的状态）配对，即实现了远端状态机基于本地状态机上的“轻客户端”（“轻客户端”经常简称为“客户端”）功能。
+除了验证状态的更新，每个轻客户端也有能力通过“不良判定式”探测不良行为共识。
 
-除了验证状态的更新，每个轻客户端也有能力通过“恶意判定式”探测恶意共识
-该标准还规定了如何在典范的 IBC 处理程序中存储、注册和更新轻客户端。 所存储的客户端实例能被第三方参与者进行检视，例如，用户检查链的状态并确定是否发送 IBC 数据包。
+除了上述属性，IBC没有规定其它对于状态机与共识算法的内部操作。一个状态机可能是一个使用密钥进行签名的单线程（称为单机客户端），可能是一组协同签名的线程，可能是达成的拜占廷容错共识（例如： tendermint）的相互独立的多线程，或者将来IBC规定的其他方式的状态机；一个状态机是由它的轻客户端验证功能和不良行为检测逻辑定义的。
+
+该标准还规定了如何注册轻客户端功能，如何存储和更新轻客户端的数据。 所存储的客户端实例能被第三方参与者进行检视，例如，用户检查状态机的状态并确定是否发送 IBC 数据包。
 
 ### 动机
 
-在 IBC 协议中，参与者（可能是终端用户、链下进程或状态机）需要能够对另一台状态机共识算法认同的状态更新进行验证，并拒绝另一台状态机共识算法不认同的任何潜在状态更新。轻客户端就是一个带有能做到上面功能的状态机的算法。该标准规范了轻客户端的模型和要求，因此，只要提供满足所列要求的相关轻客户端算法，IBC 协议就可以轻松的与运行新共识算法的新状态机集成。
+在 IBC 协议中，参与者（可能是终端用户、链下进程或状态机的一个模块）需要能够对另一台状态机（例如：远端状态机）的状态更新进行验证。这要求参与者接受的状态更新必须是远端状态机通过共识算法达成。远端状态机的轻客户端的核心是算法，能够让参与者验证远端状态机的状态更新的算法。
+需要注意的是，轻客户端的验证通常不会覆盖完整的状态转换周期（因为这就等同于重新完整实现了一台状态机），但在特定情况下，客户端可以选择验证部分状态转换。
+该标准正式规定了轻客户端模型和需求。因此，只要提供能满足上述需求的轻客户端算法，IBC协议就易于被集成到运行不同共识算法的状态机。
 
-除了本规范中描述的属性外，IBC 对状态机的内部操作及其共识算法没有任何要求。一台状态机可能由一个单独的私钥签名进程、多个统一仲裁签名的进程、多个运行拜占庭容错共识算法的进程或其他尚未发明的配置组成——从 IBC 的角度来看，一个状态机是完全由其轻客户端的验证和不良行为检测逻辑来定义的。 客户端通常不包括对状态转换逻辑的完整验证（因为这将等同于简单地又执行了一另一个状态机），但是在特定情况下，客户端可以选择验证部分状态转换。
+IBC协议可以用来与概率最终性（probabilistic-finality）共识算法进行交互。这种情况下，不同的应用需要不同的合法性判定式。对于概率最终性共识算法来说，合法性判定式是由最终性阈值（例如：如果一个区块最终性被敲定，最新区块的区块高度必须大于该区块的区块高度，而且高度差必须大于一个最小值，即最终性阈值）定义的。因此，每个客户端都可以充当其他客户端的阈值观测器：一个只写客户端可以存储状态更新（但不具备验证的功能），而多个有不同最终性阈值（被认为是最终的状态根后的确认深度）的只读客户端可以进行状态更新。
 
-客户端还可以当作其他客户端的阈值视角。 如果模块利用 IBC 协议与概率最终性（probabilistic-finality）共识算法进行交互，对于不同的应用可能需要不同的最终性阈值，那么可以创建一个只写客户端来跟踪不同区块头，多个具有不同最终性阀值（被认为是最终的状态根后的确认深度）的只读客户端可以使用相同的状态。
-
-客户端协议还应该支持第三方引荐。 Alice 是一台状态机上的一个模块，希望将 Bob（Alice 认识的第二台状态机上的第二个模块）介绍给 Carol（Alice 认识但 Bob 不认识的第三台状态机上的第三个模块）。Alice 必须利用现有的通道传送给 Bob 用于和 Carol 通信的典范序列化的合法性判定式，然后 Bob 可以与 Carol 建立连接和通道并直接通信。 如有必要，在 Bob 进行连接尝试之前，Alice 还可以向 Carol 传送 Bob 的合法性判定式，使得 Carol 获悉并接受进来的请求。
+客户端协议还应该支持第三方引荐。例如：A，B和C是三台不同的状态机；ALice是A的一个模块，Bob是B的一个模块，Carol是C的一个模块。如果Alice认识Bob和Carol，但Bob只认识Alice而不认识Carol。这样，Alice 可以利用现有的通道传送给 Bob 用于和 Carol 通信的典范序列化的合法性判定式，然后 Bob 可以通过合法性判定式与 Carol 建立连接和通道并直接通信。
+如有必要，在 Bob 进行连接尝试之前，Alice 还可以向 Carol 传送 Bob 的合法性判定式，使得 Carol 获悉并接受进来的请求。
 
 客户端接口也应该被构造，以便可以安全的提供自定义验证逻辑，并在运行时定义自定义客户端，只要基础状态机可以提供适当的 gas 计量机制来为计算和存储收费。例如，在支持 WASM 执行的主机状态机上，可以在创建客户端实例时将合法性判定式和不良行为判定式作为可执行的 WASM 函数提供。
 
@@ -36,7 +39,7 @@ modified: 2020-01-13
 
 - `CommitmentRoot` 如同在 [ICS 23](../ics-023-vector-commitments) 中被定义的那样，它必须为下游逻辑提供一种廉价的方式去验证键值对是否包含在特定高度的状态中。
 
-- `ConsensusState` 是表示合法性判定式状态的不透明类型。`ConsensusState` 必须能够验证相关共识算法所达成一致的状态更新。 它也必须以典范的方式实现可序列化，以便第三方（例如对方状态机）可以检查特定状态机是否存储了特定的共识状态。 它最终必须能被使用它的状态机检视，比如状态机可以查看某个过去高度的共识状态。
+- `ConsensusState` 是表示合法性判定式状态的不透明类型。`ConsensusState` 必须能够验证相关共识算法所达成一致的状态更新。 它也必须以典范的方式实现可序列化，以便第三方（例如远端状态机）可以检查特定状态机是否存储了特定的共识状态。 它最终必须能被使用它的状态机检视，比如状态机可以查看某个过去高度的共识状态。
 
 - `ClientState` 是表示一个客户端状态的不透明类型。 `ClientState` 必须公开查询函数，以验证处于特定高度的状态下包含或不包含键值对，并且能够获取当前的共识状态.
 
@@ -50,9 +53,9 @@ modified: 2020-01-13
 
 ## 技术规范
 
-该规范概述了每种*客户端类型*必须定义的内容。客户端类型是一组操作轻客户端所需的数据结构，初始化逻辑，合法性判定式和不良行为判定式的定义。实现 IBC 协议的状态机可以支持任意数量的客户端类型，并且每种客户端类型都可以使用不同的初始共识状态进行实例化，以便进行跟踪不同的共识实例。为了在两台机器之间建立连接（请参阅 [ICS 3](../ics-003-connection-semantics) ）， 这些机器必须各自支持与另一台机器的共识算法相对应的客户端类型。
+该规范概述了每种*客户端类型*必须定义的内容。客户端类型是一组操作轻客户端所需的数据结构，初始化逻辑，合法性判定式和不良行为判定式的定义。实现 IBC 协议的状态机可以支持任意数量的客户端类型，并且每种客户端类型都可以使用不同的初始共识状态进行实例化，以便进行跟踪不同的共识实例。为了在两台状态机之间建立连接（请参阅 [ICS 3](../ics-003-connection-semantics) ）， 这些状态机必须各自支持与另一台状态机的共识算法相对应的客户端类型。
 
-特定的客户端类型应在本规范之后的版本中定义，并且该仓库中应存在一个典范的客户端类型列表。 实现了 IBC 协议的机器应遵守这些客户端类型，但他们可以选择仅支持一个子集。
+特定的客户端类型应在本规范之后的版本中定义，并且该仓库中应存在一个典范的客户端类型列表。 实现了 IBC 协议的状态机应遵守这些客户端类型，但他们可以选择仅支持一个子集。
 
 ### 数据结构
 
@@ -157,11 +160,36 @@ type checkValidityAndUpdateState = (Header) => Void
 type checkMisbehaviourAndUpdateState = (bytes) => Void
 ```
 
-`checkMisbehaviourAndUpdateState` 在给定证据无效的情况下必须抛出一个异常。
+`checkMisbehaviourAndUpdateState` 在给定不良行为证据无效的情况下必须抛出一个异常。
 
 如果一个不良行为是有效的，客户端还必须根据不良行为的性质去更改内部状态，来标记先前认为有效的区块高度为无效。
 
 一旦检测到不良行为，客户端应该被冻结，之后未来的任何更新都不能被提交。诸如链治理系统或可信多重签名之类的被许可的实体可能被允许干预以解冻冻结的客户端并提供新的正确的区块头。
+
+#### 高度
+
+高度是一种由客户端定义的不透明的数据结构。
+它必须是一种部分排序的集合并且提供`比较`的功能接口。
+
+```typescript
+type Height
+```
+
+```typescript
+enum Ord {
+  LT
+  EQ
+  GT
+}
+
+type compare = (h1: Height, h2: Height) => Ord
+```
+
+一个高度小于（`LT`），等于（`EQ`），或者大于（`GT`）另一个高度。
+
+在本标准中，`>=`, `>`, `===`, `<`, `<=` 被定义为`比较`的同义词。
+
+高度这个类型必须有一个零高度，被称为`0`， 此高度小与所有其它的高度。
 
 #### 客户端状态
 
@@ -184,7 +212,7 @@ type initialise = (consensusState: ConsensusState) => ClientState
 ```typescript
 type latestClientHeight = (
   clientState: ClientState)
-  => uint64
+  => Height
 ```
 
 #### 承诺根
@@ -195,27 +223,30 @@ type latestClientHeight = (
 
 客户端类型必须定义一系列函数去对客户端追踪的状态机的内部状态进行验证。内部实现细节可能存在差异（例如，一个回环客户端可以直接读取状态信息且不需要提供证明）。
 
+- `delayPeriodTime`：该变量表示一个区块头被验证之后与数据包被处理前必须间隔的最短时间；该变量随着数据包被传给数据包相关的验证方法。
+- `delayPeriodBlocks`： 该变量是一个区块头被验证之后与数据包被处理前必须间隔的区块高度的最小值；该变量随着数据包被传给数据包相关的验证方法。
+
 ##### 所需函数：
 
-`verifyClientConsensusState` 验证存储在目标机器上的特定客户端的共识状态的证明。
+`verifyClientConsensusState` 验证存储在目标状态机上的特定客户端的共识状态的证明。
 
 ```typescript
 type verifyClientConsensusState = (
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   proof: CommitmentProof,
   clientIdentifier: Identifier,
-  consensusStateHeight: uint64,
+  consensusStateHeight: Height,
   consensusState: ConsensusState)
   => boolean
 ```
 
-`verifyConnectionState` 验证存储在目标机器上的特定连接端的连接状态的证明。
+`verifyConnectionState` 验证存储在目标状态机上的特定连接端的连接状态的证明。
 
 ```typescript
 type verifyConnectionState = (
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   connectionIdentifier: Identifier,
@@ -223,12 +254,14 @@ type verifyConnectionState = (
   => boolean
 ```
 
-`verifyChannelState` 验证在存储在目标机器上的指定通道端，特定端口下的的通道状态的证明。
+`verifyChannelState` 验证在存储在目标状态机上的指定通道端，特定端口下的的通道状态的证明。
 
 ```typescript
 type verifyChannelState = (
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -242,7 +275,9 @@ type verifyChannelState = (
 ```typescript
 type verifyPacketData = (
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -257,7 +292,9 @@ type verifyPacketData = (
 ```typescript
 type verifyPacketAcknowledgement = (
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -272,7 +309,9 @@ type verifyPacketAcknowledgement = (
 ```typescript
 type verifyPacketAcknowledgementAbsence = (
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -286,12 +325,43 @@ type verifyPacketAcknowledgementAbsence = (
 ```typescript
 type verifyNextSequenceRecv = (
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   nextSequenceRecv: uint64)
+  => boolean
+```
+
+`verifyMembership`是一个概括性的验证方法，可以验证一个给定 `CommitmentPath`在某个高度的存在性。
+该方法的调用者必须通过一个`CommitmentPrefix`和一个标准化的路径 ([ICS 24](../ics-024-host-requirements/README.md#path-space))构建一个完整的`CommitmentPath`。如果调用者要求延时处理，他可以传入一个非零的`delayPeriodTime` 或者 `delayPeriodBlocks`。如果延时是必须的，调用者必须传入的`delayPeriodTime` 和 `delayPeriodBlocks`的值都必须是0,这使得客户端可以强制延时验证。
+
+```typescript
+type verifyMembership = (
+  clientState: ClientState,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
+  proof: CommitmentProof,
+  path: CommitmentPath,
+  value: bytes)
+  => boolean
+```
+
+`verifyNonMembership`是一个概括性的验证方法，可以验证一个给定 `CommitmentPath`在某个高度的缺失。
+该方法的调用者必须通过一个`CommitmentPrefix`和一个标准化的路径 ([ICS 24](../ics-024-host-requirements/README.md#path-space))构建一个完整的`CommitmentPath`。如果调用者要求延时处理，他可以传入一个非零的`delayPeriodTime` 或者 `delayPeriodBlocks`。如果延时是必须的，调用者必须传入的`delayPeriodTime` 和 `delayPeriodBlocks`的值都必须是0,这使得客户端可以强制延时验证。
+
+```typescript
+type verifyNonMembership = (
+  clientState: ClientState,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
+  proof: CommitmentProof,
+  path: CommitmentPath)
   => boolean
 ```
 
@@ -304,13 +374,13 @@ type verifyNextSequenceRecv = (
 链必须定义 `queryHeader`，并由特定客户端验证，而且应允许按高度检索区块头。假定此端点是不受信任的。
 
 ```typescript
-type queryHeader = (height: uint64) => Header
+type queryHeader = (height: Height) => Header
 ```
 
 链必须定义 `queryChainConsensusState`，并由特定客户端验证，以允许检索当前共识状态，该状态可用于构建新客户端。以这种方式使用时，返回的 `ConsensusState` 必须由查询实体手动确认，因为它是主观的。假定此端点是不受信任的。 `ConsensusState` 的确切性质可能因客户端类型而异。
 
 ```typescript
-type queryChainConsensusState = (height: uint64) => ConsensusState
+type queryChainConsensusState = (height: Height) => ConsensusState
 ```
 
 请注意，按高度检索过去的共识状态（而不仅仅是当前的共识状态）会很方便，但不是必需的。
@@ -330,7 +400,7 @@ function queryClientState(identifier: Identifier): ClientState {
 `ClientState` 类型应该公开其最新的已验证高度（如果需要，可以再使用 `queryConsensusState` 获取其共识状态）。
 
 ```typescript
-type latestHeight = (state: ClientState) => uint64
+type latestHeight = (state: ClientState) => Height
 ```
 
 客户端类型应该定义以下标准化查询函数，以允许中继器和其他链下实体以标准API和链上状态进行对接。
@@ -340,7 +410,7 @@ type latestHeight = (state: ClientState) => uint64
 ```typescript
 type queryConsensusState = (
   identifier: Identifier,
-  height: uint64
+  height: Height
 ) => ConsensusState
 ```
 
@@ -351,46 +421,46 @@ type queryConsensusState = (
 ```typescript
 type queryAndProveClientConsensusState = (
   clientIdentifier: Identifier,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
-  consensusStateHeight: uint64) => ConsensusState, Proof
+  consensusStateHeight: Height) => ConsensusState, Proof
 
 type queryAndProveConnectionState = (
   connectionIdentifier: Identifier,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix) => ConnectionEnd, Proof
 
 type queryAndProveChannelState = (
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix) => ChannelEnd, Proof
 
 type queryAndProvePacketData = (
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   sequence: uint64) => []byte, Proof
 
 type queryAndProvePacketAcknowledgement = (
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   sequence: uint64) => []byte, Proof
 
 type queryAndProvePacketAcknowledgementAbsence = (
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   sequence: uint64) => Proof
 
 type queryAndProveNextSequenceRecv = (
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix) => uint64, Proof
 ```
 
@@ -398,28 +468,28 @@ type queryAndProveNextSequenceRecv = (
 
 ###### 回环
 
-一个本地机器的回环客户端仅需要读取本地状态，其必须具有访问权限。
+一个本地状态机的回环客户端仅需要读取本地状态，其必须具有访问权限。
 
 ###### 简单签名
 
-具有已知公钥的独立机器的客户端检查该本地机器发送的消息的签名， 作为`Proof`参数提供。 `height`参数可以用作重放保护随机数。
+具有已知公钥的独立状态机的客户端检查该本地状态机发送的消息的签名， 作为`Proof`参数提供。 `height`参数可以用作重放保护随机数。
 
 这种方式里也可以使用多重签名或门限签名方案。
 
 ###### 代理客户端
 
-代理客户端验证的是目标机器的代理机器的证明。通过包含首先是一个代理机器上客户端状态的证明，然后是目标机器的子状态相对于代理计算机上的客户端状态的证明。这使代理客户端可以避免存储和跟踪目标机器本身的共识状态，但是要以代理机器正确性的安全假设为代价。
+代理客户端验证的是目标状态机的代理状态机的证明。通过包含首先是一个代理状态机上客户端状态的证明，然后是目标状态机的子状态相对于代理计算机上的客户端状态的证明。这使代理客户端可以避免存储和跟踪目标状态机本身的共识状态，但是要以代理状态机正确性的安全假设为代价。
 
 ###### 默克尔状态树
 
-对于具有默克尔状态树的状态机的客户端，可以通过调用`verifyMembership`或`verifyNonMembership`来实现这些功能。使用经过验证的存储在`ClientState`中的默克尔根，按照 [ICS 23](../ics-023-vector-commitments) 验证处于特定高度的状态中特定键/值对是否存在。
+对于具有默克尔状态树的状态机的客户端，可以通过调用the [ICS-23](../ics-023-vector-commitments/README.md)`verifyMembership`或`verifyNonMembership`来实现这些功能。使用经过验证的存储在`ClientState`中的默克尔根，按照 [ICS 23](../ics-023-vector-commitments) 验证处于特定高度的状态中特定键/值对是否存在。
 
 ```typescript
-type verifyMembership = (ClientState, uint64, CommitmentProof, Path, Value) => boolean
+type verifyMembership = (ClientState, Height, CommitmentProof, Path, Value) => boolean
 ```
 
 ```typescript
-type verifyNonMembership = (ClientState, uint64, CommitmentProof, Path) => boolean
+type verifyNonMembership = (ClientState, Height, CommitmentProof, Path) => boolean
 ```
 
 ### 子协议
@@ -486,12 +556,12 @@ function updateClient(
 ```typescript
 function submitMisbehaviourToClient(
   id: Identifier,
-  evidence: bytes) {
+  misbehaviour: bytes) {
     clientType = provableStore.get(clientTypePath(id))
     abortTransactionUnless(clientType !== null)
     clientState = privateStore.get(clientStatePath(id))
     abortTransactionUnless(clientState !== null)
-    clientType.checkMisbehaviourAndUpdateState(clientState, evidence)
+    clientType.checkMisbehaviourAndUpdateState(clientState, misbehaviour)
 }
 ```
 
@@ -507,6 +577,17 @@ function submitMisbehaviourToClient(
 - `checkMisbehaviourAndUpdateState` 被用于检查两个相同区块高度但承诺根不同的区块头，并更改内部状态
 
 ```typescript
+type Height = uint64
+
+function compare(h1: Height, h2: Height): Ord {
+  if h1 < h2
+    return LT
+  else if h1 === h2
+    return EQ
+  else
+    return GT
+}
+
 interface ClientState {
   frozen: boolean
   pastPublicKeys: Set<PublicKey>
@@ -525,7 +606,7 @@ interface Header {
   newPublicKey: Maybe<PublicKey>
 }
 
-interface Evidence {
+interface Misbehaviour {
   h1: Header
   h2: Header
 }
@@ -566,7 +647,7 @@ function checkValidityAndUpdateState(
 
 function verifyClientConsensusState(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   clientIdentifier: Identifier,
@@ -578,7 +659,7 @@ function verifyClientConsensusState(
 
 function verifyConnectionState(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   connectionIdentifier: Identifier,
@@ -590,7 +671,7 @@ function verifyConnectionState(
 
 function verifyChannelState(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -603,7 +684,9 @@ function verifyChannelState(
 
 function verifyPacketData(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -617,7 +700,9 @@ function verifyPacketData(
 
 function verifyPacketAcknowledgement(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -629,22 +714,26 @@ function verifyPacketAcknowledgement(
     return clientState.verifiedRoots[sequence].verifyMembership(path, hash(acknowledgement), proof)
 }
 
-function verifyPacketAcknowledgementAbsence(
+function verifyPacketReceiptAbsence(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   sequence: uint64) {
-    path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
+    path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/receipts/{sequence}")
     abortTransactionUnless(!clientState.frozen)
     return clientState.verifiedRoots[sequence].verifyNonMembership(path, proof)
 }
 
 function verifyNextSequenceRecv(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -659,9 +748,9 @@ function verifyNextSequenceRecv(
 // any duplicate signature by a past or current key freezes the client
 function checkMisbehaviourAndUpdateState(
   clientState: ClientState,
-  evidence: Evidence) {
-    h1 = evidence.h1
-    h2 = evidence.h2
+  misbehaviour: Misbehaviour) {
+    h1 = misbehaviour.h1
+    h2 = misbehaviour.h2
     abortTransactionUnless(clientState.pastPublicKeys.contains(h1.publicKey))
     abortTransactionUnless(h1.sequence === h2.sequence)
     abortTransactionUnless(h1.commitmentRoot !== h2.commitmentRoot || h1.publicKey !== h2.publicKey)
@@ -702,6 +791,8 @@ function checkMisbehaviourAndUpdateState(
 2020年1月13日-客户端类型分离和路径更改的修订
 
 2020年1月26日-添加查询接口
+
+2022年6月6日-根据最新英文文档更新此文档
 
 ## 版权
 

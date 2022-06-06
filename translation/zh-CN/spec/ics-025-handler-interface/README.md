@@ -36,11 +36,11 @@ IBC 是一种模块间通信协议，旨在促进可靠的，经过身份验证�
 
 默认情况下，客户端是没有所有者的：任何模块都可以创建新客户端，查询任何现有客户端，更新任何现有客户端以及删除任何未使用的现有客户端。
 
-处理程序接口暴露 [ICS 2](../ics-002-client-semantics) 中定义的`createClient` ， `updateClient` ， `queryClientConsensusState` ， `queryClient`和`submitMisbehaviourToClient` 。
+处理程序接口暴露 [ICS 2](../core/ics-002-client-semantics) 中定义的`createClient` ， `updateClient` ， `queryClientConsensusState` ， `queryClient`和`submitMisbehaviourToClient` 。
 
 ### 连接生命周期管理
 
-处理程序接口暴露 [ICS 3](../ics-003-connection-semantics) 中定义的`connOpenInit` ， `connOpenTry` ， `connOpenAck` ， `connOpenConfirm`和`queryConnection` 。
+处理程序接口暴露 [ICS 3](../core/ics-003-connection-semantics) 中定义的`connOpenInit` ， `connOpenTry` ， `connOpenAck` ， `connOpenConfirm`和`queryConnection` 。
 
 默认的 IBC 路由模块应允许外部调用`connOpenTry` ， `connOpenAck`和`connOpenConfirm` 。
 
