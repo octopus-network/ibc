@@ -164,13 +164,13 @@ IBC 可以概念化为一个分层协议栈，数据从上到下（在发送 IBC
 1. 在链 *A* 上
     1. 模块（取决于应用）
     2. 处理程序（在不同的 ICS 中定义）
-    3. 数据包（在 [ICS 4](../spec/ics-004-channel-and-packet-semantics) 中定义）
-    4. 通道（在 [ICS 4](../spec/ics-004-channel-and-packet-semantics) 中定义）
+    3. 数据包（在 [ICS 4](../spec/core/ics-004-channel-and-packet-semantics) 中定义）
+    4. 通道（在 [ICS 4](../spec/core/ics-004-channel-and-packet-semantics) 中定义）
     5. 连接（在 [ICS 3](../spec/core/ics-003-connection-semantics) 中定义）
     6. 客户端（在 [ICS 2](../spec/core/ics-002-client-semantics) 中定义）
     7. 共识（与传出数据包确认交易）
 2. 链下
-    1. 中继器（在 [ICS 18](../spec/ics-018-relayer-algorithms) 中定义）
+    1. 中继器（在 [ICS 18](../spec/relayer/ics-018-relayer-algorithms) 中定义）
 3. 在链 *B* 上
     1. 共识（确认传入数据包的交易）
     2. 客户端（在 [ICS 2](/../spec/ics-002-client-semantics) 中定义）

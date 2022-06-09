@@ -20,7 +20,7 @@ modified: 2020-02-24
 
 ### 定义
 
-[ICS 25](../ics-025-handler-interface) 和 [ICS 26](../ics-026-routing-module) 分别定义了 IBC 处理接口和 IBC 路由模块接口。
+[ICS 25](../../core/ics-025-handler-interface) 和 [ICS 26](../../core/ics-026-routing-module) 分别定义了 IBC 处理接口和 IBC 路由模块接口。
 
 ### 所需属性
 

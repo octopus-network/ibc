@@ -52,11 +52,11 @@
 
 ### 处理模块 Handler Module
 
-IBC *处理模块*是状态机中实现了 [ICS 25](../spec/ics-025-handler-interface) 的模块，它管理客户端、连接和通道，验证证明并存储数据包的加密承诺。
+IBC *处理模块*是状态机中实现了 [ICS 25](../spec/core/ics-025-handler-interface) 的模块，它管理客户端、连接和通道，验证证明并存储数据包的加密承诺。
 
 ### 路由模块 Routing Module
 
-IBC *路由模块*是状态机内实现了 [ICS 26](../spec/ics-026-routing-module) 的模块，它在同一状态机的处理模块和其他模块之间路由数据包，并向它们提供外部接口。
+IBC *路由模块*是状态机内实现了 [ICS 26](../spec/core/ics-026-routing-module) 的模块，它在同一状态机的处理模块和其他模块之间路由数据包，并向它们提供外部接口。
 
 ### 数据报 Datagram
 

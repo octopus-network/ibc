@@ -12,7 +12,7 @@ modified: 2019-12-09
 
 ## 概要
 
-本规范文档描述了具有单个可更新公钥的单机客户端（验证算法），该客户端实现了 [ICS 2](../core/ics-002-client-semantics) 接口。
+本规范文档描述了具有单个可更新公钥的单机客户端（验证算法），该客户端实现了 [ICS 2](../../core/ics-002-client-semantics) 接口。
 
 ### 动机
 
@@ -22,17 +22,17 @@ modified: 2019-12-09
 
 ### 定义
 
-函数和术语如 [ICS 2](../core/ics-002-client-semantics) 中所定义。
+函数和术语如 [ICS 2](../../core/ics-002-client-semantics) 中所定义。
 
 ### 所需属性
 
-该规范必须满足 [ICS 2](../core/ics-002-client-semantics) 中定义的客户端接口。
+该规范必须满足 [ICS 2](../../core/ics-002-client-semantics) 中定义的客户端接口。
 
 从概念上讲，我们假设有一个“全局的大签名表”（生成的签名是公开的）并相应的包含了重放保护。
 
 ## 技术指标
 
-该规范包含 [ICS 2](../core/ics-002-client-semantics) 定义的所有函数的实现。
+该规范包含 [ICS 2](../../core/ics-002-client-semantics) 定义的所有函数的实现。
 
 ### 客户端状态
 
@@ -253,7 +253,7 @@ function verifyNextSequenceRecv(
 
 ### 属性和不变量
 
-实例化 [ICS 2](../core/ics-002-client-semantics) 中定义的接口。
+实例化 [ICS 2](../../core/ics-002-client-semantics) 中定义的接口。
 
 ## 向后兼容性
 

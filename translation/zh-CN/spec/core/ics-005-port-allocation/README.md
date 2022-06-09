@@ -27,7 +27,7 @@ modified: 2019-08-25
 
 ### 定义
 
-`Identifier` ， `get` ， `set`和`delete`的定义与 [ICS 24](../core/ics-024-host-requirements) 中的相同。
+`Identifier` ， `get` ， `set`和`delete`的定义与 [ICS 24](../ics-024-host-requirements) 中的相同。
 
 *端口*是一种特殊的标识符，用于许可模块创建和使用通道。
 
