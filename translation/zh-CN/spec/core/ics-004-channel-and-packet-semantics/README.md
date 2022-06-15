@@ -262,7 +262,7 @@ type validateChannelIdentifier = (portIdentifier: Identifier, channelIdentifier:
 链必须实现一个函数`generateIdentifier`，它选择一个标识符，例如通过增加一个计数器：
 
 ```typescript
-type generateIdentifier = () -> Identifier
+type generateIdentifier = () -> Identifier 
 ```
 
 ```typescript
