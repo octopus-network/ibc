@@ -259,7 +259,7 @@ type validateChannelIdentifier = (portIdentifier: Identifier, channelIdentifier:
 
 当建立握手完成后，发起握手的模块将拥有在账本上已创建通道的一端，而对应的另一条链的模块将拥有通道的另一端。创建通道后，所有权就无法更改（尽管更高级别的抽象可以实现并提供此功能）。
 
-Chains MUST implement a function `generateIdentifier` which chooses an identifier, e.g. by incrementing a counter:
+链必须实现一个函数`generateIdentifier`，它选择一个标识符，例如通过增加一个计数器：
 
 ```typescript
 type generateIdentifier = () -> Identifier
