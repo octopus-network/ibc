@@ -54,23 +54,21 @@ A sending chain may be acting as a source or sink zone. When a chain is sending 
 确认数据类型描述转账是成功还是失败，以及失败的原因（如果有）。
 
 ```typescript
-interface FungibleTokenPacketAcknowledgement {
-  success: boolean
-  error: Maybe<string>
+type FungibleTokenPacketAcknowledgement = FungibleTokenPacketSuccess | FungibleTokenPacketError;
+
+interface FungibleTokenPacketSuccess {
+  // This is binary 0x01 base64 encoded
+  result: "AQ=="
 }
-```
 
-同质通证转移桥接模块跟踪与状态中指定通道关联的托管地址。假设`ModuleState`的字段在范围内。
-
-```typescript
-interface ModuleState {
-  channelEscrowAddresses: Map<Identifier, string>
+interface FungibleTokenPacketError {
+  error: string
 }
 ```
 
 Note that both the FungibleTokenPacketData as well as FungibleTokenPacketAcknowledgement must be JSON-encoded (not Protobuf encoded) when they serialized into packet data. Also note that uint256 is string encoded when converted to JSON, but must be a valid decimal number of the form [0-9]+.
 
-The fungible token transfer bridge module tracks escrow addresses associated with particular channels in state. Fields of the ModuleState are assumed to be in scope.
+同质通证转移桥接模块跟踪与状态中指定通道关联的托管地址。假设`ModuleState`的字段在范围内。
 
 ```typescript
 interface ModuleState {
