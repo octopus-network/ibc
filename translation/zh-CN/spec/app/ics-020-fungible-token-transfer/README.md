@@ -45,6 +45,12 @@ interface FungibleTokenPacketData {
 }
 ```
 
+As tokens are sent across chains using the ICS 20 protocol, they begin to accrue a record of channels for which they have been transferred across. This information is encoded into the denom field.
+
+The ics20 token denominations are represented the form {ics20Port}/{ics20Channel}/{denom}, where ics20Port and ics20Channel are an ics20 port and channel on the current chain for which the funds exist. The prefixed port and channel pair indicate which channel the funds were previously sent through. If {denom} contains /, then it must also be in the ics20 form which indicates that this token has a multi-hop record. Note that this requires that the / (slash character) is prohibited in non-IBC token denomination names.
+
+A sending chain may be acting as a source or sink zone. When a chain is sending tokens across a port and channel which are not equal to the last prefixed port and channel pair, it is acting as a source zone. When tokens are sent from a source zone, the destination port and channel will be prefixed onto the denomination (once the tokens are received) adding another hop to a tokens record. When a chain is sending tokens across a port and channel which are equal to the last prefixed port and channel pair, it is acting as a sink zone. When tokens are sent from a sink zone, the last prefixed port and channel pair on the denomination is removed (once the tokens are received), undoing the last hop in the tokens record. A more complete explanation is present in the ibc-go implementation.
+
 确认数据类型描述转账是成功还是失败，以及失败的原因（如果有）。
 
 ```typescript
@@ -55,6 +61,16 @@ interface FungibleTokenPacketAcknowledgement {
 ```
 
 同质通证转移桥接模块跟踪与状态中指定通道关联的托管地址。假设`ModuleState`的字段在范围内。
+
+```typescript
+interface ModuleState {
+  channelEscrowAddresses: Map<Identifier, string>
+}
+```
+
+Note that both the FungibleTokenPacketData as well as FungibleTokenPacketAcknowledgement must be JSON-encoded (not Protobuf encoded) when they serialized into packet data. Also note that uint256 is string encoded when converted to JSON, but must be a valid decimal number of the form [0-9]+.
+
+The fungible token transfer bridge module tracks escrow addresses associated with particular channels in state. Fields of the ModuleState are assumed to be in scope.
 
 ```typescript
 interface ModuleState {
