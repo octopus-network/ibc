@@ -45,7 +45,10 @@ interface FungibleTokenPacketData {
 }
 ```
 
-因为通证通过ICS20协议跨链转移。
+因为通证通过ICS20协议跨链转移，他们开始
+
+
+因为通证通过ICS20协议跨链转移，他们开始
 
 ICS20 通证的面额。
 
