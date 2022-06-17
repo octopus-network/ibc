@@ -45,11 +45,11 @@ interface FungibleTokenPacketData {
 }
 ```
 
-As tokens are sent across chains using the ICS 20 protocol, they begin to accrue a record of channels for which they have been transferred across. This information is encoded into the denom field...
+因为通证通过ICS20协议跨链转移。
 
-The ics20 token denominations are represented the form 
+ICS20 通证的面额。
 
-A sending chain may be acting as a source or sink zone. When a chain is sending tokens across a port and channel which are not equal to the last prefixed port and channel pair, it is acting as a source zone. When tokens are sent from a source zone, the destination port and channel will be prefixed onto the denomination (once the tokens are received) adding another hop to a tokens record. When a chain is sending tokens across a port and channel which are equal to the last prefixed port and channel pair, it is acting as a sink zone. When tokens are sent from a sink zone, the last prefixed port and channel pair on the denomination is removed (once the tokens are received), undoing the last hop in the tokens record. A more complete explanation is present in the ibc-go implementation.
+发送方可能作为源区。
 
 确认数据类型描述转账是成功还是失败，以及失败的原因（如果有）。
 
