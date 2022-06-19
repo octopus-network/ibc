@@ -665,17 +665,6 @@ interface PacketCleanup {
 }
 ```
 
-```typescript
-function handlePacketCleanup(datagram: PacketCleanup) {
-    handler.cleanupPacket(
-      datagram.packet,
-      datagram.proof,
-      datagram.proofHeight,
-      datagram.nextSequenceRecvOrAcknowledgement
-    )
-}
-```
-
 ### 查询（只读）函数
 
 客户端，连接和通道的所有查询函数应直接由 IBC 处理程序模块暴露出来（只读）。
