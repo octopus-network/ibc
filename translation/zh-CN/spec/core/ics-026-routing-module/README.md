@@ -39,6 +39,9 @@ IBC 处理程序接口提供的所有函数均在 [ICS 25](../ics-025-handler-in
 
 模块必须向路由模块暴露以下函数签名，这些签名在收到各种数据报后即被调用：
 
+#### ChanOpenInit
+onChanOpenInit will verify that the relayer-chosen parameters are valid and perform any custom INIT logic. It may return an error if the chosen parameters are invalid in which case the handshake is aborted. If the provided version string is non-empty, onChanOpenInit should return the version string or an error if the provided version is invalid. If the version string is empty, onChanOpenInit is expected to return a default version string representing the version(s) it supports. If there is no default version string for the application, it should return an error if provided version is empty string.
+
 ```typescript
 function onChanOpenInit(
   order: ChannelOrder,
@@ -50,7 +53,12 @@ function onChanOpenInit(
   version: string) {
     // defined by the module
 }
+```
 
+#### ChanOpenTry
+onChanOpenTry will verify the INIT-chosen parameters along with the counterparty-chosen version string and perform custom TRY logic. If the INIT-chosen parameters are invalid, the callback must return an error to abort the handshake. If the counterparty-chosen version is not compatible with this modules supported versions, the callback must return an error to abort the handshake. If the versions are compatible, the try callback must select the final version string and return it to core IBC. onChanOpenTry may also perform custom initialization logic
+
+```typescript
 function onChanOpenTry(
   order: ChannelOrder,
   connectionHops: [Identifier],
@@ -62,20 +70,32 @@ function onChanOpenTry(
   counterpartyVersion: string) {
     // defined by the module
 }
+```
 
+#### ChanOpenAck
+onChanOpenAck will error if the counterparty selected version string is invalid to abort the handshake. It may also perform custom ACK logic.
+
+```typescript
 function onChanOpenAck(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   version: string) {
     // defined by the module
 }
+```
 
+#### onChanOpenConfirm
+onChanOpenConfirm will perform custom CONFIRM logic and may error to abort the handshake.
+
+```typescript
 function onChanOpenConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
     // defined by the module
 }
+```
 
+```typescript
 function onChanCloseInit(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
