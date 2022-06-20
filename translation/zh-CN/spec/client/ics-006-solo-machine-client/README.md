@@ -74,7 +74,7 @@ interface Header {
 }
 ```
 
-### 证据
+### 不良行为
 
 单机的不良行为的`Evidence`包括一个序号和该序号上不同消息的两个签名。
 
@@ -88,6 +88,17 @@ interface Evidence {
   sequence: uint64
   signatureOne: SignatureAndData
   signatureTwo: SignatureAndData
+}
+```
+
+### 签名
+
+签名在被提供
+
+```typescript
+interface Signature {
+  data: []byte
+  timestamp: uint64
 }
 ```
 
