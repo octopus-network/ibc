@@ -226,6 +226,38 @@ function checkMisbehaviourAndUpdateState(
 }
 ```
 
+### Upgrades
+
+The chain which this light client is tracking can elect to write a special pre-determined key in state to allow the light client to update its client state (e.g. with a new chain ID or revision) in preparation for an upgrade.
+
+As the client state change will be performed immediately, once the new client state information is written to the predetermined key, the client will no longer be able to follow blocks on the old chain, so it must upgrade promptly.
+
+```typescript
+function upgradeClientState(
+  clientState: ClientState,
+  newClientState: ClientState,
+  height: Height,
+  proof: CommitmentPrefix) {
+    // assert trusting period has not yet passed
+    assert(currentTimestamp() - clientState.latestTimestamp < clientState.trustingPeriod)
+    // check that the revision has been incremented
+    assert(newClientState.latestHeight.revisionNumber > clientState.latestHeight.revisionNumber)
+    // check proof of updated client state in state at predetermined commitment prefix and key
+    path = applyPrefix(clientState.upgradeCommitmentPrefix, clientState.upgradeKey)
+    // check that the client is at a sufficient height
+    assert(clientState.latestHeight >= height)
+    // check that the client is unfrozen or frozen at a higher height
+    assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
+    // fetch the previously verified commitment root & verify membership
+    root = get("clients/{identifier}/consensusStates/{height}")
+    // verify that the provided consensus state has been stored
+    assert(root.verifyMembership(path, newClientState, proof))
+    // update client state
+    clientState = newClientState
+    set("clients/{identifier}", clientState)
+}
+```
+
 ### 状态验证函数
 
 Tendermint 客户端状态验证函数对照先前已验证的承诺根检查默克尔证明。
