@@ -63,8 +63,9 @@ interface ConsensusState {
 ### 高度
 ### 高度
 
- must only be provided by a solo machine when the machine wishes to update the public key or diversifier.
+The Height of a solo machine is just a uint64, with the usual comparison operations.
 
+### 区块头
 ### 区块头
 
 `Header`仅在机器希望更新公钥时才由单机提供。
@@ -79,6 +80,7 @@ interface Header {
 }
 ```
 
+### 不良行为
 ### 不良行为
 
 单机的不良行为的`Evidence`包括一个序号和该序号上不同消息的两个签名。
@@ -96,6 +98,7 @@ interface Evidence {
 }
 ```
 
+### 签名
 ### 签名
 
 签名在被提供
