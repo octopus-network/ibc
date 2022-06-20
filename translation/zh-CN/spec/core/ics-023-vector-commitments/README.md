@@ -36,7 +36,7 @@ modified: 2019-08-25
 
 ## 技术指标
 
-Below we define a behaviour and an overview of datatypes. 
+Below we define a behaviour and an overview of datatypes. For data type definition look at confio/ics23 repository.
 
 ### 数据类型
 
