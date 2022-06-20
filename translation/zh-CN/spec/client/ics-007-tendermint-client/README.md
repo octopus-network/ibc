@@ -71,6 +71,19 @@ interface ClientState {
 }
 ```
 
+### 共识状态
+
+Tendermint 客户端会跟踪所有先前已验证的共识状态的时间戳（区块时间），验证人集和和承诺根（在取消绑定期之后可以将其清除，但不应该在之前清除）。
+
+```typescript
+interface ConsensusState {
+  timestamp: uint64
+  validatorSet: List<Pair<Address, uint64>>
+  commitmentRoot: []byte
+}
+```
+
+
 ### Height
 
 The height of a Tendermint client consists of two {code0}uint64{/code0}s: the revision number, and the height in the revision.
@@ -94,18 +107,6 @@ function compare(a: TendermintHeight, b: TendermintHeight): Ord {
     else if (a.revisionHeight === b.revisionHeight)
       return EQ
   return GT
-}
-```
-
-### 共识状态
-
-Tendermint 客户端会跟踪所有先前已验证的共识状态的时间戳（区块时间），验证人集和和承诺根（在取消绑定期之后可以将其清除，但不应该在之前清除）。
-
-```typescript
-interface ConsensusState {
-  timestamp: uint64
-  validatorSet: List<Pair<Address, uint64>>
-  commitmentRoot: []byte
 }
 ```
 
