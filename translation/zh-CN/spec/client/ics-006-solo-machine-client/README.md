@@ -55,9 +55,12 @@ interface ClientState {
 interface ConsensusState {
   sequence: uint64
   publicKey: PublicKey
+  diversifier: string
+  timestamp: uint64
 }
 ```
 
+### 高度
 ### 高度
 
  must only be provided by a solo machine when the machine wishes to update the public key or diversifier.
@@ -69,8 +72,10 @@ interface ConsensusState {
 ```typescript
 interface Header {
   sequence: uint64
+  timestamp: uint64
   signature: Signature
   newPublicKey: PublicKey
+  newDiversifier: string
 }
 ```
 
