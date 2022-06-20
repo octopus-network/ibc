@@ -36,8 +36,6 @@ modified: 2019-08-25
 
 ## 技术指标
 
-Below we define a behaviour and an overview of datatypes. For data type definition look at confio/ics23 repository.
-
 ### 数据类型
 
 承诺构造必须指定以下数据类型，这些数据类型可以是不透明的（不需要外部检视），但必须是可序列化的：
