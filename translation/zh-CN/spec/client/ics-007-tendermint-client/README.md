@@ -71,6 +71,32 @@ interface ClientState {
 }
 ```
 
+### Height
+
+The height of a Tendermint client consists of two {code0}uint64{/code0}s: the revision number, and the height in the revision.
+
+```typescript
+interface Height {
+  revisionNumber: uint64
+  revisionHeight: uint64
+}
+```
+
+Comparison between heights is implemented as follows:
+
+```typescript
+function compare(a: TendermintHeight, b: TendermintHeight): Ord {
+  if (a.revisionNumber < b.revisionNumber)
+    return LT
+  else if (a.revisionNumber === b.revisionNumber)
+    if (a.revisionHeight < b.revisionHeight)
+      return LT
+    else if (a.revisionHeight === b.revisionHeight)
+      return EQ
+  return GT
+}
+```
+
 ### 共识状态
 
 Tendermint 客户端会跟踪所有先前已验证的共识状态的时间戳（区块时间），验证人集和和承诺根（在取消绑定期之后可以将其清除，但不应该在之前清除）。
