@@ -60,7 +60,7 @@ interface ConsensusState {
 
 ### 高度
 
-单机客户端的高度是uint64
+ must only be provided by a solo machine when the machine wishes to update the public key or diversifier.
 
 ### 区块头
 
