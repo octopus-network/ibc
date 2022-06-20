@@ -49,12 +49,18 @@ interface ClientState {
 
 单机的`ConsensusState`由当前的公钥和序号组成。
 
+多样化标志符是一串任意字符串。
+
 ```typescript
 interface ConsensusState {
   sequence: uint64
   publicKey: PublicKey
 }
 ```
+
+### 高度
+
+单机客户端的高度是uint64
 
 ### 区块头
 
