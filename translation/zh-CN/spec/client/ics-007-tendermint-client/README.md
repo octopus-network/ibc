@@ -1,13 +1,13 @@
 ---
-ics: 7
+ics: '7'
 title: Tendermint 客户端
 stage: 草案
 category: IBC/TAO
 kind: 实例化
-implements: 2
+implements: '2'
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-12-10
-modified: 2019-12-19
+created: '2019-12-10'
+modified: '2019-12-19'
 ---
 
 ## 概要
@@ -62,12 +62,18 @@ Tendermint 客户端状态跟踪当前的验证人集合，信任期，解除绑
 
 ```typescript
 interface ClientState {
+  chainID: string
   validatorSet: List<Pair<Address, uint64>>
+  trustLevel: Rational
   trustingPeriod: uint64
   unbondingPeriod: uint64
-  latestHeight: uint64
+  latestHeight: Height
   latestTimestamp: uint64
   frozenHeight: Maybe<uint64>
+  upgradeCommitmentPrefix: CommitmentPrefix
+  upgradeKey: []byte
+  maxClockDrift: uint64
+  proofSpecs: []ProofSpec
 }
 ```
 
@@ -83,10 +89,9 @@ interface ConsensusState {
 }
 ```
 
+### 高度
 
-### Height
-
-The height of a Tendermint client consists of two {code0}uint64{/code0}s: the revision number, and the height in the revision.
+Tendermint 客户端的高度由两个`uint64`组成：修订号和修订的高度。
 
 ```typescript
 interface Height {
@@ -95,7 +100,7 @@ interface Height {
 }
 ```
 
-Comparison between heights is implemented as follows:
+高度之间的比较如下：
 
 ```typescript
 function compare(a: TendermintHeight, b: TendermintHeight): Ord {
@@ -109,6 +114,8 @@ function compare(a: TendermintHeight, b: TendermintHeight): Ord {
   return GT
 }
 ```
+
+在这样的设计下，当修订号增加 1时高度仍然允许被重置为`0` ，进而使得在升级时即使高度为零，超时机制仍然有效。
 
 ### 区块头
 
@@ -124,15 +131,13 @@ interface Header {
 }
 ```
 
-### 证据
+### 不良行为判定式
 
-`Evidence`类型用于检测不良行为并冻结客户端，以防止进一步的数据包流。 Tendermint 客户端的`Evidence`包括两个相同高度并且轻客户端认为都是有效的区块头。
+`Misbehaviour`类型用于检测不良行为并冻结客户端 （如果适用）- 以防止进一步的数据流动。 Tendermint `Misbehaviour`客户端的不良行为检查决定于在相同高度的两个冲突区块头是否都会通过轻客户端的验证。
 
 ```typescript
-interface Evidence {
-  fromHeight: uint64
-  h1: Header
-  h2: Header
+function latestClientHeight(clientState: ClientState): uint64 {
+  return clientState.latestHeight
 }
 ```
 
@@ -142,23 +147,33 @@ Tendermint 客户端初始化要求（主观选择的）最新的共识状态，
 
 ```typescript
 function initialise(
-  consensusState: ConsensusState, validatorSet: List<Pair<Address, uint64>>,
-  height: uint64, trustingPeriod: uint64, unbondingPeriod: uint64): ClientState {
+  chainID: string, consensusState: ConsensusState,
+  validatorSet: List<Pair<Address, uint64>>, trustLevel: Fraction,
+  height: Height, trustingPeriod: uint64, unbondingPeriod: uint64,
+  upgradeCommitmentPrefix: CommitmentPrefix, upgradeKey: []byte,
+  maxClockDrift: uint64, proofSpecs: []ProofSpec): ClientState {
     assert(trustingPeriod < unbondingPeriod)
     assert(height > 0)
+    assert(trustLevel > 0 && trustLevel < 1)
     set("clients/{identifier}/consensusStates/{height}", consensusState)
     return ClientState{
+      chainID,
       validatorSet,
+      trustLevel,
       latestHeight: height,
       latestTimestamp: consensusState.timestamp,
       trustingPeriod,
       unbondingPeriod,
-      frozenHeight: null
+      frozenHeight: null,
+      upgradeCommitmentPrefix,
+      upgradeKey,
+      maxClockDrift,
+      proofSpecs
     }
 }
 ```
 
-Tendermint 客户端的`latestClientHeight`函数返回最新存储的高度，该高度在每次验证了新的（较新的）区块头时都会更新。
+Tendermint 客户端`latestClientHeight`函数返回最新存储的高度，该高度在每次验证了新的（较新的）区块头时都会更新。
 
 ```typescript
 function latestClientHeight(clientState: ClientState): uint64 {
@@ -168,32 +183,40 @@ function latestClientHeight(clientState: ClientState): uint64 {
 
 ### 合法性判定式
 
-Tendermint 客户端合法性检查使用[Tendermint 规范中](https://github.com/tendermint/spec/tree/master/spec/consensus/light-client)描述的二分算法。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
+Tendermint 客户端有效性检查使用[Tendermint 规范](https://github.com/tendermint/spec/tree/master/spec/consensus/light-client)中描述的二分算法。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
 
 ```typescript
 function checkValidityAndUpdateState(
   clientState: ClientState,
+  revision: uint64,
   header: Header) {
-    // assert trusting period has not yet passed. This should fatally terminate a connection.
+    // 断言：修订版本是正确的
+    assert(revision === clientState.currentHeight.revision)
+    // 检查修订版本是否正确编码
+    assert(revision === clientState.chainID.regex('[a-z]*-(0)'))
+    // 断言：信任期尚未过去
     assert(currentTimestamp() - clientState.latestTimestamp < clientState.trustingPeriod)
-    // assert header timestamp is less than trust period in the future. This should be resolved with an intermediate header.
+    // 断言：区块头时间戳小于未来的信任期。这应该使用中间区块头
+头来解决。
     assert(header.timestamp - clientState.latestTimeStamp < trustingPeriod)
-    // assert header timestamp is past current timestamp
+    // 断言：区块头时间戳曾经是当前时间戳
     assert(header.timestamp > clientState.latestTimestamp)
-    // assert header height is newer than any we know
+    // 断言：区块头高度比我们所知道的要新
     assert(header.height > clientState.latestHeight)
-    // call the `verify` function
-    assert(verify(clientState.validatorSet, clientState.latestHeight, header))
-    // update validator set
+    // 调用 `verify` 函数
+    assert(verify(clientState.validatorSet, clientState.latestHeight, clientState.trustingPeriod, maxClockDrift, header))
+    // 更新验证者集合
     clientState.validatorSet = header.validatorSet
-    // update latest height
+    // 更新最新高度
     clientState.latestHeight = header.height
-    // update latest timestamp
+    // 更新最新的时间戳
     clientState.latestTimestamp = header.timestamp
-    // create recorded consensus state, save it
-    consensusState = ConsensusState{header.validatorSet, header.commitmentRoot, header.timestamp}
+    // 创建记录的共识状态，保存
+    consensusState = ConsensusState{header.timestamp, header.validatorSet, header.commitmentRoot}
     set("clients/{identifier}/consensusStates/{header.height}", consensusState)
-    // save the client
+    set("clients/{identifier}/processedTimes/{header.height}", currentTimestamp())
+    set("clients/{identifier}/processedHeights/{header.height}", currentHeight())
+    // 保存客户端
     set("clients/{identifier}", clientState)
 }
 ```
@@ -205,32 +228,32 @@ Tendermint 客户端的不良行为检查决定于在相同高度的两个冲突
 ```typescript
 function checkMisbehaviourAndUpdateState(
   clientState: ClientState,
-  evidence: Evidence) {
-    // assert that the heights are the same
-    assert(evidence.h1.height === evidence.h2.height)
-    // assert that the commitments are different
-    assert(evidence.h1.commitmentRoot !== evidence.h2.commitmentRoot)
-    // fetch the previously verified commitment root & validator set
-    consensusState = get("clients/{identifier}/consensusStates/{evidence.fromHeight}")
-    // assert that the timestamp is not from more than an unbonding period ago
-    assert(currentTimestamp() - evidence.timestamp < clientState.unbondingPeriod)
-    // check if the light client "would have been fooled"
+  misbehaviour: Misbehaviour) {
+    // 断言：高度相同
+    assert(misbehaviour.h1.height === misbehaviour.h2.height)
+    // 断言：承诺是不同的
+    assert(misbehaviour.h1.commitmentRoot !== misbehaviour.h2.commitmentRoot)
+    // 获取先前验证的承诺根和验证者集
+    consensusState = get("clients/{identifier}/consensusStates/{misbehaviour.fromHeight}")
+    // 断言：时间戳不早于大于一个信任期之前
+    assert(currentTimestamp() - misbehaviour.timestamp < clientState.trustingPeriod)
+    // 检查轻客户端是否“会被愚弄”
     assert(
-      verify(consensusState.validatorSet, evidence.fromHeight, evidence.h1) &&
-      verify(consensusState.validatorSet, evidence.fromHeight, evidence.h2)
+      verify(consensusState.validatorSet, misbehaviour.fromHeight, misbehaviour.h1) &&
+      verify(consensusState.validatorSet, misbehaviour.fromHeight, misbehaviour.h2)
       )
-    // set the frozen height
-    clientState.frozenHeight = min(clientState.frozenHeight, evidence.h1.height) // which is same as h2.height
-    // save the client
+    // 设置冻结高度
+    clientState.frozenHeight = min(clientState.frozenHeight, misbehaviour.h1.height) // which is same as h2.height
+    //保存客户端
     set("clients/{identifier}", clientState)
 }
 ```
 
-### Upgrades
+### 升级
 
-The chain which this light client is tracking can elect to write a special pre-determined key in state to allow the light client to update its client state (e.g. with a new chain ID or revision) in preparation for an upgrade.
+这个轻客户端所追踪的链可以选择在状态中写入一个特殊的预定密钥, 以允许轻客户端在准备升级时更新其客户端状态(例如，使用新的链ID或修订版本).
 
-As the client state change will be performed immediately, once the new client state information is written to the predetermined key, the client will no longer be able to follow blocks on the old chain, so it must upgrade promptly.
+由于客户端状态的改变将立即进行, 一旦新的客户端状态信息被写入预定密钥, 客户端将不再能够跟踪旧链上的区块, 所以它必须及时升级.
 
 ```typescript
 function upgradeClientState(
@@ -238,21 +261,21 @@ function upgradeClientState(
   newClientState: ClientState,
   height: Height,
   proof: CommitmentPrefix) {
-    // assert trusting period has not yet passed
+    // 断言：信任期尚未过去
     assert(currentTimestamp() - clientState.latestTimestamp < clientState.trustingPeriod)
-    // check that the revision has been incremented
+    // 检查修订版本是否已增加
     assert(newClientState.latestHeight.revisionNumber > clientState.latestHeight.revisionNumber)
-    // check proof of updated client state in state at predetermined commitment prefix and key
+    // 根据预定的承诺前缀和密钥检查更新客户端状态的证明
     path = applyPrefix(clientState.upgradeCommitmentPrefix, clientState.upgradeKey)
-    // check that the client is at a sufficient height
+    // 检查客户端的高度是否足够
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided consensus state has been stored
+    // 验证提供的共识状态是否已存储
     assert(root.verifyMembership(path, newClientState, proof))
-    // update client state
+    // 更新客户端状态
     clientState = newClientState
     set("clients/{identifier}", clientState)
 }
@@ -262,66 +285,70 @@ function upgradeClientState(
 
 Tendermint 客户端状态验证函数对照先前已验证的承诺根检查默克尔证明。
 
+这些函数使用初始化客户端的`proofSpecs` 。
+
 ```typescript
 function verifyClientConsensusState(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   clientIdentifier: Identifier,
-  consensusStateHeight: uint64,
+  consensusStateHeight: Height,
   consensusState: ConsensusState) {
     path = applyPrefix(prefix, "clients/{clientIdentifier}/consensusState/{consensusStateHeight}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided consensus state has been stored
+    // 验证提供的共识状态是否已存储
     assert(root.verifyMembership(path, consensusState, proof))
 }
 
 function verifyConnectionState(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   connectionIdentifier: Identifier,
   connectionEnd: ConnectionEnd) {
     path = applyPrefix(prefix, "connections/{connectionIdentifier}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided connection end has been stored
+    // 验证提供的连接端是否已存储
     assert(root.verifyMembership(path, connectionEnd, proof))
 }
 
 function verifyChannelState(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   channelEnd: ChannelEnd) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided channel end has been stored
-    assert(root.verifyMembership(path, channelEnd, proof))
+    // 验证提供的通道端是否已存储
+    assert(root.verifyMembership(clientState.proofSpecs, path, channelEnd, proof))
 }
 
 function verifyPacketData(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -329,19 +356,29 @@ function verifyPacketData(
   sequence: uint64,
   data: bytes) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/packets/{sequence}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取处理时间
+    processedTime = get("clients/{identifier}/processedTimes/{height}")
+    // 获取处理后的高度
+    processedHeight = get("clients/{identifier}/processedHeights/{height}")
+    // 断言：足够的时间已经过去
+    assert(currentTimestamp() >= processedTime + delayPeriodTime)
+    // 断言：已经过去了足够多的块
+    assert(currentHeight() >= processedHeight + delayPeriodBlocks)
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided commitment has been stored
-    assert(root.verifyMembership(path, hash(data), proof))
+    // 验证提供的承诺是否已被存储
+    assert(root.verifyMembership(clientState.proofSpecs, path, hash(data), proof))
 }
 
 function verifyPacketAcknowledgement(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
@@ -349,52 +386,80 @@ function verifyPacketAcknowledgement(
   sequence: uint64,
   acknowledgement: bytes) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取处理时间
+    processedTime = get("clients/{identifier}/processedTimes/{height}")
+    // 获取处理后的高度
+    processedHeight = get("clients/{identifier}/processedHeights/{height}")
+    // 断言足够的时间已经过去
+    assert(currentTimestamp() >= processedTime + delayPeriodTime)
+    // 断言已经过去了足够多的块
+    assert(currentHeight() >= processedHeight + delayPeriodBlocks)
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided acknowledgement has been stored
-    assert(root.verifyMembership(path, hash(acknowledgement), proof))
+    // 验证提供的确认是否已存储
+    assert(root.verifyMembership(clientState.proofSpecs, path, hash(acknowledgement), proof))
 }
 
-function verifyPacketAcknowledgementAbsence(
+function verifyPacketReceiptAbsence(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   sequence: uint64) {
-    path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
-    // check that the client is at a sufficient height
+    path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/receipts/{sequence}")
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取处理时间
+    processedTime = get("clients/{identifier}/processedTimes/{height}")
+    // 获取处理后的高度
+    processedHeight = get("clients/{identifier}/processedHeights/{height}")
+    // 断言：足够的时间已经过去
+    assert(currentTimestamp() >= processedTime + delayPeriodTime)
+    // 断言已经过去了足够多的块
+    assert(currentHeight() >= processedHeight + delayPeriodBlocks)
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that no acknowledgement has been stored
-    assert(root.verifyNonMembership(path, proof))
+    // 验证没有回执被存储
+    assert(root.verifyNonMembership(clientState.proofSpecs, path, proof))
 }
 
 function verifyNextSequenceRecv(
   clientState: ClientState,
-  height: uint64,
+  height: Height,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   prefix: CommitmentPrefix,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   nextSequenceRecv: uint64) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/nextSequenceRecv")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取处理时间
+    processedTime = get("clients/{identifier}/processedTimes/{height}")
+    // 获取处理后的高度
+    processedHeight = get("clients/{identifier}/processedHeights/{height}")
+    // 断言足够的时间已经过去
+    assert(currentTimestamp() >= processedTime + delayPeriodTime)
+    // 断言已经过去了足够多的块
+    assert(currentHeight() >= processedHeight + delayPeriodBlocks)
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the nextSequenceRecv is as claimed
-    assert(root.verifyMembership(path, nextSequenceRecv, proof))
+    // 验证 nextSequenceRecv 是否如声明的那样
+    assert(root.verifyMembership(clientState.proofSpecs, path, nextSequenceRecv, proof))
 }
 ```
 
@@ -412,11 +477,11 @@ function verifyNextSequenceRecv(
 
 ## 示例实现
 
-还没有。
+还没有.
 
 ## 其他实现
 
-目前没有。
+目前没有
 
 ## 历史
 
