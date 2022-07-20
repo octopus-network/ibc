@@ -16,40 +16,40 @@ modified: '2020-07-14'
 
 ### 动机
 
-ICS-27链间帐户标准规定了基于IBC的跨链账户管理协议。具备ICS-27功能的区块链可以通过交易（而不是用私钥签名）在其他具备ICS-27功能的区块链上创建并管理账户。链间账户保留了普通账户的所有功能（例如：质押，投票，发交易），但是是由另外一条链通过IBC的方式管理的，这使得控制链能够完全操控它在宿主链上注册的链间账户。
+ICS-27链间帐户标准规定了基于IBC的跨链账户管理协议。具备ICS-27功能的区块链可以通过交易（而不是用私钥签名）在其他具备ICS-27功能的区块链上创建并管理账户。链间账户保留了普通账户的所有功能（例如：质押，投票，转帐，发交易），但这是由另外一条链通过IBC的方式管理的，这使得在控制链上的所有者账户能够完全操控它在主链上注册的链间账户。
 
 ### 定义
 
-- 宿主链：链间账户在宿主链上注册。宿主链监听来自控制链的IBC数据包，数据包内含有链间账户可执行的控制指令（例如：Cosmos SDK信息）。
-- 控制链：控制链在宿主链上注册并管理账户。控制链通过向宿主链发送IBC数据包来控制宿主链上的账户。
-- 链间账户：链间账户是宿主链上的账户。链间账户拥有普通账户的所有功能。但链间账户并不通过私钥签发交易，而是通过解析控制链向宿主链发送IBC数据包触发交易。
-- 链间账户所有者：链间账户所有者是控制链上的账户。每个宿主链上的链间账户都隶属于的各自位于控制链上的链间账户所有者。
+- 主链：链间账户在主链上注册。主链监听来自控制链的 IBC 数据包，数据包内含有链间账户可执行的控制指令（例如：Cosmos SDK信息）。
+- 控制链：控制链在主链上注册并管理账户。控制链通过向主链发送 IBC 数据包来控制主链上的账户。
+- 链间账户：链间账户是主链上的账户。链间账户拥有普通账户的所有功能。但控制链并不通过私钥签发交易，而是通过向主链发送 IBC 数据包，指示链间账户处理交易。
+- 链间账户所有者：控制链上的账户。主链上的每个链间账户在控制链上都有一个对应的所有者账户。
 
-IBC 处理程序接口和 IBC 路由模块接口分别在 [ICS 25](../../core/ics-025-handler-interface) 和 [ICS 26](../../core/ics-026-routing-module) 中所定义。
+IBC 处理程序接口和 IBC 中继模块接口分别在 [ICS 25](../../core/ics-025-handler-interface) 和 [ICS 26](../../core/ics-026-routing-module) 中定义。
 
 ### 所需属性
 
-- 无需许可：链间账户可以由任意的参与者创建，并且无需第三方的许可（例如：链上治理）。需要注意的是：不同的创建方法可能有不同的许可方案，IBC协议对于这些方案的安全性没有做出规定。
-- 故障容忍：控制链无法管理其它控制链注册的控制账户。比如，如果一条控制链受到了分叉攻击，只有分叉链注册的链间账户会受到影响。
-- 发送给链间账户的交易必须被顺序执行。链间账户执行交易的顺序必须和控制链发送交易的顺序一致。
-- 如果一条通道被关闭了，控制链必须有能力通过创建新通道来重新访问已注册的链间账户。
+- 无需许可：链间账户可以由任意的参与者创建，并且无需第三方的许可（如链上治理）。需要注意的是：不同的创建方法可能有不同的许可方案，IBC 协议对于这些方案的安全性未作规定。
+- 故障隔离：一条控制链无法管理其它控制链注册的控制账户。比如，如果一条控制链受到了分叉攻击，只有分叉链注册的链间账户会受到影响。
+- 发送至主链链间账户的交易顺序必须保持不变。链间账户执行交易的顺序必须和控制链发送交易顺序一致。
+- 如果一条通道关闭，控制链必须有能力通过创建一条新通道来重新访问已注册的链间账户。
 - 每个链间账户都隶属于控制链上的一个所有者账户。只有所有者账户有权控制隶属于自己的链间账户。相应的权限控制由控制链施行。
-- 每条控制链都必须存储隶属于自己的所有链间账户的地址。
-- 宿主链必须有能力限制链上的链间账户的功能（例如，宿主链可以决定链上的链间账户能不能参与质押）。
+- 控制链必须存储所有隶属于自己的链间账户地址。
+- 主链必须有能力限制链上的链间账户的功能（例如，主链可以决定链上的链间账户能不能参与质押）。
 
-## 技术指标
+## 技术规范
 
 ### 总体设计
 
-一条链可以应用链间账户协议的两部分（控制端协议和宿主端协议）或其中任意一部分。在其它宿主链上注册了链间账户的一条控制链，并不一定要允许其他控制链在自身注册链间账户，反之亦然。
+一条链可以同时使用链间账户协议的两部分（控制链协议和主链协议）或其中任意一部分。在其它主链上注册链间账户的控制链不一定要允许其他控制链在本链注册链间账户，反之亦然。
 
-该标准规定了注册链间账户和发送交易数据的总体方法，其中的交易数据将会代表所有者账户被链间账户执行。宿主链负责反序列化并执行交易数据；控制链在发送交易数据之前必须知道宿主链会如何处理交易数据，这是在创建通道的过程中控制链和宿主链通过握手达成的。
+该标准定义了注册链间账户和发送交易数据的总体方法，其中的交易数据将会代表所有者账户被链间账户执行。主链负责反序列化并执行交易数据；控制链在发送交易数据之前必须知道主链会如何处理交易数据，这是在创建通道的过程中控制链和主链通过握手达成的。
 
-### 控制链智能合约
+### 控制链合约
 
 #### **RegisterInterchainAccount**
 
-`RegisterInterchainAccount` 是注册链间账户的入口。它可以用所有者账户地址生成新的控制者portID。它可以绑定控制者portID并且调用04-channel的`ChanOpenInit`。控制者portID如果已经被占用，`RegisterInterchainAccount`会返回错误。 `ChannelOpenInit`事件将被触发并被如中继器链下进程检测到。链间账户通过`OnChanOpenTry`这一步骤在宿主链上注册。 这一个方法必须在`OPEN`的连接被创建之后才能使用给定的连接ID被调用。调用者必须提供完整的通道版本，其中必须包括带有完整元数据的ICA版本并且可能包括其他中间件的版本，其中中间件的作用是在通道两端包裹ICA。这将会需要通道两端的中间件信息。所以，建议ICA认证的应用自动构建ICA版本并且允许用户额外的中间件更新版本号。
+`RegisterInterchainAccount` 是注册链间账户的切入点。它可以用所有者账户地址生成新的控制者portID。它将绑定一个控制者portID并且调用04-channel的`ChanOpenInit`。控制者portID如果已经被占用，`RegisterInterchainAccount`会返回错误。 `ChannelOpenInit`事件将被触发并被链下进程（如中继器）检测到。链间账户通过`OnChanOpenTry`步骤在主链上注册。这一方法必须在`OPEN`的连接被创建之后才能使用给定的connectionID来调用。调用者必须提供完整的通道版本，其中必须包括带有完整元数据的 ICA 版本并且可能包括其他中间件的版本，其中中间件的作用是在通道两端包装  ICA。这将会需要通道两端的中间件信息。所以，建议 ICA 认证的应用自动构建 ICA 版本并且允许用户启用额外的中间件版本号更新。
 
 ```typescript
 function RegisterInterchainAccount(connectionId: Identifier, owner: string, version: string) returns (error) {
@@ -58,7 +58,7 @@ function RegisterInterchainAccount(connectionId: Identifier, owner: string, vers
 
 #### **SendTx**
 
-`SendTx` 这个方法被用来发送IBC数据包，数据包中包含链间账户所有者给链间账户的指令（信息）。
+`SendTx` 用于发送IBC数据包，数据包中包含链间账户所有者发给链间账户的指令（消息）。
 
 ```typescript
 function SendTx(
@@ -67,22 +67,23 @@ function SendTx(
   portId: Identifier,
   icaPacketData: InterchainAccountPacketData,
   timeoutTimestamp uint64) {
-    // 检查portId和connectionId是否有活跃的通道， 即链间账户是否已经用该portId和connectionId注册过了
+    // 检查该 portId 与 connectionId当前是否有活动频道
+    // 如有，则意味着已通过该 portId 与 connectionId注册过跨链账户
     activeChannelID, found = GetActiveChannelID(portId, connectionId)
     abortTransactionUnless(found)
 
-    // 验证时间戳
+    // 验证 timeoutTimestamp
     abortTransactionUnless(timeoutTimestamp <= currentTimestamp())
 
-    // 验证ICA数据包
+    // 验证 icaPacketData
     abortTransactionUnless(icaPacketData.type == EXECUTE_TX)
     abortTransactionUnless(icaPacketData.data != nil)
 
-    // 通过活跃的通道向宿主链发送ICA数据包
-    handler.sendPacket(
+    // 将 icaPacketData 通过活动通道处理程序发送至主链
+      sendPacket(
       capability,
-      portId, // source port ID
-      activeChannelID, // source channel ID
+      portId, // 源端口 ID
+      activeChannelID, // 源频道 ID
       0,
       timeoutTimestamp,
       icaPacketData
@@ -90,7 +91,7 @@ function SendTx(
 }
 ```
 
-### 宿主链智能合约
+### 主链合约
 
 #### **RegisterInterchainAccount**
 
@@ -106,7 +107,7 @@ function RegisterInterchainAccount(counterpartyPortId: Identifier, connectionID:
 
 #### **AuthenticateTx**
 
-`AuthenticateTx` 在执行`ExecuteTx`之前被调用。 `AuthenticateTx` 检查一则信息的签名者是链间账户，并且该链间账户与发送IBC数据包的对端通道portID相关联。
+`AuthenticateTx` 在执行`ExecuteTx`之前被调用。 `AuthenticateTx` 核实特定消息的签名者为链间账户，并且该链间账户与发送IBC数据包的对端通道portID相关联。
 
 ```typescript
 function AuthenticateTx(msgs []Any, connectionId string, portId string) returns (error) {
@@ -117,19 +118,19 @@ function AuthenticateTx(msgs []Any, connectionId string, portId string) returns 
 
 #### **ExecuteTx**
 
-执行所有者账户在控制链上发送的每则信息。
+执行所有者账户在控制链上发送的每则消息。
 
 ```typescript
 function ExecuteTx(sourcePort: Identifier, channel Channel, msgs []Any) returns (resultString, error) {
-  // 验证每则信息
-  // 根据原链端口和通道的connectionID获取链间账户
-  // 验证链间账户是否被信息的签名者授权
-  // 执行每则信息
-  // 返回交易的结果
+// 验证每条消息
+// 通过传入的源端口和通道的 connectionID 检索给定通道的链间帐户
+// 验证跨链账户是每条消息的授权签名者
+// 执行每条消息
+// 返回交易结果
 }
 ```
 
-### 实用方法
+### 实用函数
 
 ```typescript
 // 为给定的 portID 和 connectionID 设置活动通道。
@@ -149,7 +150,7 @@ function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifie
 }
 ```
 
-### 注册与操控流程
+### 注册与控制流程
 
 #### 注册链间账户的流程
 
@@ -157,17 +158,17 @@ function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifie
 
 1. 控制链根据一个给定的*链间账户所有者地址*将一个新的IBC端口和控制链portID绑定在一起。**
 
-控制链和宿主链必须为每个链间账户记录一个`活跃的通道`。`活跃的通道`在创建通道的握手过程中被设置。这是一项安全机制，允许控制链重新获取在通道意外关闭之后，能够重新访问宿主链上的链间账户。
+这个端口将被用来在控制链和主链之间为一对特定的所有者账户/链间账户创建通道。只有链间账户的`{owner-account-address}`与绑定的端口相匹配才会被授权使用相应的通道（该通道是根据控制链的portID创建的）发送IBC数据包。由每个控制链在链上施行此端口注册和访问。
 
-1. The controller chain emits an event signaling to open a new channel on this port given a connection.
+1. 在给定连接的情况下，控制链会发出一个事件信号，在此端口上打开一个新通道。
 2. 监听`ChannelOpenInit`事件的中继器将继续为创建通道而进行握手。
-3. During the `OnChanOpenTry` callback on the host chain an interchain account will be registered and a mapping of the interchain account address to the owner account address will be stored in state (this is used for authenticating transactions on the host chain at execution time).
-4. During the `OnChanOpenAck` callback on the controller chain a record of the interchain account address registered on the host chain during `OnChanOpenTry` is set in state with a mapping from portID -&gt; interchain account address. See [metadata negotiation](#Metadata-negotiation) section below for how to implement this.
-5. During the `OnChanOpenAck` &amp; `OnChanOpenConfirm` callbacks on the controller &amp; host chains respectively, the [active-channel](#Active-channels) for this interchain account/owner pair, is set in state.
+3. 在主链的`OnChanOpenTry`回调过程中，一个链间账户将被注册，并将链间账户地址到所有者帐户地址的映射存储在账户状态中（用于在执行时验证主链上的交易）。
+4. 在控制链的`OnChanOpenAck`回调过程中，一个链间账户之前在主链上的`OnChanOpenTry`注册的记录会被写入到所有者的状态中，记录中包含从 portID -&gt; 链间账户地址的映射。实现细节请参见以下的[元数据协商](#Metadata-negotiation)部分。
+5. 在控制链和主链上分别进行`OnChanOpenAck`和`OnChanOpenConfirm`回调期间，此链间帐户/所有者对的[活动通道](#Active-channels)将被写进链间账户/所有者的状态。
 
-#### 活跃的通道
+#### 活动通道
 
-以下是一个活跃通道的数据结构样例：
+控制链和主链必须跟踪每个注册的链间帐户的`active-channel` 。 `active-channel`是在为创建通道而握手的过程中设置的。这是一种安全机制，允许控制链在通道关闭的情况下重新获得对主链上链间帐户的访问权限。
 
 控制链上的活动通道的数据结果示例：
 
@@ -176,27 +177,27 @@ function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifie
  // 控制链
  SourcePortId: `icacontroller-<owner-account-address>`,
  SourceChannelId: `<channel-id>`,
- // 宿主链
+ // 主链
  CounterpartyPortId: `icahost`,
  CounterpartyChannelId: `<channel-id>`,
 }
 ```
 
-控制链和宿主链必须验证任何新通道和之前活跃通道有一样的元数据，由此保证链间账户的参数保持不变，即使是活跃账户被替代了之后。元数据的`地址`不必被验证，因为它在INIT阶段的值预计为空，并且宿主链将在TRY阶段重新生成同样的地址，因为它预计将通过控制者端口ID和连接ID（两个ID都必须和之前的保持一致）生成确定性的链间账户地址。
+如果一条通道关闭，控制链可以使用和之前的通道同样的端口和底层连接，通过握手创建一条新通道， 来取代现有的活动通道。ICS-27通道只能在两种情况下被关闭：即超时（如果通道是有序通道）或者轻客户端受到攻击（可能性很小）时。因此控制链必须具有以下两种功能： 创建新的ICS-27通道；重置某一对端口号（包含`{owner-account-address}`）和连接对应的活动通道。
 
-每个链必须实现以下接口以支持链间帐户。 `IBCAccountModule`接口的`createOutgoingPacket`方法定义了创建特定类型的传出数据包的方式。类型指示应如何为主机链构建和序列化 IBC 帐户交易。通常，类型指示主机链的构建框架。 `generateAddress`定义了如何使用标识符和盐（salt）确定帐户地址的方法。建议使用盐生成地址，但不是必需的。如果该链不支持用确定性的方式来生成带有盐的地址，则可以以其自己的方式来生成。 `createAccount`使用生成的地址创建帐户。新的链间帐户不得与现有帐户冲突，并且链应跟踪是哪个对方链创建的新的链间帐户，以验证`authenticateTx`中交易签名人的权限。 `authenticateTx`验证交易并检查交易中的签名者是否具有正确的权限。成功通过身份认证后， `runTx`执行交易。
+控制链和主链必须验证任何新通道与之前的活动通道保持相同的元数据，以确保链间帐户的参数即使在更换活动通道后也保持不变。不应验证元数据的`Address`，因为其在 INIT 阶段应为空，且主链将在 TRY 上重新生成完全相同的地址，因为它会从控制链端口 ID 确定性地生成链间帐户地址和connectionID（两者均须保持不变）。
 
 #### **元数据协商**
 
-对方链使用`RegisterIBCAccountPacketData`注册帐户。使用通道标识符和盐可以确定性的定义链间帐户的地址。 `generateAccount`方法用于生成新的链间帐户的地址。建议通过`hash(identifier+salt)`生成地址，但是也可以使用其他方法。此函数必须通过标识符和盐生成唯一的确定性地址。
+ICS-27 利用[ICS-04 通道版本协商](../../core/ics-004-channel-and-packet-semantics/README.md#versioning)在通道握手期间协商元数据和通道参数。元数据将包含编码格式以及交易类型，以便交易对手可以就跨链交易的结构和编码达成一致。在 TRY 步骤从主链发送的元数据也将包含链间帐户地址，以便可以将其中继到控制链。在通道握手结束时，控制链和主链都会存储控制链 portID 到新注册的链间账户地址的映射（[账户注册流程](#Register-account-flow)）。
 
-`RunTxPacketData`用于在链间帐户上执行交易。交易字节包含交易本身，并以适合于目标链的方式进行序列化。
+ICS-04 允许每个应用程序通道有特定版本协商协议。对于链间账户来说，通道版本将是一个 JSON 结构的字符串，其中包含所有相关元数据，这些元数据旨在在通道握手期间转发给交易对手（[参见下文摘要](#Metadata-negotiation-summary)）。
 
-`IBCAccountHandler`接口允许源链接收在链间帐户上执行交易的结果。
+结合每个跨链帐户绑定一个通道的规定，这种元数据协商方法允许我们将链间帐户的地址传递回控制链，并在`OnChanOpenAck`回调期间创建从控制链端口 ID 到链间帐户地址的映射。如[控制流程](#Controlling-flow)中所述，控制链需要知道已注册链间帐户的地址，以便将交易发送到主链上的链间帐户。
 
 #### **元数据协商总结**
 
-本文所述的子协议应在“链间帐户桥”模块中实现，并可以访问应用的路由和编解码器（解码器或解组器），和访问 IBC 路由模块。
+`interchain-account-address`是控制链在主链上注册的链间账户地址。
 
 - **INIT**
 
@@ -219,7 +220,7 @@ function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifie
 }
 ```
 
-用简单的文字描述就是`A`和`B`之间，链 A 想要在链 B 上注册一个链间帐户并控制它。同样，也可以反过来。
+评论：地址留空，因为地址将由主链生成并传回。数据报必须包含连接标识符，以便在需要打开新通道（以防活动通道超时）时确保使用同一连接。这将确保链间账户始终连接到同一个交易对手链。
 
 - **TRY**
 
@@ -227,7 +228,7 @@ function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifie
 
 数据报：ChanOpenTry
 
-cosmos-sdk 的伪代码：https://github.com/everett-protocol/everett-hackathon/tree/master/x/interchain-account 以太坊上的链间账户的 POC：https://github.com/everett-protocol/ethereum-interchain-account
+被作用链：主链
 
 版本：
 
@@ -242,7 +243,7 @@ cosmos-sdk 的伪代码：https://github.com/everett-protocol/everett-hackathon/
 }
 ```
 
-2019年8月1日-讨论了概念
+评论：如果控制链在 INIT 中设置了交易对手版本，则主链上的 ICS-27 应用程序负责返回此版本。主链必须同意控制链请求的单一编码类型和单一交易类型（例如包含在交易对手版本中）。如果不支持请求的编码或交易类型，则主链必须返回错误并中止握手。主链还必须生成链间账户地址，并使用链间账户地址字符串填充版本中的地址字段。
 
 - **ACK**
 
@@ -250,7 +251,7 @@ cosmos-sdk 的伪代码：https://github.com/everett-protocol/everett-hackathon/
 
 数据报：ChanOpenAck
 
-2019年12月2日-较小修订（在以太坊上添加更多具体描述并添加链间账户）
+被作用链：控制链
 
 交易对手版本：
 
@@ -265,33 +266,38 @@ cosmos-sdk 的伪代码：https://github.com/everett-protocol/everett-hackathon/
 }
 ```
 
-Comments: On the ChanOpenAck step, the ICS27 application on the controller chain must verify the version string chosen by the host chain on ChanOpenTry. The controller chain must verify that it can support the negotiated encoding and tx type selected by the host chain. If either is unsupported, then it must return an error and abort the handshake. If both are supported, then the controller chain must store a mapping from the channel's portID to the provided interchain account address and return successfully.
+注释：在 ChanOpenAck 步骤中，控制链上的 ICS27 应用程序必须验证主链在 ChanOpenTry 中选择的版本字符串。控制链必须验证该字符串可支持主链选择的协商编码和 tx 类型。如果其中任何一个不受支持，则必须返回错误并中止握手。如果两者都支持，则控制链必须存储从通道的 portID 到所提供的链间帐户地址的映射，并返回成功。
 
 #### 控制流程
 
-Once an interchain account is registered on the host chain a controller chain can begin sending instructions (messages) to the host chain to control the account.
+一旦在主链上注册了链间帐户，控制链就可以开始向主链发送指令（消息）以控制该帐户。
 
-1. The controller chain calls `SendTx` and passes message(s) that will be executed on the host side by the associated interchain account (determined by the controller side port identifier)
+1. 控制链调用`SendTx`并传递将由关联的链间帐户在主链执行的消息（由控制链端的端口标识符确定）
 
 Cosmos SDK 伪代码示例：
 
 ```golang
-interface InterchainTxHandler {
-  onAccountCreated(identifier: Identifier, address: Address)
-  onTxSucceeded(identifier: Identifier, txBytes: Uint8Array)
-  onTxFailed(identifier: Identifier, txBytes: Uint8Array, errorCode: Uint8Array)
+interchainAccountAddress := GetInterchainAccountAddress(portId)
+msg := &banktypes.MsgSend{FromAddress: interchainAccountAddress, ToAddress: ToAddress, Amount: amount}
+icaPacketData = InterchainAccountPacketData{
+   Type: types.EXECUTE_TX,
+   Data: serialize(msg),
+   Memo: "memo",
 }
+
+// 发送信息到主链，信息将最终在主链被执行
+SendTx(ownerAddress, connectionId, portID, data, timeout)
 ```
 
-1. The host chain upon receiving the IBC packet will call `DeserializeTx`.
+1. 主机链收到 IBC 数据包后会调用`DeserializeTx` 。
 
-2. The host chain will then call `AuthenticateTx` and `ExecuteTx` for each message and return an acknowledgment containing a success or error.
+2. 然后主链将为每条消息调用`AuthenticateTx`和`ExecuteTx`，并返回包含成功或错误的回执。
 
-Messages are authenticated on the host chain by taking the controller side port identifier and calling `GetInterchainAccountAddress(controllerPortId)` to get the expected interchain account address for the current controller port. If the signer of this message does not match the expected account address then authentication will fail.
+通过获取控制链端口标识符，并调用`GetInterchainAccountAddress(controllerPortId)`以获取当前控制链端口的预期链间帐户地址，在主链上对消息进行身份验证。如果此消息的签名者与预期的帐户地址不匹配，则身份验证失败。
 
-### 数据结构
+### 数据包数据
 
-`InterchainAccountPacketData` contains an array of messages that an interchain account can execute and a memo string that is sent to the host chain as well as the packet `type`. ICS-27 version 1 has only one type `EXECUTE_TX`.
+`InterchainAccountPacketData`包含一个链间帐户可以执行的消息数组和一个发送到主链的备忘录字符串以及数据包`type` 。 ICS-27 版本1只有一种类型的`EXECUTE_TX` 。
 
 ```proto
 message InterchainAccountPacketData  {
@@ -301,7 +307,7 @@ message InterchainAccountPacketData  {
 }
 ```
 
-The acknowledgment packet structure is defined as in [ics4](https://github.com/cosmos/ibc-go/blob/main/proto/ibc/core/channel/v1/channel.proto#L135-L148). If an error occurs on the host chain the acknowledgment contains the error message.
+回执包结构在[ics4](https://github.com/cosmos/ibc-go/blob/main/proto/ibc/core/channel/v1/channel.proto#L135-L148)中定义。如果主链上发生错误，则回执包含错误消息。
 
 ```proto
 message Acknowledgement {
@@ -315,15 +321,15 @@ message Acknowledgement {
 
 ### 自定义逻辑
 
-ICS-27 relies on [ICS-30 middleware architecture](../ics-030-middleware) to provide the option for application developers to apply custom logic on the success or fail of ICS-27 packets.
+ICS-27 通过[ICS-30 中间件架构](../ics-030-middleware)允许应用程序开发人员自定义 ICS-27 数据包执行成功或失败的处理逻辑。
 
-Controller chains will wrap `OnAcknowledgementPacket` &amp; `OnTimeoutPacket` to handle the success or fail cases for ICS-27 packets.
+控制链将包装`OnAcknowledgementPacket`和`OnTimeoutPacket`以处理 ICS-27 数据包执行成功或失败的情况。
 
 ### 端口和通道设置
 
-The interchain account module on a host chain must always bind to a port with the id `icahost`. Controller chains will bind to ports dynamically, as specified in the identifier format [section](#identifer-formats).
+主链上的链间帐户模块必须始终绑定到 id 为 `icahost`的端口。控制链将动态绑定端口，如标识符格式[部分](#identifer-formats)中所指定。
 
-The example below assumes a module is implementing the entire `InterchainAccountModule` interface. The `setup` function must be called exactly once when the module is created (perhaps when the blockchain itself is initialized) to bind to the appropriate port.
+下方示例假设一个模块正在实现整个`InterchainAccountModule`接口。 `setup`函数必须在创建模块时（可能是在区块链本身在初始化时）仅调用一次以绑定到对应端口。
 
 ```typescript
 function setup() {
@@ -353,37 +359,110 @@ function setup() {
 - 控制链正在进行通道初始化。
 
 ```typescript
+//  在控制链上被InitInterchainAccount调用
+function onChanOpenInit(
+  order: ChannelOrder,
+  connectionHops: [Identifier],
+  portIdentifier: Identifier,
+  channelIdentifier: Identifier,
+  counterpartyPortIdentifier: Identifier,
+  counterpartyChannelIdentifier: Identifier,
+  version: string) {
+  // 只允许有序通道
+  abortTransactionUnless(order === ORDERED)
+  // 验证端口格式
+  abortTransactionUnless(validateControllerPortParams(portIdentifier))
+  // 只允许在交易对手链上的“icahost”端口上创建通道
+  abortTransactionUnless(counterpartyPortIdentifier === "icahost")
+  // 只有在没有设置活动通道（状态为 OPEN）时才打开通道
+  abortTransactionUnless(activeChannel === nil)
+
+  // 验证元数据
+  metadata = UnmarshalJSON(version)
+  abortTransactionUnless(metadata.Version === "ics27-1")
+  // 必须支持编码列表和 tx 类型列表中的所有元素
+  abortTransactionUnless(IsSupportedEncoding(metadata.Encoding))
+  abortTransactionUnless(IsSupportedTxType(metadata.TxType))
+
+  // connectionID和交易对手connectionID在通道中是可获取的
+  abortTransactionUnless(metadata.ControllerConnectionId === connectionId)
+  abortTransactionUnless(metadata.HostConnectionId === counterpartyConnectionId)
+}
+```
+
+```typescript
+// 在主链上由中继器调用
+function onChanOpenTry(
+  order: ChannelOrder,
+  connectionHops: [Identifier],
+  portIdentifier: Identifier,
+  channelIdentifier: Identifier,
+  counterpartyPortIdentifier: Identifier,
+  counterpartyChannelIdentifier: Identifier,
+  counterpartyVersion: string) (version: string) {
+  // 只允许有序通道
+  abortTransactionUnless(order === ORDERED)
+  // 验证端口ID
+  abortTransactionUnless(portIdentifier === "icahost")
+  // 只有当对方端口ID采用预期的控制链端口ID 格式时才允许在主链上创建通道
+  abortTransactionUnless(validateControllerPortParams(counterpartyPortIdentifier))
+  // 使用交易对手端口标识符以及主链上的底层connectionID创建链间账户
+  address = RegisterInterchainAccount(counterpartyPortIdentifier, connectionID)
+
+  cpMetadata = UnmarshalJSON(counterpartyVersion)
+  abortTransactionUnless(cpMetadata.Version === "ics27-1")
+  // 如果主链不支持初始化链请求的编码或 txType，则握手失败并中止事务
+  abortTransactionUnless(IsSupportedEncoding(cpMetadata.Encoding))
+  abortTransactionUnless(IsSupportedTxType(cpMetadata.TxType))
+
+  // connectionID和交易对手connectionID在通道中是可获取的
+  abortTransactionUnless(cpMetadata.ControllerConnectionId === counterpartyConnectionId)
+  abortTransactionUnless(cpMetadata.HostConnectionId === connectionId)
+  
+  metadata = {
+    "Version": "ics27-1",
+    "ControllerConnectionId": cpMetadata.ControllerConnectionId,
+    "HostConnectionId": cpMetadata.HostConnectionId,
+    "Address": address,
+    "Encoding": cpMetadata.Encoding,
+    "TxType": cpMetadata.TxType,
+  }
+
+  return string(MarshalJSON(metadata))
+}
+```
+
+```typescript
+// 由Relayer在控制链上调用
 function onChanOpenAck(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  version: string) {
-  // version not used at present
-  abortTransactionUnless(version === "")
-  // port has already been validated
+  counterpartyChannelIdentifier,
+  counterpartyVersion: string) {
+
+  // 验证主链的交易对手元数据
+  metadata = UnmarshalJSON(version)
+  abortTransactionUnless(metadata.Version === "ics27-1")
+  abortTransactionUnless(IsSupportedEncoding(metadata.Encoding))
+  abortTransactionUnless(IsSupportedTxType(metadata.TxType))
+  abortTransactionUnless(metadata.ControllerConnectionId === connectionId)
+  abortTransactionUnless(metadata.HostConnectionId === counterpartyConnectionId)
+
+  
+  // 状态更改以记录成功注册的跨链帐户
+  SetInterchainAccountAddress(portID, metadata.Address)
+  // 设置此所有者/链间帐户对的活动通道
+  setActiveChannel(SourcePortId)
 }
 ```
 
 ```typescript
+// 由Relayer在主链上调用
 function onChanOpenConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-  // accept channel confirmations, port has already been validated
-}
-```
-
-```typescript
-function onChanCloseInit(
-  portIdentifier: Identifier,
-  channelIdentifier: Identifier) {
-  // no action necessary
-}
-```
-
-```typescript
-function onChanCloseConfirm(
-  portIdentifier: Identifier,
-  channelIdentifier: Identifier) {
-  // no action necessary
+  // 设置此所有者/链间帐户对的活动通道
+  setActiveChannel(portIdentifier)
 }
 ```
 
@@ -419,8 +498,31 @@ function onChanCloseConfirm(
 路由模块收到数据包后调用`onRecvPacket` 。
 
 ```typescript
-function onTimeoutPacketClose(packet: Packet) {
-  // nothing is necessary
+function OnRecvPacket(packet Packet) {
+  ack = NewResultAcknowledgement([]byte{byte(1)})
+
+	// 仅在数据包数据成功解码时尝试应用程序逻辑
+  switch data.Type {
+  case types.EXECUTE_TX:
+  msgs, err = types.DeserializeTx(data.Data)
+  if err != nil {
+    return NewErrorAcknowledgement(err)
+  }
+
+  // ExecuteTx 调用上面定义的 AuthenticateTx 函数
+  result, err = ExecuteTx(ctx, packet.SourcePort, packet.DestinationPort, packet.DestinationChannel, msgs)
+  if err != nil {
+    // 注意：网络中的节点放置在确认中的错误字符串必须在所有内容中保持一致
+    // ，否则状态机中会有一个分叉。
+    return NewErrorAcknowledgement(err)
+  }
+
+  // 在主链上执行后返回包含交易结果的确认
+  return NewAcknowledgement(result)
+
+  default:
+    return NewErrorAcknowledgement(ErrUnknownDataType)
+  }
 }
 ```
 
@@ -446,9 +548,9 @@ function onTimeoutPacket(packet: Packet) {
 
 链间账户通道两侧的端口标识符必须遵循的这些格式，才能被正确的链间账户模块接受。
 
-Controller Port Identifier: `icacontroller-{owner-account-address}`
+控制链端口标识符： `icacontroller-{owner-account-address}`
 
-Host Port Identifier: `icahost`
+主链端口标识符： `icahost`
 
 ## 示例实现
 
@@ -458,11 +560,11 @@ ICS-27 的 Cosmos-SDK 实现的代码库：https://github.com/cosmos/ibc-go
 
 未来的链间账户可能会通过引入一种 IBC 通道类型来大大简化，该通道类型是有序通道，但不会在超时时关闭通道，而是继续接收下一个数据包。如果核心 IBC 提供了这种通道类型，链间账户可能请求使用这种通道类型并删除与“活动通道”相关的所有逻辑和状态。元数据格式中的底层连接标识符的引用也可以被删除，由此元数据格式可以得到简化。
 
-The "active channel" setting and unsetting is currently necessary to allow interchain account owners to create a new channel in case the current active channel closes during channel timeout. The connection identifiers are part of the metadata to ensure that any new channel that gets opened are established on top of the original connection. All of this logic becomes unnecessary once the channel is ordered **and** unclosable, which can only be achieved by the introduction of a new channel type to core IBC.
+设置和取消“活动通道”在当前是必要的，旨在允许链间帐户所有者创建一个新通道，防止当前活动通道在通道超时情况下被关闭。连接标识符是元数据的一部分，旨在确保被启用的新通道均建立在原始连接上。如果要让通道有序**且**不可关闭，只能通过向核心 IBC 引入新的通道类型来实现，新通道类型实现后，这些逻辑就变得不必要了。
 
 ## 历史
 
-Aug 1, 2019 - Concept discussed
+2019年8月1日-讨论概念
 
 2019年9月24日-建议草案
 
@@ -480,4 +582,4 @@ Aug 1, 2019 - Concept discussed
 
 ## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本文中的所有内容均根据[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)获得许可。
