@@ -1,12 +1,12 @@
 ---
-ics: 26
+ics: '26'
 title: 路由模块
 stage: 草案
 category: IBC/TAO
 kind: 实例化
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-06-09
-modified: 2019-08-25
+created: '2019-06-09'
+modified: '2019-08-25'
 ---
 
 ## 概要
@@ -15,7 +15,7 @@ modified: 2019-08-25
 
 ### 动机
 
-默认的 IBC 处理程序使用接收方调用模式，其中模块必须单独调用 IBC 处理程序才能绑定到端口，启动握手，接受握手，发送和接收数据包等。这是灵活而简单的（请参阅[设计模式](../../../ibc/5_IBC_DESIGN_PATTERNS.md) ）。 但是理解起来有些棘手，中继器进程可能需要额外的工作，中继器进程必须跟踪多个模块的状态。该标准描述了一个 IBC“路由模块”，以自动执行大部分常用功能，路由数据包并简化中继器的任务。
+默认的 IBC 处理程序使用接收方调用模式，其中模块必须单独调用 IBC 处理程序才能绑定到端口，启动握手，接受握手，发送和接收数据包等。这是灵活而简单的。 但是理解起来有些棘手，中继器进程可能需要额外的工作，中继器进程必须跟踪多个模块的状态。该标准描述了一个 IBC“路由模块”，以自动执行大部分常用功能，路由数据包并简化中继器的任务。
 
 路由模块还可以扮演 [ICS 5](../ics-005-port-allocation) 中讨论的模块管理器的角色，并实现确定何时允许模块绑定到端口以及可以命名哪些端口的逻辑。
 
@@ -39,8 +39,9 @@ IBC 处理程序接口提供的所有函数均在 [ICS 25](../ics-025-handler-in
 
 模块必须向路由模块暴露以下函数签名，这些签名在收到各种数据报后即被调用：
 
-#### ChanOpenInit
-onChanOpenInit will verify that the relayer-chosen parameters are valid and perform any custom INIT logic. It may return an error if the chosen parameters are invalid in which case the handshake is aborted. If the provided version string is non-empty, onChanOpenInit should return the version string or an error if the provided version is invalid. If the version string is empty, onChanOpenInit is expected to return a default version string representing the version(s) it supports. If there is no default version string for the application, it should return an error if provided version is empty string.
+#### **ChanOpenInit**
+
+`onChanOpenInit`将验证中继器选择的参数是否有效并执行任何自定义的`INIT`逻辑。如果选择的参数无效，则可能会返回错误，在这种情况下握手将被中止。如果提供的版本字符串非空， `onChanOpenInit`应该返回版本字符串，如果提供的版本无效，则返回错误。如果版本字符串为空， `onChanOpenInit`应返回一个默认版本字符串，表示它支持的版本。如果应用程序没有默认的版本字符串，并且提供的版本为空字符串，它应该返回错误。
 
 ```typescript
 function onChanOpenInit(
@@ -50,13 +51,14 @@ function onChanOpenInit(
   channelIdentifier: Identifier,
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
-  version: string) {
-    // defined by the module
+  version: string) => (version: string, err: Error) {
+    // 由模块定义
 }
 ```
 
-#### ChanOpenTry
-onChanOpenTry will verify the INIT-chosen parameters along with the counterparty-chosen version string and perform custom TRY logic. If the INIT-chosen parameters are invalid, the callback must return an error to abort the handshake. If the counterparty-chosen version is not compatible with this modules supported versions, the callback must return an error to abort the handshake. If the versions are compatible, the try callback must select the final version string and return it to core IBC. onChanOpenTry may also perform custom initialization logic
+#### **ChanOpenTry**
+
+`onChanOpenTry`将验证 INIT 选择的参数以及交易对手选择的版本字符串并执行自定义`TRY`逻辑。如果 INIT 选择的参数无效，回调必须返回错误以中止握手。如果交易对手选择的版本与此模块支持的版本不兼容，回调必须返回错误以中止握手。如果版本兼容，try 回调必须选择最终版本字符串并将其返回给核心 IBC。 `onChanOpenTry`也可以执行自定义初始化逻辑
 
 ```typescript
 function onChanOpenTry(
@@ -66,32 +68,34 @@ function onChanOpenTry(
   channelIdentifier: Identifier,
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
-  version: string,
-  counterpartyVersion: string) {
-    // defined by the module
+  counterpartyVersion: string) => (version: string, err: Error) {
+    // 由模块定义
 }
 ```
 
-#### ChanOpenAck
+#### **OnChanOpenAck**
+
 onChanOpenAck will error if the counterparty selected version string is invalid to abort the handshake. It may also perform custom ACK logic.
 
 ```typescript
 function onChanOpenAck(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  version: string) {
-    // defined by the module
+  counterpartyChannelIdentifier: Identifier,
+  counterpartyVersion: string) {
+    // 由模块定义
 }
 ```
 
-#### onChanOpenConfirm
-onChanOpenConfirm will perform custom CONFIRM logic and may error to abort the handshake.
+#### **OnChanOpenConfirm**
+
+`onChanOpenConfirm`将执行自定义 CONFIRM 逻辑，并且可能会出错以中止握手。
 
 ```typescript
 function onChanOpenConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-    // defined by the module
+    // 由模块定义
 }
 ```
 
@@ -99,29 +103,29 @@ function onChanOpenConfirm(
 function onChanCloseInit(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-    // defined by the module
+    // 由模块定义
 }
 
 function onChanCloseConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier): void {
-    // defined by the module
+    // 由模块定义
 }
 
-function onRecvPacket(packet: Packet): bytes {
-    // defined by the module, returns acknowledgement
+function onRecvPacket(packet: Packet, relayer: string): bytes {
+    // 由模块定义， 返回回执
 }
 
-function onTimeoutPacket(packet: Packet) {
-    // defined by the module
+function onTimeoutPacket(packet: Packet, relayer: string) {
+    // 由模块定义
 }
 
-function onAcknowledgePacket(packet: Packet) {
-    // defined by the module
+function onAcknowledgePacket(packet: Packet, acknowledgement: bytes, relayer: string) {
+    // 由模块定义
 }
 
-function onTimeoutPacketClose(packet: Packet) {
-    // defined by the module
+function onTimeoutPacketClose(packet: Packet, relayer: string) {
+    // 由模块定义
 }
 ```
 
@@ -361,7 +365,7 @@ function handleConnOpenAck(datagram: ConnOpenAck) {
 }
 ```
 
-`ConnOpenConfirm`数据报确认另一个链上的 IBC 模块的握手确认并完成连接。
+`ConnOpenConfirm`数据报确认另一个链上的 IBC 模块的握手回执并完成连接。
 
 ```typescript
 interface ConnOpenConfirm {
@@ -398,7 +402,7 @@ interface ChanOpenInit {
 ```typescript
 function handleChanOpenInit(datagram: ChanOpenInit) {
     module = lookupModule(datagram.portIdentifier)
-    module.onChanOpenInit(
+    version, err = module.onChanOpenInit(
       datagram.order,
       datagram.connectionHops,
       datagram.portIdentifier,
@@ -407,6 +411,7 @@ function handleChanOpenInit(datagram: ChanOpenInit) {
       datagram.counterpartyChannelIdentifier,
       datagram.version
     )
+    abortTransactionUnless(err === nil)
     handler.chanOpenInit(
       datagram.order,
       datagram.connectionHops,
@@ -414,7 +419,7 @@ function handleChanOpenInit(datagram: ChanOpenInit) {
       datagram.channelIdentifier,
       datagram.counterpartyPortIdentifier,
       datagram.counterpartyChannelIdentifier,
-      datagram.version
+      version // pass in version returned from callback
     )
 }
 ```
@@ -427,26 +432,26 @@ interface ChanOpenTry {
   channelIdentifier: Identifier
   counterpartyPortIdentifier: Identifier
   counterpartyChannelIdentifier: Identifier
-  version: string
+  version: string // 弃用
   counterpartyVersion: string
   proofInit: CommitmentProof
-  proofHeight: uint64
+  proofHeight: Height
 }
 ```
 
 ```typescript
 function handleChanOpenTry(datagram: ChanOpenTry) {
     module = lookupModule(datagram.portIdentifier)
-    module.onChanOpenTry(
+    version, err = module.onChanOpenTry(
       datagram.order,
       datagram.connectionHops,
       datagram.portIdentifier,
       datagram.channelIdentifier,
       datagram.counterpartyPortIdentifier,
       datagram.counterpartyChannelIdentifier,
-      datagram.version,
       datagram.counterpartyVersion
     )
+    abortTransactionUnless(err === nil)
     handler.chanOpenTry(
       datagram.order,
       datagram.connectionHops,
@@ -454,7 +459,7 @@ function handleChanOpenTry(datagram: ChanOpenTry) {
       datagram.channelIdentifier,
       datagram.counterpartyPortIdentifier,
       datagram.counterpartyChannelIdentifier,
-      datagram.version,
+      version, // 由回调返回的版本号
       datagram.counterpartyVersion,
       datagram.proofInit,
       datagram.proofHeight
@@ -474,15 +479,19 @@ interface ChanOpenAck {
 
 ```typescript
 function handleChanOpenAck(datagram: ChanOpenAck) {
-    module.onChanOpenAck(
+    module = lookupModule(datagram.portIdentifier)
+    err = module.onChanOpenAck(
       datagram.portIdentifier,
       datagram.channelIdentifier,
-      datagram.version
+      datagram.counterpartyChannelIdentifier,
+      datagram.counterpartyVersion
     )
+    abortTransactionUnless(err === nil)
     handler.chanOpenAck(
       datagram.portIdentifier,
       datagram.channelIdentifier,
-      datagram.version,
+      datagram.counterpartyChannelIdentifier,
+      datagram.counterpartyVersion,
       datagram.proofTry,
       datagram.proofHeight
     )
@@ -501,10 +510,11 @@ interface ChanOpenConfirm {
 ```typescript
 function handleChanOpenConfirm(datagram: ChanOpenConfirm) {
     module = lookupModule(datagram.portIdentifier)
-    module.onChanOpenConfirm(
+    err = module.onChanOpenConfirm(
       datagram.portIdentifier,
       datagram.channelIdentifier
     )
+    abortTransactionUnless(err === nil)
     handler.chanOpenConfirm(
       datagram.portIdentifier,
       datagram.channelIdentifier,
@@ -524,10 +534,11 @@ interface ChanCloseInit {
 ```typescript
 function handleChanCloseInit(datagram: ChanCloseInit) {
     module = lookupModule(datagram.portIdentifier)
-    module.onChanCloseInit(
+    err = module.onChanCloseInit(
       datagram.portIdentifier,
       datagram.channelIdentifier
     )
+    abortTransactionUnless(err === nil)
     handler.chanCloseInit(
       datagram.portIdentifier,
       datagram.channelIdentifier
@@ -547,10 +558,11 @@ interface ChanCloseConfirm {
 ```typescript
 function handleChanCloseConfirm(datagram: ChanCloseConfirm) {
     module = lookupModule(datagram.portIdentifier)
-    module.onChanCloseConfirm(
+    err = module.onChanCloseConfirm(
       datagram.portIdentifier,
       datagram.channelIdentifier
     )
+    abortTransactionUnless(err === nil)
     handler.chanCloseConfirm(
       datagram.portIdentifier,
       datagram.channelIdentifier,
