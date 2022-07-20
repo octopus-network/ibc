@@ -4,13 +4,13 @@
 
 ## 概要
 
-This repository is the canonical location for development and documentation of the inter-blockchain communication protocol (IBC).
+本仓库是跨链通信协议（IBC） 开发和文档的规范仓库。
 
-It shall be used to consolidate design rationale, protocol semantics, and encoding descriptions for IBC, including both the core transport, authentication, &amp; ordering layer (IBC/TAO) and the application layers describing packet encoding &amp; processing semantics (IBC/APP).
+本仓库应用于整合 IBC 的设计原理、协议语义和编码描述，包括核心传输、身份验证和排序层（IBC/TAO），以及描述数据包编码和处理语义的应用层 (IBC/APP)。
 
-Contributions are welcome. See [CONTRIBUTING.md](meta/CONTRIBUTING.md) for contribution guidelines.
+欢迎投稿。有关贡献指南，请参阅 [CONTRIBUTING.md](meta/CONTRIBUTING.md) 。
 
-See [ROADMAP.md](meta/ROADMAP.md) for a public up-to-date version of our roadmap.
+请参阅 [ROADMAP.md](meta/ROADMAP.md) 获取路线图最新公开版本。
 
 ## 跨链标准
 
