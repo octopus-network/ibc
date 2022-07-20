@@ -1,13 +1,13 @@
 ---
-ics: 18
+ics: '18'
 title: 中继器算法
 stage: 草案
 category: IBC/TAO
 kind: 接口
 requires: 24, 25, 26
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-03-07
-modified: 2019-08-25
+created: '2019-03-07'
+modified: '2019-08-25'
 ---
 
 ## 概要
@@ -58,7 +58,7 @@ function relay(C: Set<Chain>) {
 }
 ```
 
-### 数据包，确认，超时
+### 数据包，回执，超时
 
 #### 在有序通道中中继数据包
 
@@ -66,11 +66,11 @@ function relay(C: Set<Chain>) {
 
 #### 在无序通道中中继数据包
 
-可以基于事件的方式中继无序通道中的数据包。中继器应监视源链中每个发送数据包发出的事件，然后使用事件日志中的数据来组成数据包。随后，中继器应通过查询数据包的序列号是否存在对应的确认来检查目的链是否已接收到过该数据包，如果尚未出现，中继器才中继该数据包。
+可以基于事件的方式中继无序通道中的数据包。中继器应监视源链中每个发送数据包发出的事件，然后使用事件日志中的数据来组成数据包。随后，中继器应通过查询数据包的序列号是否存在对应的回执来检查目的链是否已接收到过该数据包，如果尚未出现，中继器才中继该数据包。
 
-#### 中继确认
+#### 中继回执
 
-确认可以基于事件的方式进行中继。中继器应该监视目标链，每当接收数据包并写入确认发出事件时，使用事件日志中的数据组成确认数据包，检查数据包承诺在源链上是否存在（一旦确认被中继，它将被删除），如果是，则将确认中继到源链。
+回执可以基于事件的方式进行中继。中继器应该监视目标链，每当接收数据包并写入回执时，使用事件日志中的数据组成回执数据包，检查数据包承诺在源链上是否存在（一旦回执被中继，它将被删除），如果是，则将回执中继到源链。
 
 #### 中继超时
 
@@ -80,15 +80,15 @@ function relay(C: Set<Chain>) {
 
 `pendingDatagrams`整理要从一台机器发送到另一台机器的数据报。此功能的实现将取决于两台机器都支持的 IBC 协议的子集以及源机器的状态布局。特定的中继器可能还会实现其自己的过滤器功能，以便仅中继可被中继的数据报的子集（例如，一个为了能中继而链下付过费的子集）。
 
-下面概述了在两个链之间执行单向中继的示例实现。通过交换`chain`和`counterparty` ，可以更改为执行双向中继。 哪个中继器进程负责哪个数据报是一个灵活的选择-在此示例中，中继器进程中继在`chain`上开始的所有握手（将数据报发送到两个链），中继从`chain`发送的所有数据包到`counterparty` ，并中继所有数据包的确认从`counterparty`发送到`chain` 。
+下面概述了在两个链之间执行单向中继的示例实现。通过交换`chain`和`counterparty` ，可以更改为执行双向中继。 哪个中继器进程负责哪个数据报是一个灵活的选择-在此示例中，中继器进程中继在`chain`上开始的所有握手（将数据报发送到两个链），中继从`chain`发送的所有数据包到`counterparty` ，并中继所有数据包的回执从`counterparty`发送到`chain` 。
 
 ```typescript
 function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>> {
   const localDatagrams = []
   const counterpartyDatagrams = []
 
-  // ICS2 : Clients
-  // - Determine if light client needs to be updated (local & counterparty)
+  // ICS2 : 客户端
+  // - 确定轻客户端是否需要更新（本地和交易对手）
   height = chain.latestHeight()
   client = counterparty.queryClientConsensusState(chain)
   if client.height < height {
@@ -102,13 +102,14 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
     localDatagrams.push(ClientUpdate{counterparty, header})
   }
 
-  // ICS3 : Connections
-  // - Determine if any connection handshakes are in progress
+  // ICS3 : 连接
+  // - 确定是否正在进行任何连接握手
   connections = chain.getConnectionsUsingClient(counterparty)
   for (const localEnd of connections) {
     remoteEnd = counterparty.getConnection(localEnd.counterpartyIdentifier)
-    if (localEnd.state === INIT && remoteEnd === null)
-      // Handshake has started locally (1 step done), relay `connOpenTry` to the remote end
+    if (localEnd.state === INIT &&
+          (remoteEnd === null || remoteEnd.state === INIT))
+      // 握手已在本地开始（完成 1 步），将 `connOpenTry` 中继到远程端
       counterpartyDatagrams.push(ConnOpenTry{
         desiredIdentifier: localEnd.counterpartyConnectionIdentifier,
         counterpartyConnectionIdentifier: localEnd.identifier,
@@ -123,7 +124,7 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
         consensusHeight: localEnd.client.height,
       })
     else if (localEnd.state === INIT && remoteEnd.state === TRYOPEN)
-      // Handshake has started on the other end (2 steps done), relay `connOpenAck` to the local end
+      // 另一端已开始握手（完成 2 步），将 `connOpenAck` 中继到本地端
       localDatagrams.push(ConnOpenAck{
         identifier: localEnd.identifier,
         version: remoteEnd.version,
@@ -133,7 +134,7 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
         consensusHeight: remoteEnd.client.height,
       })
     else if (localEnd.state === OPEN && remoteEnd.state === TRYOPEN)
-      // Handshake has confirmed locally (3 steps done), relay `connOpenConfirm` to the remote end
+      // 握手已在本地确认（完成 3 步），将 `connOpenConfirm` 中继到远程端
       counterpartyDatagrams.push(ConnOpenConfirm{
         identifier: remoteEnd.identifier,
         proofAck: localEnd.proof(),
@@ -141,15 +142,16 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
       })
   }
 
-  // ICS4 : Channels & Packets
-  // - Determine if any channel handshakes are in progress
-  // - Determine if any packets, acknowledgements, or timeouts need to be relayed
+  // ICS4：通道和数据包
+  // - 确定是否正在进行任何通道握手
+  // - 确定是否需要中继任何数据包、回执或超时
   channels = chain.getChannelsUsingConnections(connections)
   for (const localEnd of channels) {
     remoteEnd = counterparty.getConnection(localEnd.counterpartyIdentifier)
-    // Deal with handshakes in progress
-    if (localEnd.state === INIT && remoteEnd === null)
-      // Handshake has started locally (1 step done), relay `chanOpenTry` to the remote end
+    // 处理正在进行的握手
+    if (localEnd.state === INIT &&
+          (remoteEnd === null || remoteEnd.state === INIT))
+      // 握手已在本地开始（完成 1 步），将 `chanOpenTry` 中继到远程端
       counterpartyDatagrams.push(ChanOpenTry{
         order: localEnd.order,
         connectionHops: localEnd.connectionHops.reverse(),
@@ -163,7 +165,7 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
         proofHeight: height,
       })
     else if (localEnd.state === INIT && remoteEnd.state === TRYOPEN)
-      // Handshake has started on the other end (2 steps done), relay `chanOpenAck` to the local end
+      // 另一端已开始握手（已完成 2 步），将 `chanOpenAck` 中继到本地端
       localDatagrams.push(ChanOpenAck{
         portIdentifier: localEnd.portIdentifier,
         channelIdentifier: localEnd.channelIdentifier,
@@ -172,7 +174,7 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
         proofHeight: localEnd.client.height,
       })
     else if (localEnd.state === OPEN && remoteEnd.state === TRYOPEN)
-      // Handshake has confirmed locally (3 steps done), relay `chanOpenConfirm` to the remote end
+      // 本地握手已确认（完成 3 步），将 `chanOpenConfirm` 中继到远程端
       counterpartyDatagrams.push(ChanOpenConfirm{
         portIdentifier: remoteEnd.portIdentifier,
         channelIdentifier: remoteEnd.channelIdentifier,
@@ -180,11 +182,11 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
         proofHeight: height
       })
 
-    // Deal with packets
-    // First, scan logs for sent packets and relay all of them
+    // 处理数据包
+    // 首先，扫描发送数据包的日志并中继所有数据包
     sentPacketLogs = queryByTopic(height, "sendPacket")
     for (const logEntry of sentPacketLogs) {
-      // relay packet with this sequence number
+      // 用这个序列号中继数据包
       packetData = Packet{logEntry.sequence, logEntry.timeoutHeight, logEntry.timeoutTimestamp,
                           localEnd.portIdentifier, localEnd.channelIdentifier,
                           remoteEnd.portIdentifier, remoteEnd.channelIdentifier, logEntry.data}
@@ -194,10 +196,11 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
         proofHeight: height,
       })
     }
-    // Then, scan logs for received packets and relay acknowledgements
-    recvPacketLogs = queryByTopic(height, "recvPacket")
+
+    // 然后，扫描日志以获取回执，中继回发送链
+    recvPacketLogs = queryByTopic(height, "writeAcknowledgement")
     for (const logEntry of recvPacketLogs) {
-      // relay packet acknowledgement with this sequence number
+      // 使用此序列号中继数据包回执
       packetData = Packet{logEntry.sequence, logEntry.timeoutHeight, logEntry.timeoutTimestamp,
                           localEnd.portIdentifier, localEnd.channelIdentifier,
                           remoteEnd.portIdentifier, remoteEnd.channelIdentifier, logEntry.data}
