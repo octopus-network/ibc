@@ -1,14 +1,14 @@
 ---
-ics: 5
+ics: '5'
 title: 端口分配
 stage: 草案
-requires: 24
-required-by: 4
+requires: '24'
+required-by: '4'
 category: IBC/TAO
 kind: 接口
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-06-20
-modified: 2019-08-25
+created: '2019-06-20'
+modified: '2019-08-25'
 ---
 
 ## 概要
@@ -67,7 +67,7 @@ type CapabilityKey object
 
 ```typescript
 function newCapability(name: string): CapabilityKey {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
 }
 ```
 
@@ -75,7 +75,7 @@ function newCapability(name: string): CapabilityKey {
 
 ```typescript
 function authenticateCapability(name: string, capability: CapabilityKey): bool {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
 }
 ```
 
@@ -83,7 +83,7 @@ function authenticateCapability(name: string, capability: CapabilityKey): bool {
 
 ```typescript
 function claimCapability(name: string, capability: CapabilityKey) {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
 }
 ```
 
@@ -91,7 +91,7 @@ function claimCapability(name: string, capability: CapabilityKey) {
 
 ```typescript
 function getCapability(name: string): CapabilityKey {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
 }
 ```
 
@@ -99,7 +99,7 @@ function getCapability(name: string): CapabilityKey {
 
 ```typescript
 function releaseCapability(capability: CapabilityKey) {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
 }
 ```
 
@@ -111,40 +111,40 @@ type SourceIdentifier string
 
 ```typescript
 function callingModuleIdentifier(): SourceIdentifier {
-  // provided by host state machine, e.g. contract address in Ethereum
+  // // 由主状态机提供, 例如 以太坊中的合约地址
 }
 ```
 
 然后按以下方式实现`newCapability` ， `authenticateCapability` ， `claimCapability` ， `getCapability`和`releaseCapability` ：
 
-```
+```typescript
 function newCapability(name: string): CapabilityKey {
   return callingModuleIdentifier()
 }
 ```
 
-```
+```typescript
 function authenticateCapability(name: string, capability: CapabilityKey) {
   return callingModuleIdentifier() === name
 }
 ```
 
-```
+```typescript
 function claimCapability(name: string, capability: CapabilityKey) {
-  // no-op
+  // 无操作
 }
 ```
 
-```
+```typescript
 function getCapability(name: string): CapabilityKey {
-  // not actually used
+  // 实际没有用到
   return nil
 }
 ```
 
-```
+```typescript
 function releaseCapability(capability: CapabilityKey) {
-  // no-op
+  // 无操作
 }
 ```
 

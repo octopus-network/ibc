@@ -1,5 +1,5 @@
 ---
-ics: 3
+ics: '3'
 title: 连接语义
 stage: 草案
 category: IBC/TAO
@@ -7,8 +7,8 @@ kind: 实例化
 requires: 2, 24
 required-by: 4, 25
 author: Christopher Goes <cwgoes@tendermint.com>, Juwoon Yun <joon@tendermint.com>
-created: 2019-03-07
-modified: 2019-08-25
+created: '2019-03-07'
+modified: '2019-08-25'
 ---
 
 ## 概要
@@ -82,6 +82,8 @@ interface ConnectionEnd {
   clientIdentifier: Identifier
   counterpartyClientIdentifier: Identifier
   version: string | []string
+  delayPeriodTime: uint64
+  delayPeriodBlocks: uint64
 }
 ```
 
@@ -91,6 +93,8 @@ interface ConnectionEnd {
 - `clientIdentifier`字段标识与此连接关联的客户端。
 - `counterpartyClientIdentifier`字段标识与此连接关联的对方链上的客户端。
 - `version`字段是不透明的字符串，可用于确定使用此连接的通道或数据包的编码或协议。如果未指定，则应使用默认`version` `""` 。
+- `delayPeriodTime`指示在验证区块头之后必须等待的时间，然后才能处理数据包、回执、接收证明或超时。
+- `delayPeriodBlocks`指示在验证区块头之后必须等待的以块为单位的时间段的数值，然后才能处理数据包、回执、接收证明或超时。
 
 ### 储存路径
 
@@ -124,27 +128,15 @@ function addConnectionToClient(
 }
 ```
 
-`removeConnectionFromClient`用于从与客户端关联的连接集合中删除某个连接标识符。
-
-```typescript
-function removeConnectionFromClient(
-  clientIdentifier: Identifier,
-  connectionIdentifier: Identifier) {
-    conns = privateStore.get(clientConnectionsPath(clientIdentifier))
-    conns.remove(connectionIdentifier)
-    privateStore.set(clientConnectionsPath(clientIdentifier), conns)
-}
-```
-
-辅助函数由连接所定义，以将与连接关联的`CommitmentPrefix`传递给客户端提供的验证函数。 在规范的其他部分，这些功能必须用于检视其他链的状态，而不是直接在客户端上调用验证函数。
+帮助函数由连接定义，将与连接关联的`CommitmentPrefix`传递给客户端提供的验证函数。在规范的其他部分，这些函数必须用于检查其他链的状态，而不是直接调用客户端上的验证函数。
 
 ```typescript
 function verifyClientConsensusState(
   connection: ConnectionEnd,
-  height: uint64,
+  height: Height,
   proof: CommitmentProof,
   clientIdentifier: Identifier,
-  consensusStateHeight: uint64,
+  consensusStateHeight: Height,
   consensusState: ConsensusState) {
     client = queryClient(connection.clientIdentifier)
     return client.verifyClientConsensusState(connection, height, connection.counterpartyPrefix, proof, clientIdentifier, consensusStateHeight, consensusState)
@@ -152,7 +144,7 @@ function verifyClientConsensusState(
 
 function verifyConnectionState(
   connection: ConnectionEnd,
-  height: uint64,
+  height: Height,
   proof: CommitmentProof,
   connectionIdentifier: Identifier,
   connectionEnd: ConnectionEnd) {
@@ -162,7 +154,7 @@ function verifyConnectionState(
 
 function verifyChannelState(
   connection: ConnectionEnd,
-  height: uint64,
+  height: Height,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
@@ -173,53 +165,67 @@ function verifyChannelState(
 
 function verifyPacketData(
   connection: ConnectionEnd,
-  height: uint64,
+  height: Height,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   sequence: uint64,
   data: bytes) {
     client = queryClient(connection.clientIdentifier)
-    return client.verifyPacketData(connection, height, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier, data)
+    return client.verifyPacketData(connection, height, connection.delayPeriodTime, connection.delayPeriodBlocks, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier, sequence, data)
 }
 
 function verifyPacketAcknowledgement(
   connection: ConnectionEnd,
-  height: uint64,
+  height: Height,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   sequence: uint64,
   acknowledgement: bytes) {
     client = queryClient(connection.clientIdentifier)
-    return client.verifyPacketAcknowledgement(connection, height, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier, acknowledgement)
+    return client.verifyPacketAcknowledgement(connection, height, connection.delayPeriodTime, connection.delayPeriodBlocks, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier, sequence, acknowledgement)
 }
 
-function verifyPacketAcknowledgementAbsence(
+function verifyPacketReceiptAbsence(
   connection: ConnectionEnd,
-  height: uint64,
+  height: Height,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   sequence: uint64) {
     client = queryClient(connection.clientIdentifier)
-    return client.verifyPacketAcknowledgementAbsence(connection, height, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier)
+    return client.verifyPacketReceiptAbsence(connection, height, connection.delayPeriodTime, connection.delayPeriodBlocks, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier, sequence)
+}
+
+// 可选：verifyPacketReceipt 仅需要支持 ORDERED 和 UNORDERED 之外的新通道类型。
+function verifyPacketReceipt(
+  connection: ConnectionEnd,
+  height: Height,
+  proof: CommitmentProof,
+  portIdentifier: Identifier,
+  channelIdentifier: Identifier,
+  sequence: uint64,
+  receipt: bytes) {
+    client = queryClient(connection.clientIdentifier)
+    return client.verifyPacketReceipt(connection, height, connection.delayPeriodTime, connection.delayPeriodBlocks, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier, sequence, receipt)
 }
 
 function verifyNextSequenceRecv(
   connection: ConnectionEnd,
-  height: uint64,
+  height: Height,
   proof: CommitmentProof,
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
+  sequence: uint64,
   nextSequenceRecv: uint64) {
     client = queryClient(connection.clientIdentifier)
-    return client.verifyNextSequenceRecv(connection, height, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier, nextSequenceRecv)
+    return client.verifyNextSequenceRecv(connection, height, connection.delayPeriodTime, connection.delayPeriodBlocks, connection.counterpartyPrefix, proof, portIdentifier, channelIdentifier, sequence, nextSequenceRecv)
 }
 
 function getTimestampAtHeight(
   connection: ConnectionEnd,
-  height: uint64) {
+  height: Height) {
     client = queryClient(connection.clientIdentifier)
     return client.queryConsensusState(height).getTimestamp()
 }
@@ -231,7 +237,7 @@ function getTimestampAtHeight(
 
 区块头追踪和不良行为检测在 [ICS 2](../ics-002-client-semantics) 中被定义。
 
-![State Machine Diagram](state.png)
+![State Machine Diagram](https://github.com/octopus-network/ibc/blob/zh-cn-2022/spec/core/ics-003-connection-semantics/state.png?raw=true)
 
 #### 标识符验证
 
@@ -247,7 +253,7 @@ type validateConnectionIdentifier = (id: Identifier) => boolean
 
 在握手过程中，连接的两端需要对连接关联的版本字节串达成一致。目前，版本字节串的内容对于 IBC 核心协议是不透明的。将来，它可能被用于指示哪些类型的通道可以使用特定的连接，或者通道相关的数据报将使用哪种编码格式。目前，主机状态机可以利用版本数据来协商与 IBC 之上的自定义逻辑有关的编码、优先级或特定与连接的元数据。
 
-主机状态机还可以安全的忽略版本数据或指定一个空字符串。
+主机状态机也可以安全地忽略版本数据或指定一个空字符串。假设运行开放握手的两条链至少有一个共同的兼容版本（即两条链的兼容版本必须有一个非空的交集）。如果两条链没有任何可以被双方都接受的版本，握手将失败。
 
 该标准的一个实现必须定义一个函数`getCompatibleVersions` ，该函数返回它支持的版本列表，按优先级降序排列。
 
@@ -255,7 +261,7 @@ type validateConnectionIdentifier = (id: Identifier) => boolean
 type getCompatibleVersions = () => []string
 ```
 
-实现必须定义一个函数 `pickVersion` 来从对方提议的版本列表中选择一个版本。
+一个实现必须定义一个函数`pickVersion`，该函数能从版本列表中选择一个版本。请注意，如果执行握手的两条链实现了不同的`pickVersion`函数，则（可能行为不端）中继器可能能够通过在两条链上执行`INIT`和`OPENTRY`来停止握手，此时它们将选择不同的版本并且无法继续。
 
 ```typescript
 type pickVersion = ([]string) => string
@@ -283,60 +289,84 @@ type pickVersion = ([]string) => string
 
 该子协议不需要经过许可，除了考虑反垃圾信息。
 
+链必须实现一个函数`generateIdentifier` ，它选择一个标识符，例如通过增加一个计数器：
+
+```typescript
+type generateIdentifier = () -> Identifier
+```
+
+可以选择将特定版本作为`version`传递，以确保握手将该版本一起完成或失败。
+
 *ConnOpenInit* 初始化链 A 上的连接尝试。
 
 ```typescript
 function connOpenInit(
-  identifier: Identifier,
-  desiredCounterpartyConnectionIdentifier: Identifier,
   counterpartyPrefix: CommitmentPrefix,
   clientIdentifier: Identifier,
-  counterpartyClientIdentifier: Identifier) {
-    abortTransactionUnless(validateConnectionIdentifier(identifier))
+  counterpartyClientIdentifier: Identifier,
+  version: string,
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64) {
+    identifier = generateIdentifier()
     abortTransactionUnless(provableStore.get(connectionPath(identifier)) == null)
     state = INIT
-    connection = ConnectionEnd{state, desiredCounterpartyConnectionIdentifier, counterpartyPrefix,
-      clientIdentifier, counterpartyClientIdentifier, getCompatibleVersions()}
+    if version != "" {
+      // 手动选择的版本必须是我们可以支持的版本
+      abortTransactionUnless(getCompatibleVersions().indexOf(version) > -1)
+      versions = [version]
+    } else {
+      versions = getCompatibleVersions()
+    }
+    connection = ConnectionEnd{state, "", counterpartyPrefix,
+      clientIdentifier, counterpartyClientIdentifier, versions, delayPeriodTime, delayPeriodBlocks}
     provableStore.set(connectionPath(identifier), connection)
     addConnectionToClient(clientIdentifier, identifier)
 }
 ```
 
-*ConnOpenTry* 中继链 A 到链 B 的连接尝试的通知（此代码在链 B 上执行）。
+*ConnOpenTry*中继链 A 到链 B 的连接尝试的通知（此代码在链 B 上执行）。
 
 ```typescript
 function connOpenTry(
-  desiredIdentifier: Identifier,
+  previousIdentifier: Identifier,
   counterpartyConnectionIdentifier: Identifier,
   counterpartyPrefix: CommitmentPrefix,
   counterpartyClientIdentifier: Identifier,
   clientIdentifier: Identifier,
   counterpartyVersions: string[],
+  delayPeriodTime: uint64,
+  delayPeriodBlocks: uint64,
   proofInit: CommitmentProof,
   proofConsensus: CommitmentProof,
-  proofHeight: uint64,
-  consensusHeight: uint64) {
-    abortTransactionUnless(validateConnectionIdentifier(desiredIdentifier))
-    abortTransactionUnless(consensusHeight <= getCurrentHeight())
+  proofHeight: Height,
+  consensusHeight: Height) {
+    if (previousIdentifier !== "") {
+      previous = provableStore.get(connectionPath(identifier))
+      abortTransactionUnless(
+        (previous !== null) &&
+        (previous.state === INIT &&
+         previous.counterpartyConnectionIdentifier === "" &&
+         previous.counterpartyPrefix === counterpartyPrefix &&
+         previous.clientIdentifier === clientIdentifier &&
+         previous.counterpartyClientIdentifier === counterpartyClientIdentifier &&
+         previous.delayPeriodTime === delayPeriodTime
+         previous.delayPeriodBlocks === delayPeriodBlocks))
+      identifier = previousIdentifier
+    } else {
+      // 如果传递的标识符是哨兵空字符串，则生成一个新的标识符
+      identifier = generateIdentifier()
+    }
+    abortTransactionUnless(consensusHeight < getCurrentHeight())
     expectedConsensusState = getConsensusState(consensusHeight)
-    expected = ConnectionEnd{INIT, desiredIdentifier, getCommitmentPrefix(), counterpartyClientIdentifier,
-                             clientIdentifier, counterpartyVersions}
-    version = pickVersion(counterpartyVersions)
+    expected = ConnectionEnd{INIT, "", getCommitmentPrefix(), counterpartyClientIdentifier,
+                             clientIdentifier, counterpartyVersions, delayPeriodTime, delayPeriodBlocks}
+    versionsIntersection = intersection(counterpartyVersions, previous !== null ? previous.version : getCompatibleVersions())
+    version = pickVersion(versionsIntersection) // 如果没有交集则抛出错误
     connection = ConnectionEnd{TRYOPEN, counterpartyConnectionIdentifier, counterpartyPrefix,
-                               clientIdentifier, counterpartyClientIdentifier, version}
+                               clientIdentifier, counterpartyClientIdentifier, version, delayPeriodTime, delayPeriodBlocks}
     abortTransactionUnless(connection.verifyConnectionState(proofHeight, proofInit, counterpartyConnectionIdentifier, expected))
     abortTransactionUnless(connection.verifyClientConsensusState(
       proofHeight, proofConsensus, counterpartyClientIdentifier, consensusHeight, expectedConsensusState))
-    previous = provableStore.get(connectionPath(desiredIdentifier))
-    abortTransactionUnless(
-      (previous === null) ||
-      (previous.state === INIT &&
-        previous.counterpartyConnectionIdentifier === counterpartyConnectionIdentifier &&
-        previous.counterpartyPrefix === counterpartyPrefix &&
-        previous.clientIdentifier === clientIdentifier &&
-        previous.counterpartyClientIdentifier === counterpartyClientIdentifier &&
-        previous.version === version))
-    identifier = desiredIdentifier
     provableStore.set(connectionPath(identifier), connection)
     addConnectionToClient(clientIdentifier, identifier)
 }
@@ -348,28 +378,31 @@ function connOpenTry(
 function connOpenAck(
   identifier: Identifier,
   version: string,
+  counterpartyIdentifier: Identifier,
   proofTry: CommitmentProof,
   proofConsensus: CommitmentProof,
-  proofHeight: uint64,
-  consensusHeight: uint64) {
-    abortTransactionUnless(consensusHeight <= getCurrentHeight())
+  proofHeight: Height,
+  consensusHeight: Height) {
+    abortTransactionUnless(consensusHeight < getCurrentHeight())
     connection = provableStore.get(connectionPath(identifier))
-    abortTransactionUnless(connection.state === INIT || connection.state === TRYOPEN)
+    abortTransactionUnless(
+        (connection.state === INIT && connection.version.indexOf(version) !== -1)
+        || (connection.state === TRYOPEN && connection.version === version))
     expectedConsensusState = getConsensusState(consensusHeight)
     expected = ConnectionEnd{TRYOPEN, identifier, getCommitmentPrefix(),
                              connection.counterpartyClientIdentifier, connection.clientIdentifier,
-                             version}
-    abortTransactionUnless(connection.verifyConnectionState(proofHeight, proofTry, connection.counterpartyConnectionIdentifier, expected))
+                             version, connection.delayPeriodTime, connection.delayPeriodBlocks}
+    abortTransactionUnless(connection.verifyConnectionState(proofHeight, proofTry, counterpartyIdentifier, expected))
     abortTransactionUnless(connection.verifyClientConsensusState(
       proofHeight, proofConsensus, connection.counterpartyClientIdentifier, consensusHeight, expectedConsensusState))
     connection.state = OPEN
-    abortTransactionUnless(getCompatibleVersions().indexOf(version) !== -1)
     connection.version = version
+    connection.counterpartyConnectionIdentifier = counterpartyIdentifier
     provableStore.set(connectionPath(identifier), connection)
 }
 ```
 
-*ConnOpenConfirm* 在两条链上都建立连接后确认链 A 与链 B 的连接的建立（此代码在链 B 上执行）。
+*ConnOpenConfirm*在两条链上都建立连接后确认链 A 与链 B 的连接的建立（此代码在链 B 上执行）。
 
 ```typescript
 function connOpenConfirm(
@@ -429,7 +462,7 @@ function queryClientConnections(id: Identifier): Set<Identifier> {
 
 ## 历史
 
-本文档的某些部分受[以前的 IBC 规范](https://github.com/cosmos/cosmos-sdk/tree/master/docs/spec/ibc)的启发。
+本文档的部分内容受到[先前 IBC 规范](../../../archive)的启发。
 
 2019年3月29日-提交初稿
 

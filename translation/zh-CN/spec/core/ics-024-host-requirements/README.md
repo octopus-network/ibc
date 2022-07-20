@@ -1,14 +1,14 @@
 ---
-ics: 24
+ics: '24'
 title: 主机状态机要求
 stage: 草案
 category: IBC/TAO
 kind: 接口
-requires: 23
+requires: '23'
 required-by: 2, 3, 4, 5, 18
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-04-16
-modified: 2019-08-25
+created: '2019-04-16'
+modified: '2019-08-25'
 ---
 
 ## 概要
@@ -57,10 +57,9 @@ IBC/TAO 规范定义了两个模块的实现：核心“ IBC 处理程序”模�
 
 标志符的默认长度规范如下：
 
-| Port identifier | Client identifier | Connection identifier | Channel identifier |
-| --------------- | ----------------- | --------------------- | ------------------ |
-| 2 - 128         | 9 - 64            | 10 - 64               | 10 - 64            |
-
+Port identifier | Client identifier | Connection identifier | Channel identifier
+--- | --- | --- | ---
+2 - 128 | 9 - 64 | 10 - 64 | 10 - 64
 
 ### 键/值存储
 
@@ -122,8 +121,9 @@ provableStore | "channelEnds/ports/{identifier}/channels/{identifier}" | Channel
 provableStore | "seqSends/ports/{identifier}/channels/{identifier}/nextSequenceSend" | uint64 | [ICS 4](../ics-004-channel-and-packet-semantics)
 provableStore | "seqRecvs/ports/{identifier}/channels/{identifier}/nextSequenceRecv" | uint64 | [ICS 4](../ics-004-channel-and-packet-semantics)
 provableStore | "seqAcks/ports/{identifier}/channels/{identifier}/nextSequenceAck" | uint64 | [ICS 4](../ics-004-channel-and-packet-semantics)
-provableStore | "commitments/ports/{identifier}/channels/{identifier}/packets/{sequence}" | bytes | [ICS 4](../ics-004-channel-and-packet-semantics)
-provableStore | "acks/ports/{identifier}/channels/{identifier}/acknowledgements/{sequence}" | bytes | [ICS 4](../ics-004-channel-and-packet-semantics)
+provableStore | "commitments/ports/{identifier}/channels/{identifier}/sequences/{sequence}" | bytes | [ICS 4](../ics-004-channel-and-packet-semantics)
+provableStore | "receipts/ports/{identifier}/channels/{identifier}/sequences/{sequence}" | bytes | [ICS 4](../ics-004-channel-and-packet-semantics)
+provableStore | "acks/ports/{identifier}/channels/{identifier}/sequences/{sequence}" | bytes | [ICS 4](../ics-004-channel-and-packet-semantics)
 
 ### 模块布局
 
@@ -319,4 +319,4 @@ type queryByTopic = (height: uint64, topic: string) => []byte[]
 
 ---
 
-1：数据报是在某些物理网络上传输的不透明的字节符，并由分类帐状态机中实现的IBC路由模块处理。在一些实现中，数据报可能是分类账特定交易或消息数据结构中的一个字段，其中还包含其他信息（例如，防止垃圾邮件的费用、防止重放的nonce、路由到IBC处理程序的类型标识符等）。所有的IBC子协议（如打开连接、创建通道、发送数据包）都是以数据报的集合和通过路由模块处理这些数据报的协议来定义。
+<a id="footnote1">1</a> ：数据报是通过某个物理网络传输的不透明字节串，由账本状态机中实现的 IBC 路由模块处理。在一些实现中，数据报可以是特定账本的交易的一个字段，或消息数据结构中的一个字段，这样的数据结构还包含其他信息（例如，防止垃圾邮件的费用、防止重放的随机数、路由到 IBC 处理程序的类型标识符等）。 .所有 IBC 子协议（例如打开连接、创建通道、发送数据包）都是根据数据报集和协议定义的，用于通过路由模块处理它们。

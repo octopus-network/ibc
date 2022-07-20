@@ -1,13 +1,13 @@
 ---
-ics: 23
+ics: '23'
 title: 向量承诺
 stage: 草案
 required-by: 2, 24
 category: IBC/TAO
 kind: 接口
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-04-16
-modified: 2019-08-25
+created: '2019-04-16'
+modified: '2019-08-25'
 ---
 
 ## 概要
@@ -36,7 +36,7 @@ modified: 2019-08-25
 
 ## 技术指标
 
-我们定义了一种行为和一种概括性的数据类型。请参见。
+下面我们定义一个行为和数据类型的概述。有关数据类型定义，请查看[conio/ics23](https://github.com/confio/ics23/blob/master/proofs.proto)代码库。
 
 ### 数据类型
 
@@ -62,7 +62,7 @@ type CommitmentRoot = object
 
 #### 承诺路径
 
-`CommitmentPath`是用于验证承诺证明的路径，该路径可以是任意结构化对象（由承诺类型定义）。它必须由通过`applyPrefix` （定义如下）计算出来。
+`CommitmentPath`是用于验证承诺证明的路径，该路径可以是任意结构化对象（由承诺类型定义）。它必须由通过`applyPrefix`  （定义如下）计算出来。
 
 ```typescript
 type CommitmentPath = object
@@ -76,13 +76,13 @@ type CommitmentPath = object
 type CommitmentPrefix = object
 ```
 
-函数`applyPrefix`根据参数构造新的承诺路径。它在前缀参数的上下文中解释路径参数。
+函数`applyPrefix`从参数构造一个新的提交路径。它在前缀参数的上下文中解释路径参数。
 
 对于两个`(prefix, path)`元组， `applyPrefix(prefix, path)`必须仅在元组元素相等时才返回相同的键。
 
 `applyPrefix`必须按`Path`来实现，因为`Path`可以具有不同的具体结构。 `applyPrefix`可以接受多种`CommitmentPrefix`类型。
 
-`applyPrefix`返回的`CommitmentPath`并不需要是可序列化的（例如，它可能是树节点标识符的列表），但它需要能够比较是否相等。
+`applyPrefix`返回的`CommitmentPath`不需要是可序列化的（例如，它可能是树节点标识符的列表），但它确实需要可以被比较是否相等。
 
 ```typescript
 type applyPrefix = (prefix: CommitmentPrefix, path: Path) => CommitmentPath
