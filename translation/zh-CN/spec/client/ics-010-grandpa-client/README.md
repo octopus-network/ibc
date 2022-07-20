@@ -1,12 +1,12 @@
 ---
-ics: 10
+ics: '10'
 title: GRANDPA 客户端
 stage: 草案
 category: IBC/TAO
 kind: 实例化
 author: Yuanchao Sun <ys@cdot.network>, John Wu <john@cdot.network>
-created: 2020-03-15
-implements: 2
+created: '2020-03-15'
+implements: '2'
 ---
 
 ## 概要
@@ -48,7 +48,7 @@ GRANDPA 的一组权威账户。
 
 ```typescript
 interface AuthoritySet {
-  // this is incremented every time the set changes
+  // 每次集合更改时都会递增
   setId: uint64
   authorities: List<Pair<AuthorityId, AuthorityWeight>>
 }
@@ -148,17 +148,17 @@ GRANDPA 客户端合法性检查将验证区块头是否由当前权威集合签
 function checkValidityAndUpdateState(
   clientState: ClientState,
   header: Header) {
-    // assert header height is newer than any we know
+    // 断言：区块头高度比我们所知道的要新
     assert(header.height > clientState.latestHeight)
     consensusState = get("clients/{identifier}/consensusStates/{clientState.latestHeight}")
-    // verify that the provided header is valid
+    // 验证提供的区块头是否有效
     assert(verify(consensusState.authoritySet, header))
-    // update latest height
+    // 更新最新高度
     clientState.latestHeight = header.height
-    // create recorded consensus state, save it
+    // 创建记录的共识状态，并保存
     consensusState = ConsensusState{header.authoritySet, header.commitmentRoot}
     set("clients/{identifier}/consensusStates/{header.height}", consensusState)
-    // save the client
+    // 保存客户端
     set("clients/{identifier}", clientState)
 }
 
@@ -183,20 +183,20 @@ GRANDPA 客户端的不良行为检查将确定在相同高度的两个冲突的
 function checkMisbehaviourAndUpdateState(
   clientState: ClientState,
   evidence: Evidence) {
-    // assert that the heights are the same
+    // 断言：高度相同
     assert(evidence.h1.height === evidence.h2.height)
-    // assert that the commitments are different
+    // 断言：承诺是不同的
     assert(evidence.h1.commitmentRoot !== evidence.h2.commitmentRoot)
-    // fetch the previously verified commitment root & authority set
+    // 获取先前验证的承诺根和权限集
     consensusState = get("clients/{identifier}/consensusStates/{evidence.fromHeight}")
-    // check if the light client "would have been fooled"
+    // 检查轻客户端是否“会被愚弄”
     assert(
       verify(consensusState.authoritySet, evidence.h1) &&
       verify(consensusState.authoritySet, evidence.h2)
       )
-    // set the frozen height
+    // 设置冻结高度
     clientState.frozenHeight = min(clientState.frozenHeight, evidence.h1.height) // which is same as h2.height
-    // save the client
+    //保存客户端
     set("clients/{identifier}", clientState)
 }
 ```
@@ -215,13 +215,13 @@ function verifyClientConsensusState(
   consensusStateHeight: uint64,
   consensusState: ConsensusState) {
     path = applyPrefix(prefix, "clients/{clientIdentifier}/consensusState/{consensusStateHeight}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided consensus state has been stored
+    // 验证提供的共识状态是否已存储
     assert(root.verifyMembership(path, consensusState, proof))
 }
 
@@ -233,13 +233,13 @@ function verifyConnectionState(
   connectionIdentifier: Identifier,
   connectionEnd: ConnectionEnd) {
     path = applyPrefix(prefix, "connections/{connectionIdentifier}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided connection end has been stored
+    // 验证提供的连接端是否已存储
     assert(root.verifyMembership(path, connectionEnd, proof))
 }
 
@@ -252,13 +252,13 @@ function verifyChannelState(
   channelIdentifier: Identifier,
   channelEnd: ChannelEnd) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided channel end has been stored
+    // 验证提供的通道端是否已存储
     assert(root.verifyMembership(path, channelEnd, proof))
 }
 
@@ -272,13 +272,13 @@ function verifyPacketData(
   sequence: uint64,
   data: bytes) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/packets/{sequence}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided commitment has been stored
+    // 验证提供的承诺是否已被存储
     assert(root.verifyMembership(path, hash(data), proof))
 }
 
@@ -292,13 +292,13 @@ function verifyPacketAcknowledgement(
   sequence: uint64,
   acknowledgement: bytes) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided acknowledgement has been stored
+    // 验证提供的回执是否已存储
     assert(root.verifyMembership(path, hash(acknowledgement), proof))
 }
 
@@ -311,13 +311,13 @@ function verifyPacketAcknowledgementAbsence(
   channelIdentifier: Identifier,
   sequence: uint64) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that no acknowledgement has been stored
+    // 验证没有承诺被存储
     assert(root.verifyNonMembership(path, proof))
 }
 
@@ -330,13 +330,13 @@ function verifyNextSequenceRecv(
   channelIdentifier: Identifier,
   nextSequenceRecv: uint64) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/nextSequenceRecv")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the nextSequenceRecv is as claimed
+    // 验证 nextSequenceRecv 是否如声明的那样
     assert(root.verifyMembership(path, nextSequenceRecv, proof))
 }
 ```
