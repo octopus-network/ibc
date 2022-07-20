@@ -16,7 +16,7 @@ modified: '2021-06-18'
 
 ### 动机
 
-IBC applications are designed to be self-contained modules that implement their own application-specific logic through a set of interfaces with the core IBC handlers. These core IBC handlers, in turn, are designed to enforce the correctness properties of IBC (transport, authentication, ordering) while delegating all application-specific handling to the IBC application modules. However, there are cases where some functionality may be desired by many applications, yet not appropriate to place in core IBC. The most prescient example of this, is the generalized fee payment protocol. Most applications will want to opt in to a protocol that incentivizes relayers to relay packets on their channel. However, some may not wish to enable this feature and yet others will want to implement their own custom fee handler.
+IBC 应用程序设计为自成一体的模块，通过一组与核心 IBC 处理程序的接口来实现自己的应用程序特定逻辑。反过来，这些核心 IBC 处理程序设计为确保 IBC 的正确性属性（传输、身份验证、排序），同时将所有应用所专有的处理委托给 IBC 应用程序模块。但是，在某些情况下，许多应用程序可能需要某些功能，但不适合放在核心 IBC 中。最可预见的例子是通用性费用支付协议。大多数应用都希望选用一种协议来激励中继器在其通道上中继数据包。但是，有些应用可能不希望启用此功能，而另一些应用则希望实现自己的自定义费用处理程序。
 
 如果没有中间件方案，开发人员必须选择是将此扩展置于每个相关应用的内部逻辑中或将这段应用逻辑放在核心 IBC 中。将它放在每个应用程序中是冗余的并且容易出错；将逻辑放置在核心 IBC 中需要所有应用程序都选用，并且违反了核心 IBC (TAO) 和应用程序之间的抽象隔离。随着扩展数量的增加，这两种情况都不可扩展，因为这都必然会使应用程序或核心 IBC 处理程序中的代码膨胀。
 
@@ -39,7 +39,7 @@ IBC applications are designed to be self-contained modules that implement their 
 - 核心 IBC 无需更改
 - 基本应用程序逻辑不需要改变
 
-## Technical Specification
+## 技术规范
 
 ### 总体设计
 
@@ -56,17 +56,17 @@ IBC applications are designed to be self-contained modules that implement their 
 #### 接口
 
 ```typescript
-// Middleware implements the ICS26 Module interface
+// 中间件实现 ICS26 模块接口
 interface Middleware extends ICS26Module {
-    app: ICS26Module // middleware has acccess to an underlying application which may be wrapped by more middleware
-    ics4Wrapper: ICS4Wrapper // middleware has access to ICS4Wrapper which may be core IBC Channel Handler or a higher-level middleware that wraps this middleware.
+    app: ICS26Module // 中间件可以访问可能被更多中间件包装的底层应用程序
+    ics4Wrapper: ICS4Wrapper // 中间件可以访问 ICS4Wrapper，它可能是核心 IBC 通道处理程序或包装此中间件的更高级别的中间件。
 }
 ```
 
 ```typescript
-// This is implemented by ICS4 and all middleware that are wrapping base application.
-// The base application will call `sendPacket` or `writeAcknowledgement` of the middleware directly above them
-// which will call the next middleware until it reaches the core IBC handler.
+// 由 ICS4 和所有包装基础应用程序的中间件实现。
+// 基础应用程序将调用它们直接上层的中间件的 `sendPacket` 或 `writeAcknowledgement`
+// 这些方法将调用下一个中间件，直到调用到核心 IBC 处理程序。
 interface ICS4Wrapper {
     sendPacket(
       capability: CapabilityKey,
@@ -99,7 +99,7 @@ function onChanOpenInit(
         channelIdentifier,
         counterpartyPortIdentifier,
         counterpartyChannelIdentifier,
-        appVersion, // note we only pass app version here
+        appVersion, // 注意这里我们只传递应用版本
     )
 }
 
@@ -119,7 +119,7 @@ function OnChanOpenTry(
       }
       doCustomLogic()
 
-      // call the underlying applications OnChanOpenTry callback
+      // 调用底层应用的 OnChanOpenTry 回调
       app.OnChanOpenTry(
           order,
           connectionHops,
@@ -127,8 +127,8 @@ function OnChanOpenTry(
           channelIdentifier,
           counterpartyPortIdentifier,
           counterpartyChannelIdentifier,
-          cpAppVersion, // note we only pass counterparty app version here
-          appVersion, // only pass app version
+          cpAppVersion, // 注意这里我们只传递交易对手的应用版本
+          appVersion, // 只传递应用版本
       )
 }
 
@@ -143,7 +143,7 @@ function onChanOpenAck(
       }
       doCustomLogic()
       
-      // call the underlying applications OnChanOpenTry callback
+      // 调用底层应用的 OnChanOpenTry 回调
       app.OnChanOpenAck(portIdentifier, channelIdentifier, appVersion)
 }
 
@@ -173,7 +173,7 @@ function onRecvPacket(packet: Packet, relayer: string): bytes {
 
     app_acknowledgement = app.onRecvPacket(packet, relayer)
 
-    // middleware may modify ack
+    // 中间件可以修改回执
     ack = doCustomLogic(app_acknowledgement)
    
     return marshal(ack)
@@ -182,7 +182,7 @@ function onRecvPacket(packet: Packet, relayer: string): bytes {
 function onAcknowledgePacket(packet: Packet, acknowledgement: bytes, relayer: string) {
     doCustomLogic()
 
-    // middleware may modify ack
+    // 中间件可以修改回执
     app_ack = getAppAcknowledgement(acknowledgement)
 
     app.OnAcknowledgePacket(packet, app_ack, relayer)
@@ -209,13 +209,13 @@ function onTimeoutPacketClose(packet: Packet, relayer: string) {
 
 注意：中间件可以对 ICS-26 中定义的所有 IBC 模块回调的底层应用程序数据进行预处理和后处理。
 
-#### ICS-4 Wrappers
+#### ICS-4 包装类
 
 ```typescript
 function writeAcknowledgement(
   packet: Packet,
   acknowledgement: bytes) {
-    // middleware may modify acknowledgement
+    // 中间件可以修改回执
     ack_bytes = doCustomLogic(acknowledgement)
 
     return ics4.writeAcknowledgement(packet, ack_bytes)
@@ -245,11 +245,11 @@ function sendPacket(
 
 ### 用户交互
 
-In the case where the middleware requires some user input in order to modify the outgoing packet messages from the underlying application, the middleware MUST get this information from the user before it receives the packet message from the underlying application. It must then do its own authentication of the user input, and ensure that the user input provided to the middleware is matched to the correct outgoing packet message. The middleware MAY accomplish this by requiring that the user input to middleware, and packet message to underlying application are sent atomically and ordered from outermost middleware to base application.
+在中间件需要一些用户输入以修改来自底层应用程序的传出数据包消息时，中间件必须在从底层应用程序接收数据包消息之前从用户那里获取此输入信息。随后中间件必须自行对用户输入信息进行验证，并确保提供给中间件的用户输入与正确的传出数据包消息相匹配。为实现以上功能，中间件可以要求用户对中间件的输入和发送到底层应用程序的数据包消息采用原子发送，并按照从最外层的中间件到基础应用程序的顺序排序。
 
 ### 安全模型
 
-As seen above, IBC middleware may arbitrarily modify any incoming or outgoing data from an underlying application. Thus, developers should not use any untrusted middleware in their application stacks.
+如上所示，IBC 中间件可以任意修改来自底层应用程序的任何传入或传出数据。因此，开发人员不应在其应用程序栈中使用任何不受信任的中间件。
 
 ## 向后兼容性
 
