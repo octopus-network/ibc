@@ -188,7 +188,7 @@ type compare = (h1: Height, h2: Height) => Ord
 
 #### 客户端状态
 
-客户端状态是由一种客户端类型定义的不透明数据结构。它或将保留任意的内部状态去追踪已经被验证过的状态根和发生过的不良行为。
+`ClientState`是由一种客户端类型定义的不透明数据结构。它或将保留任意的内部状态去追踪已经被验证过的状态根和发生过的不当行为。
 
 轻客户端是一种不透明的表现形式——不同的共识算法可以定义不同的轻客户端更新算法，但是轻客户端必须对 IBC 处理程序公开一组通用的查询函数。
 
@@ -212,14 +212,14 @@ type latestClientHeight = (
 
 #### 承诺根
 
-`承诺根` 是根据 [ICS 23](../ics-023-vector-commitments) 由一种客户端类型定义的不透明数据结构。它用于验证处于特定最终高度（必须与特定承诺根相关联）的状态中是否包含特定键值对。
+`CommitmentProof` 是根据 [ICS 23](../ics-023-vector-commitments) 由一种客户端类型定义的不透明数据结构。它用于验证处于特定最终高度（必须与特定承诺根相关联）的状态中是否包含特定键值对。
 
 #### 状态验证
 
 客户端类型必须定义一系列函数去对客户端追踪的状态机的内部状态进行验证。内部实现细节可能存在差异（例如，一个回环客户端可以直接读取状态信息且不需要提供证明）。
 
 - `delayPeriodTime`：该变量表示一个区块头被验证之后与数据包被处理前必须间隔的最短时间；该变量随着数据包被传给数据包相关的验证方法。
-- `delayPeriodBlocks`： 该变量是一个区块头被验证之后与数据包被处理前必须间隔的区块高度的最小值；该变量随着数据包被传给数据包相关的验证方法。
+- `delayPeriodBlocks`： 该变量是一个区块头被验证之后与数据包被处理前必须间隔的以区块为单位的时间段的数值；该变量随着数据包被传给数据包相关的验证方法。
 
 ##### 所需函数：
 
@@ -282,7 +282,7 @@ type verifyPacketData = (
   => boolean
 ```
 
-`verifyPacketAcknowledgement` 在指定的端口，指定的通道和指定的序号的传入数据包的确认的证明。
+`verifyPacketAcknowledgement` 在指定的端口，指定的通道和指定的序号的传入数据包的回执的证明。
 
 ```typescript
 type verifyPacketAcknowledgement = (
@@ -604,7 +604,7 @@ interface Misbehaviour {
   h2: Header
 }
 
-// algorithm run by operator to commit a new block
+// 提交一个新块的算法
 function commit(
   commitmentRoot: CommitmentRoot,
   sequence: uint64,
@@ -614,7 +614,7 @@ function commit(
     return header
 }
 
-// initialisation function defined by the client type
+// 由客户端类型定义的初始化函数
 function initialise(consensusState: ConsensusState): () {
   clientState = {
     frozen: false,
@@ -624,7 +624,7 @@ function initialise(consensusState: ConsensusState): () {
   privateStore.set(identifier, clientState)
 }
 
-// validity predicate function defined by the client type
+// 客户端类型定义的有效性判定函数
 function checkValidityAndUpdateState(
   clientState: ClientState,
   header: Header) {
@@ -737,8 +737,8 @@ function verifyNextSequenceRecv(
     return clientState.verifiedRoots[sequence].verifyMembership(path, nextSequenceRecv, proof)
 }
 
-// misbehaviour verification function defined by the client type
-// any duplicate signature by a past or current key freezes the client
+// 客户端类型定义的不良行为验证函数
+// 过去或当前密钥的任何重复签名都会冻结客户端
 function checkMisbehaviourAndUpdateState(
   clientState: ClientState,
   misbehaviour: Misbehaviour) {
