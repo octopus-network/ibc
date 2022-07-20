@@ -1,26 +1,26 @@
 ---
-ics: 20
+ics: '20'
 title: 同质通证转移
 stage: 草案
 category: IBC/APP
 requires: 25, 26
 kind: 实例化
 author: Christopher Goes <cwgoes@interchain.berlin>
-created: 2019-07-15
-modified: 2020-02-24
+created: '2019-07-15'
+modified: '2020-02-24'
 ---
 
-## 概览
+## 概要
 
-该标准规定了通过 IBC 通道在各自链上的两个模块之间进行通证转移的数据包的数据结构，状态机处理逻辑以及编码细节。本文所描述的状态机逻辑允许在无许可通道打开的情况下安全的处理多个链的通证。该逻辑通过在节点状态机上的 IBC 路由模块和一个现存的资产跟踪模块之间建立实现了一个同质通证转移的桥接模块。
+该标准规定了通过 IBC 通道在各自链上的两个模块之间进行通证转移的数据包的数据结构、状态机处理逻辑以及编码细节。本文所描述的状态机逻辑允许在无许可通道打开的情况下安全的处理多个链的通证。该逻辑通过在节点状态机上的 IBC 路由模块和一个现存的资产跟踪模块之间建立实现了一个同质通证转移的桥接模块。
 
 ### 动机
 
-基于 IBC 协议连接的一组链的用户可能希望在一条链上能利用在另一条链上发行的资产来使用该链上的附加功能，例如交易或隐私保护，同时保持发行链上的原始资产的同质性。该应用层标准描述了一个在基于 IBC 连接的链间转移同质通证的协议，该协议保留了资产的同质性和资产所有权，限制了拜占庭错误的影响，并且无需额外许可。
+基于 IBC 协议连接的一组链的用户可能希望在一条链上能利用在另一条链上发行的资产来使用该链上的附加功能，例如交易或隐私保护，同时保持发行链上的原始资产的同质性。该应用层标准描述了一个在基于 IBC 连接的链间转移同质通证的协议，该协议保留了资产的同质性和资产所有权，限制了拜占庭错误（Byzantine faults）的影响，并且无需额外许可。
 
 ### 定义
 
-[ICS 25](../../core/ics-025-handler-interface) 和 [ICS 26](../../core/ics-026-routing-module) 分别定义了 IBC 处理接口和 IBC 路由模块接口。
+[ICS 25](../../core/ics-025-handler-interface) 和 [ICS 26](../../core/ics-026-routing-module) 分别定义了 IBC 处理程序接口和 IBC 路由模块接口。
 
 ### 所需属性
 
@@ -45,16 +45,13 @@ interface FungibleTokenPacketData {
 }
 ```
 
-因为通证通过ICS20协议跨链转移，他们开始
-
-
-因为通证通过ICS20协议跨链转移，他们开始
+确认数据类型描述转账是成功还是失败，以及失败的原因（如果有）。
 
 ICS20 通证的面额。
 
-发送方可能作为源区。
+Note that both the FungibleTokenPacketData as well as FungibleTokenPacketAcknowledgement must be JSON-encoded (not Protobuf encoded) when they serialized into packet data. Also note that uint256 is string encoded when converted to JSON, but must be a valid decimal number of the form [0-9]+.
 
-确认数据类型描述转账是成功还是失败，以及失败的原因（如果有）。
+The acknowledgement data type describes whether the transfer succeeded or failed, and the reason for failure (if any).
 
 ```typescript
 type FungibleTokenPacketAcknowledgement = FungibleTokenPacketSuccess | FungibleTokenPacketError;
@@ -69,7 +66,7 @@ interface FungibleTokenPacketError {
 }
 ```
 
-Note that both the FungibleTokenPacketData as well as FungibleTokenPacketAcknowledgement must be JSON-encoded (not Protobuf encoded) when they serialized into packet data. Also note that uint256 is string encoded when converted to JSON, but must be a valid decimal number of the form [0-9]+.
+Note that both the `FungibleTokenPacketData` as well as `FungibleTokenPacketAcknowledgement` must be JSON-encoded (not Protobuf encoded) when they serialized into packet data. Also note that `uint256` is string encoded when converted to JSON, but must be a valid decimal number of the form `[0-9]+`.
 
 同质通证转移桥接模块跟踪与状态中指定通道关联的托管地址。假设`ModuleState`的字段在范围内。
 
@@ -83,7 +80,7 @@ interface ModuleState {
 
 本文所述的子协议应该在“同质通证转移桥接”模块中实现，并且可以访问 band 模块和 IBC 路由模块。
 
-#### 端口 & 通道设置
+#### 端口 &amp; 通道设置
 
 当创建“同质通证转移桥接”模块时（也可能是区块链本身初始化时），必须仅调用一次`setup`函数用于绑定到对应的端口并创建一个托管地址（该地址由模块所有）。
 
@@ -117,7 +114,6 @@ function setup() {
 
 - 第三台机器的模块绑定到“bank”端口。
 - 创建的通道是无序的。
-- 版本号为空。
 
 ```typescript
 function onChanOpenInit(
@@ -340,7 +336,7 @@ function onTimeoutPacketClose(packet: Packet) {
 
 ##### 多链注意事项
 
-此规范不能直接处理“菱形问题”，在该问题中，用户将源自链 A 的通证发送到链 B，然后又发送给链 D，并希望通过 D-> C-> A 归还它，由于此时通证的供应量被认为是由链 B 控制（面额将为“ {portOnD} / {channelOnD} / {portOnB} / {channelOnB} / denom”），链 C 不能充当中介。尚不清楚该场景是否应按协议处理—可能只需要原路返回就可以了（如果在这两个途径上都有频繁的流动性和一定的结余，菱形路径将在大多数情况下适用）。较长的赎回路径引起的复杂性可能导致网络拓扑结构中出现中心链。
+此规范不能直接处理“菱形问题”，在该问题中，用户将源自链 A 的通证发送到链 B，然后又发送给链 D，并希望通过 D-&gt; C-&gt; A 归还它，由于此时通证的供应量被认为是由链 B 控制（面额将为“ {portOnD} / {channelOnD} / {portOnB} / {channelOnB} / denom”），链 C 不能充当中介。尚不清楚该场景是否应按协议处理—可能只需要原路返回就可以了（如果在这两个途径上都有频繁的流动性和一定的结余，菱形路径将在大多数情况下适用）。较长的赎回路径引起的复杂性可能导致网络拓扑结构中出现中心链。
 
 为了跟踪沿着各种路径在链网络中移动的所有面额，对于特定的链实现一个注册表将有助于跟踪每个面额的“全局”源链。最终用户服务提供商（例如钱包作者）可能希望集成这样的注册表，或保留自己的典范源链和人类可读名称的映射，以改善 UX。
 
@@ -378,6 +374,8 @@ function onTimeoutPacketClose(packet: Packet) {
 2020年2月3日-进行修订，以处理对成功和失败的确认
 
 2020年2月24日-用来推断来源字段的修订，包括版本字符串
+
+July 27, 2020 - Re-addition of source field
 
 ## 版权
 
