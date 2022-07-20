@@ -1,7 +1,7 @@
 ---
 ics: '721'
 title: 非同质化通证转移
-stage: draft
+stage: 草案
 category: IBC/APP
 requires: 25, 26
 kind: 实例化
@@ -10,25 +10,25 @@ created: '2021-11-10'
 modified: '2022-05-18'
 ---
 
-> This standard document follows the same design principles of [ICS 20](../ics-020-fungible-token-transfer) and inherits most of its content therefrom, while replacing `bank` module based asset tracking logic with that of the `nft` module.
+> 该标准文档遵循与[ICS 20](../ics-020-fungible-token-transfer)相同的设计原则，并从中继承了大部分内容，同时使用`nft`模块替换基于`bank`模块的资产跟踪逻辑。
 
 ## 概览
 
-This standard document specifies packet data structure, state machine handling logic, and encoding details for the transfer of non-fungible tokens over an IBC channel between two modules on separate chains. The state machine logic presented allows for safe multi-chain `classId` handling with permissionless channel opening. This logic constitutes a *non-fungible token transfer bridge module*, interfacing between the IBC routing module and an existing asset tracking module on the host state machine, which could be either a Cosmos-style native module or a smart contract running in a virtual machine.
+本标准文档规定了通过 IBC 通道在各自链上的两个模块之间进行非同质化通证转移的数据包的数据结构、状态机处理逻辑以及编码细节。本文所描述的状态机逻辑允许在无需许可通道打开的情况下安全的处理多个链的`classId`。该逻辑通过在主链状态机上的 IBC 路由模块和一个现存的资产跟踪模块之间建立实现了一个非同质化通证转移的桥接模块。该模块既可以是 Cosmos 式的原生模块，也可以是在虚拟机中运行的智能合约。
 
 ### 动机
 
-Users of a set of chains connected over the IBC protocol might wish to utilize a non-fungible token on a chain other than the chain where the token was originally issued -- perhaps to make use of additional features such as exchange, royalty payment or privacy protection. This application-layer standard describes a protocol for transferring non-fungible tokens between chains connected with IBC which preserves asset non-fungibility, preserves asset ownership, limits the impact of Byzantine faults, and requires no additional permissioning.
+基于 IBC 协议连接的一组链上的用户可能希望在通证发行原始链以外的区块链上使用非同质化通证，以使用该链上的附加功能，例如交易、版税支付或隐私保护。该应用层标准描述了一个在基于 IBC 连接的区块链之间转移非同质化通证的协议，该协议保留了资产的非同质性和资产所有权，限制了拜占庭错误（Byzantine faults）的影响，并且无需额外许可。
 
 ### 定义
 
-The IBC handler interface &amp; IBC routing module interface are as defined in [ICS 25](../../core/ics-025-handler-interface) and [ICS 26](../../core/ics-026-routing-module), respectively.
+[ICS 25](../../core/ics-025-handler-interface) 和 [ICS 26](../../core/ics-026-routing-module) 分别定义了 IBC 处理程序接口和 IBC 路由模块接口。
 
 ### 所需属性
 
-- Preservation of non-fungibility (i.e., only one instance of any token is *live* across all the IBC-connected blockchains).
-- Permissionless token transfers, no need to whitelist connections, modules, or `classId`s.
-- Symmetric (all chains implement the same logic, no in-protocol differentiation of hubs &amp; zones).
+- 保持非同质性（即在所有基于 IBC 连接的区块链中，任何通证只有一个 *活跃* 实例）。
+- 无需许可的通证转移，无需将连接、模块或 `classId` 加入白名单。
+- 对称性（即所有链实现相同的逻辑，hubs 和 zones 无协议差别）。
 - 容错：防止由于链 `B` 的拜占庭行为造成源自链 `A` 的通证的拜占庭式通货膨胀。
 
 ## 技术规范
@@ -73,7 +73,7 @@ A -&gt; B -&gt; C -&gt; A -&gt; C -&gt; B -&gt; A
 5. C(p4,c4) -&gt; (p3,c3)B : C 是目标 zone。B 中的 `classId` : 'p2/c2/nftClass'
 6. B(p2,c2) -&gt; (p1,c1)A : B 是目标 zone。A 中的 `classId` : 'nftClass'
 
-The acknowledgement data type describes whether the transfer succeeded or failed, and the reason for failure (if any).
+回执数据类型描述了转移是成功还是失败，以及失败的原因（如果有的话）。
 
 ```typescript
 type NonFungibleTokenPacketAcknowledgement = NonFungibleTokenPacketSuccess | NonFungibleTokenPacketError;
@@ -255,8 +255,8 @@ function onChanOpenAck(
 function onChanOpenConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-  // accept channel confirmations, port has already been validated, version has already been validated
-  // allocate an escrow address
+  // 接收通道确认信息，端口和版本都已被验证
+  // 分配托管地址
   channelEscrowAddresses[channelIdentifier] = newAddress()
 }
 ```
@@ -283,9 +283,9 @@ function onChanCloseConfirm(
 - 当一个非同质化通证从其源链转出时，桥接模块会在发送链上托管该通证，并在接收链上铸造相应的凭证。
 - 当一个非同质化通证被转回其源链时，桥接模块会在发送链上销毁该通证，并在接收链上取消对相应锁定通证的托管。
 - 当数据包超时时，其中所表示的通证会被取消托管或适当地铸造回发送方 - 具体取决于通证是从其源链转出还是转回。
-- Acknowledgement data is used to handle failures, such as invalid destination accounts. Returning an acknowledgement of failure is preferable to aborting the transaction since it more easily enables the sending chain to take appropriate action based on the nature of the failure.
+- 回执数据用于处理失败，例如无效的目标帐户。返回失败回执比终止交易更可取，因为这更容易使发送链根据失败的性质采取适当的操作。
 
-`createOutgoingPacket` must be called by a transaction handler in the module which performs appropriate signature checks, specific to the account owner on the host state machine.
+模块中对主链状态机上的账户所有者进行签名验证的交易处理程序必须调用 `createOutgoingPacket` 。
 
 ```typescript
 function createOutgoingPacket(
@@ -301,17 +301,17 @@ function createOutgoingPacket(
   timeoutHeight: Height,
   timeoutTimestamp: uint64) {
   prefix = "{sourcePort}/{sourceChannel}/"
-  // we are source chain if classId is not prefixed with sourcePort and sourceChannel
+  // 如果 classId 不以 sourcePort 和 sourceChannel 为前缀，则我们是源链
   source = classId.slice(0, len(prefix)) !== prefix
   tokenUris = []
   for (let tokenId in tokenIds) {
-    // ensure that sender is token owner
+    // 确保发送者为通证持有者
     abortTransactionUnless(sender === nft.GetOwner(classId, tokenId))
     if source {
-      // escrow token
+      // 托管通证
       nft.Transfer(classId, tokenId, channelEscrowAddresses[sourceChannel])
     } else {
-      // we are sink chain, burn voucher
+      // 我们是接收链, 烧毁凭证
       nft.Burn(classId, tokenId)
     }
     tokenUris.push(nft.GetNFT(classId, tokenId).GetUri())
@@ -326,7 +326,7 @@ function createOutgoingPacket(
 ```typescript
 function onRecvPacket(packet: Packet) {
   NonFungibleTokenPacketData data = packet.data
-  // construct default acknowledgement of success
+  // 建立默认的成功回执
   NonFungibleTokenPacketAcknowledgement ack = NonFungibleTokenPacketAcknowledgement{true, null}
   err = ProcessReceivedPacketData(data)
   if (err !== null) {
@@ -337,19 +337,19 @@ function onRecvPacket(packet: Packet) {
 
 function ProcessReceivedPacketData(data: NonFungibleTokenPacketData) {
   prefix = "{packet.sourcePort}/{packet.sourceChannel}/"
-  // we are source chain if classId is prefixed with packet's sourcePort and sourceChannel
+  // 如果 classId 以数据包的 sourcePort 和 sourceChannel 为前缀，则我们是源链
   source = data.classId.slice(0, len(prefix)) === prefix
   for (var i in data.tokenIds) {
     if source {
-      // unescrow token to receiver
+      // 取消接收方通证托管
       nft.Transfer(data.classId.slice(len(prefix)), data.tokenIds[i], data.receiver)
     } else { // we are sink chain
       prefixedClassId = "{packet.destPort}/{packet.destChannel}/" + data.classId
-      // create NFT class if it doesn't exist already
+      // 如果尚不存在，则创建 NFT 类别
       if (nft.HasClass(prefixedClassId) === false) {
         nft.SaveClass(data.classId, data.classUri)
       }
-      // mint voucher to receiver
+      // 铸造凭证给接收方
       nft.Mint(prefixedClassId, data.tokenIds[i], data.tokenUris[i], data.receiver)
     }
   }
@@ -362,7 +362,7 @@ function ProcessReceivedPacketData(data: NonFungibleTokenPacketData) {
 function onAcknowledgePacket(
   packet: Packet,
   acknowledgement: bytes) {
-  // if the transfer failed, refund the tokens
+  // 若转移失败，则退回通证
   if (!ack.success)
     refundToken(packet)
 }
@@ -383,14 +383,14 @@ function onTimeoutPacket(packet: Packet) {
 function refundToken(packet: Packet) {
   NonFungibleTokenPacketData data = packet.data
   prefix = "{packet.sourcePort}/{packet.sourceChannel}/"
-  // we are the source if the classId is not prefixed with the packet's sourcePort and sourceChannel
+  // 如果 classId 不以数据包的 sourcePort 和 sourceChannel 为前缀，则我们是源链
   source = data.classId.slice(0, len(prefix)) !== prefix
   for (var i in data.tokenIds) { {
     if source {
-      // unescrow token back to sender
+      // 取消通证托管给发送方
       nft.Transfer(data.classId, data.tokenIds[i], data.sender)
     } else {
-      // we are sink chain, mint voucher back to sender
+      // 我们是目标链，铸造凭证给发送方
       nft.Mint(data.classId, data.tokenIds[i], data.tokenUris[i], data.sender)
     }
   }
@@ -403,7 +403,7 @@ function onTimeoutPacketClose(packet: Packet) {
 }
 ```
 
-#### Reasoning
+#### 推论
 
 ##### 正确性
 
@@ -414,14 +414,14 @@ function onTimeoutPacketClose(packet: Packet) {
 
 #### 可选附录
 
-- Each chain, locally, could elect to keep a lookup table to use short, user-friendly local `classId`s in state which are translated to and from the longer `classId`s when sending and receiving packets.
-- Additional restrictions may be imposed on which other machines may be connected to &amp; which channels may be established.
+- 每条本地链都可以选择保留一个查询表，以在状态中使用简短的、用户友好的本地 `classId`，在发送和接收数据包时，会与较长的 `classId` 进行相互转换。
+- 可能会对可与哪些其他状态机连接，以及建立哪些通道施加额外限制。
 
 ## 进一步讨论
 
-Extended and complex use cases such as royalties, marketplaces or permissioned transfers can be supported on top of this specification. Solutions could be modules, hooks, [IBC middleware](../ics-030-middleware) and so on. Designing a guideline for this is out of the scope.
+在此规范的基础上，可以支持扩展和复杂的用例，例如版税，市场或许可转移。解决方案可以是模块、钩子、[IBC 中间件](../ics-030-middleware) 等。与此相关的指南不在本标准讨论范围内。
 
-It is assumed that application logic in host state machines will be responsible for metadata immutability of IBC tokens minted according to this specification. For any IBC token, NFT applications are strongly advised to check upstream blockchains (all the way back to the source) to ensure its metadata has not been modified along the way. If it is decided, sometime in the future, to accommodate NFT metadata mutability over IBC, we will update this specification or create an entirely new specification -- by using advanced DID features perhaps.
+假设主链状态机中的应用逻辑将负责确保根据此规范所铸造的 IBC 通证的元数据是不可变的。对于任何 IBC 通证，强烈建议 NFT 应用检查上游区块链（直到其源头），以确保其元数据在此过程中未被修改。如果决定在未来的某个时候，通过 IBC 适应 NFT 元数据的可变性，我们也许将通过使用进阶 DID 功能来更新此规范或创建一个全新的规范。
 
 ## 向后兼容性
 
@@ -429,7 +429,7 @@ It is assumed that application logic in host state machines will be responsible 
 
 ## 向前兼容性
 
-This initial standard uses version "ics721-1" in the channel handshake.
+此初始标准在通道握手中使用版本 “ics721-1”。
 
 此标准的未来版块可以在通道握手中使用其他版本，并安全地更改数据包数据格式和数据包处理程序的语义。
 
@@ -448,7 +448,7 @@ This initial standard uses version "ics721-1" in the channel handshake.
 2021 年 11 月 10 日 | 初始草案 - 改编自 ICS 20 规范
 2021 年 11 月 17 日 | 进行修订，以更好地适应智能合约
 2021 年 11 月 17 日 | 从 ICS 21 更名为 ICS 721
-2021 年 11 月 18 日 | Revised to allow for multiple tokens in one packet
+2021 年 11 月 18 日 | 进行修订，以允许一个数据包中包含多种通证
 2022 年 2 月 10 日 | 进行修订，以纳入 IBC 团队的反馈
 2022 年 3 月 3 日 | 进行修订，使 TRY 回调与 PR#629 保持一致
 2022 年 3 月 11 日 | 添加示例，以说明前缀概念
@@ -457,4 +457,4 @@ This initial standard uses version "ics721-1" in the channel handshake.
 
 ## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
