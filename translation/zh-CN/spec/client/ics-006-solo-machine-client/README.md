@@ -1,13 +1,13 @@
 ---
-ics: 6
+ics: '6'
 title: 单机客户端
 stage: 草案
 category: IBC/TAO
 kind: 实例化
-implements: 2
+implements: '2'
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-12-09
-modified: 2019-12-09
+created: '2019-12-09'
+modified: '2019-12-09'
 ---
 
 ## 概要
@@ -47,9 +47,9 @@ interface ClientState {
 
 ### 共识状态
 
-单机的`ConsensusState`由当前的公钥和序号组成。
+单机的`ConsensusState`由当前公钥、当前分散器、序列号和时间戳组成。
 
-多样化标志符是一串任意字符串。
+分散器是一个任意字符串，在创建客户端时被选定，旨在允许相同的公钥在不同的单机客户端（可能在不同的链上）重复使用，而不会被视为不当行为。
 
 ```typescript
 interface ConsensusState {
@@ -61,14 +61,12 @@ interface ConsensusState {
 ```
 
 ### 高度
-### 高度
 
-The Height of a solo machine is just a uint64, with the usual comparison operations.
+单机的`Height`只是一个`uint64` ，可以用来做普通的比较操作。
 
 ### 区块头
-### 区块头
 
-`Header`仅在机器希望更新公钥时才由单机提供。
+当机器希望更新公钥或分散器时， `Header` s 必须由单机提供。
 
 ```typescript
 interface Header {
@@ -81,9 +79,8 @@ interface Header {
 ```
 
 ### 不良行为
-### 不良行为
 
-单机的不良行为的`Evidence`包括一个序号和该序号上不同消息的两个签名。
+单机器的`不良行为`包括一个序号和该序号上不同消息的两个签名。
 
 ```typescript
 interface SignatureAndData {
@@ -91,7 +88,7 @@ interface SignatureAndData {
   data: []byte
 }
 
-interface Evidence {
+interface Misbehaviour {
   sequence: uint64
   signatureOne: SignatureAndData
   signatureTwo: SignatureAndData
@@ -99,9 +96,8 @@ interface Evidence {
 ```
 
 ### 签名
-### 签名
 
-签名在被提供
+签名在客户端状态验证功能的`Proof`字段中提供。其中的数据和时间戳也必须签名。
 
 ```typescript
 interface Signature {
@@ -140,8 +136,11 @@ function checkValidityAndUpdateState(
   clientState: ClientState,
   header: Header) {
   assert(header.sequence === clientState.consensusState.sequence)
-  assert(checkSignature(header.newPublicKey, header.sequence, header.signature))
+  assert(header.timestamp >= clientstate.consensusState.timestamp)
+  assert(checkSignature(header.newPublicKey, header.sequence, header.diversifier, header.signature))
   clientState.consensusState.publicKey = header.newPublicKey
+  clientState.consensusState.diversifier = header.newDiversifier
+  clientState.consensusState.timestamp = header.timestamp
   clientState.consensusState.sequence++
 }
 ```
@@ -153,13 +152,21 @@ function checkValidityAndUpdateState(
 ```typescript
 function checkMisbehaviourAndUpdateState(
   clientState: ClientState,
-  evidence: Evidence) {
-    h1 = evidence.h1
-    h2 = evidence.h2
+  misbehaviour: Misbehaviour) {
+    h1 = misbehaviour.h1
+    h2 = misbehaviour.h2
     pubkey = clientState.consensusState.publicKey
-    assert(evidence.h1.signature.data !== evidence.h2.signature.data)
-    assert(checkSignature(pubkey, evidence.sequence, evidence.h1.signature.sig))
-    assert(checkSignature(pubkey, evidence.sequence, evidence.h2.signature.sig))
+    diversifier = clientState.consensusState.diversifier
+    timestamp = clientState.consensusState.timestamp
+    // 断言：时间戳可能已经欺骗了轻客户端
+    assert(misbehaviour.h1.signature.timestamp >= timestamp)
+    assert(misbehaviour.h2.signature.timestamp >= timestamp)
+    // 断言：签名数据不同
+    assert(misbehaviour.h1.signature.data !== misbehaviour.h2.signature.data)
+    // 断言：签名有效
+    assert(checkSignature(pubkey, misbehaviour.sequence, diversifier, misbehaviour.h1.signature.data))
+    assert(checkSignature(pubkey, misbehaviour.sequence, diversifier, misbehaviour.h2.signature.data))
+    // 冻结客户端
     clientState.frozen = true
 }
 ```
@@ -168,7 +175,28 @@ function checkMisbehaviourAndUpdateState(
 
 所有单机客户端状态验证函数都仅检查签名，该签名必须由单机提供。
 
+请注意，值连接应该以特定的状态机的转义方式实现。
+
 ```typescript
+function verifyClientState(
+  clientState: ClientState,
+  height: uint64,
+  prefix: CommitmentPrefix,
+  proof: CommitmentProof,
+  clientIdentifier: Identifier,
+  counterpartyClientState: ClientState) {
+    path = applyPrefix(prefix, "clients/{clientIdentifier}/clientState")
+    // ICS 003 在连接验证后不会增加证明高度
+    // 单机客户端必须增加证明高度以确保匹配签名中使用的预期序列
+    abortTransactionUnless(height + 1 == clientState.consensusState.sequence)
+    abortTransactionUnless(!clientState.frozen)
+    abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
+    value = clientState.consensusState.sequence + clientState.consensusState.diversifier + proof.timestamp + path + counterpartyClientState
+    assert(checkSignature(clientState.consensusState.pubKey, value, proof.sig))
+    clientState.consensusState.sequence++
+    clientState.consensusState.timestamp = proof.timestamp
+}
+
 function verifyClientConsensusState(
   clientState: ClientState,
   height: uint64,
@@ -178,10 +206,15 @@ function verifyClientConsensusState(
   consensusStateHeight: uint64,
   consensusState: ConsensusState) {
     path = applyPrefix(prefix, "clients/{clientIdentifier}/consensusState/{consensusStateHeight}")
+    // ICS 003 在连接或客户端状态验证后不会增加证明高度
+    // 单机客户端必须将证明高度增加 2 以确保匹配签名中使用的预期序列
+    abortTransactionUnless(height + 2 == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
-    value = clientState.consensusState.sequence + path + consensusState
-    assert(checkSignature(clientState.consensusState.pubKey, value, proof))
+    abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
+    value = clientState.consensusState.sequence + clientState.consensusState.diversifier + proof.timestamp + path + consensusState
+    assert(checkSignature(clientState.consensusState.pubKey, value, proof.sig))
     clientState.consensusState.sequence++
+    clientState.consensusState.timestamp = proof.timestamp
 }
 
 function verifyConnectionState(
@@ -192,10 +225,13 @@ function verifyConnectionState(
   connectionIdentifier: Identifier,
   connectionEnd: ConnectionEnd) {
     path = applyPrefix(prefix, "connection/{connectionIdentifier}")
+    abortTransactionUnless(height == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
-    value = clientState.consensusState.sequence + path + connectionEnd
-    assert(checkSignature(clientState.consensusState.pubKey, value, proof))
+    abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
+    value = clientState.consensusState.sequence + clientState.consensusState.diversifier + proof.timestamp + path + connectionEnd
+    assert(checkSignature(clientState.consensusState.pubKey, value, proof.sig))
     clientState.consensusState.sequence++
+    clientState.consensusState.timestamp = proof.timestamp
 }
 
 function verifyChannelState(
@@ -207,10 +243,13 @@ function verifyChannelState(
   channelIdentifier: Identifier,
   channelEnd: ChannelEnd) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}")
+    abortTransactionUnless(height == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
-    value = clientState.consensusState.sequence + path + channelEnd
-    assert(checkSignature(clientState.consensusState.pubKey, value, proof))
+    abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
+    value = clientState.consensusState.sequence + clientState.consensusState.diversifier + proof.timestamp + path + channelEnd
+    assert(checkSignature(clientState.consensusState.pubKey, value, proof.sig))
     clientState.consensusState.sequence++
+    clientState.consensusState.timestamp = proof.timestamp
 }
 
 function verifyPacketData(
@@ -223,10 +262,13 @@ function verifyPacketData(
   sequence: uint64,
   data: bytes) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/packets/{sequence}")
+    abortTransactionUnless(height == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
-    value = clientState.consensusState.sequence + path + data
-    assert(checkSignature(clientState.consensusState.pubKey, value, proof))
+    abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
+    value = clientState.consensusState.sequence + clientState.consensusState.diversifier + proof.timestamp + path + data
+    assert(checkSignature(clientState.consensusState.pubKey, value, proof.sig))
     clientState.consensusState.sequence++
+    clientState.consensusState.timestamp = proof.timestamp
 }
 
 function verifyPacketAcknowledgement(
@@ -239,13 +281,16 @@ function verifyPacketAcknowledgement(
   sequence: uint64,
   acknowledgement: bytes) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
+    abortTransactionUnless(height == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
-    value = clientState.consensusState.sequence + path + acknowledgement
-    assert(checkSignature(clientState.consensusState.pubKey, value, proof))
+    abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
+    value = clientState.consensusState.sequence + clientState.consensusState.diversifier + proof.timestamp + path + acknowledgement
+    assert(checkSignature(clientState.consensusState.pubKey, value, proof.sig))
     clientState.consensusState.sequence++
+    clientState.consensusState.timestamp = proof.timestamp
 }
 
-function verifyPacketAcknowledgementAbsence(
+function verifyPacketReceiptAbsence(
   clientState: ClientState,
   height: uint64,
   prefix: CommitmentPrefix,
@@ -253,11 +298,14 @@ function verifyPacketAcknowledgementAbsence(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   sequence: uint64) {
-    path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
+    path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/receipts/{sequence}")
+    abortTransactionUnless(height == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
-    value = clientState.consensusState.sequence + path
-    assert(checkSignature(clientState.consensusState.pubKey, value, proof))
+    abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
+    value = clientState.consensusState.sequence + clientState.consensusState.diversifier + proof.timestamp + path
+    assert(checkSignature(clientState.consensusState.pubKey, value, proof.sig))
     clientState.consensusState.sequence++
+    clientState.consensusState.timestamp = proof.timestamp
 }
 
 function verifyNextSequenceRecv(
@@ -269,16 +317,19 @@ function verifyNextSequenceRecv(
   channelIdentifier: Identifier,
   nextSequenceRecv: uint64) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/nextSequenceRecv")
+    abortTransactionUnless(height == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
-    value = clientState.consensusState.sequence + path + nextSequenceRecv
-    assert(checkSignature(clientState.consensusState.pubKey, value, proof))
+    abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
+    value = clientState.consensusState.sequence + clientState.consensusState.diversifier + proof.timestamp + path + nextSequenceRecv
+    assert(checkSignature(clientState.consensusState.pubKey, value, proof.sig))
     clientState.consensusState.sequence++
+    clientState.consensusState.timestamp = proof.timestamp
 }
 ```
 
 ### 属性和不变量
 
-实例化 [ICS 2](../../core/ics-002-client-semantics) 中定义的接口。
+实例化[ICS 2](../../core/ics-002-client-semantics)中定义的接口。
 
 ## 向后兼容性
 
@@ -290,7 +341,7 @@ function verifyNextSequenceRecv(
 
 ## 示例实现
 
-还没有。
+还没有.
 
 ## 其他实现
 
