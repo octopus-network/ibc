@@ -70,7 +70,7 @@ type CommitmentPath = object
 
 #### 前缀
 
-`CommitmentPrefix`定义承诺证明的存储前缀。它在将路径传递到证明验证函数之前应用于路径。
+`CommitmentPrefix`定义了承诺证明的存储前缀。它在路径传递给证明验证函数之前应用于路径。
 
 ```typescript
 type CommitmentPrefix = object
@@ -82,7 +82,7 @@ type CommitmentPrefix = object
 
 `applyPrefix`必须按`Path`来实现，因为`Path`可以具有不同的具体结构。 `applyPrefix`可以接受多种`CommitmentPrefix`类型。
 
-`applyPrefix`返回的`CommitmentPath`不需要是可序列化的（例如，它可能是树节点标识符的列表），但它确实需要可以被比较是否相等。
+`applyPrefix`返回的`CommitmentPath`不需要是可序列化的（例如，它可能是树节点标识符的列表），但它需要可以被比较是否相等。
 
 ```typescript
 type applyPrefix = (prefix: CommitmentPrefix, path: Path) => CommitmentPath
@@ -124,7 +124,7 @@ type calculateRoot = (state: CommitmentState) => CommitmentRoot
 
 #### 添加和删除元素
 
-`set`功能为承诺中的值设置路径。
+`set`函数将承诺中的一个路径设置为值。
 
 ```typescript
 type set = (state: CommitmentState, path: Path, value: Value) => CommitmentState
@@ -194,7 +194,7 @@ batchVerifyNonMembership(root, proof, items) ===
 
 如果批量验证是可行的并且比单独验证每个元素的证明更有效，则承诺构造应定义批量验证函数。
 
-### 属性和不变量
+### 属性与不变性
 
 承诺必须是*完整的*，*合理的*和*有位置约束的*。这些属性是相对于安全性参数`k`定义的，此安全性参数必须由管理者，证明者和验证者达成一致（并且对于承诺算法通常是恒定的）。
 
