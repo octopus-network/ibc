@@ -8,13 +8,13 @@
 
 本仓库应用于整合 IBC 的设计原理、协议语义和编码描述，包括核心传输、身份验证和排序层（IBC/TAO），以及描述数据包编码和处理语义的应用层 (IBC/APP)。
 
-欢迎投稿。有关贡献指南，请参阅 [CONTRIBUTING.md](meta/CONTRIBUTING.md) 。
+欢迎参与贡献。有关贡献指南，请参阅 [CONTRIBUTING.md](meta/CONTRIBUTING.md) 。
 
 请参阅 [ROADMAP.md](meta/ROADMAP.md) 获取路线图最新公开版本。
 
 ## 跨链标准
 
-处于或通过“草案”阶段的所有标准在此处按其 ICS 编号的顺序列出，按类别排序。
+处于或通过“草案”阶段的所有标准在此处按其 ICS 编号的顺序列出，并按类别排序。
 
 ### Meta
 
