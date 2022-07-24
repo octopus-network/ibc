@@ -17,13 +17,13 @@
     - 要么成功，然后连接两端必须采用新的连接参数并妥善地处理 IBC 数据。
 - 连接升级协议应该具有改变所有连接相关参数的能力；但是连接升级协议不能改变下层的`ClientState` 。连接升级协议不得修改连接标识符。
 
-## 技术指标
+## 技术规范
 
 ### 数据结构
 
-`ConnectionState`和`ConnectionEnd`在[ICS-3](./README.md)中定义。为方便读者，在此转载。 `UPGRADE_INIT` ， `UPGRADE_TRY`是新增的附加状态，以启用升级功能。
+`ConnectionState`和`ConnectionEnd`定义见[ICS-3](./README.md)。为方便读者，在此重述。 `UPGRADE_INIT` ， `UPGRADE_TRY`是新增的附加状态，以启用升级功能。
 
-#### **ConnectionState（转载自[ICS-3](README.md) ）**
+#### **ConnectionState（摘自[ICS-3](README.md) ）**
 
 ```typescript
 enum ConnectionState {
@@ -38,7 +38,7 @@ enum ConnectionState {
 - 提议升级的链应该将连接状态从`OPEN`修改置为`UPGRADE_INIT`
 - 接受升级的对方链应将连接状态从`OPEN`修改置为`UPGRADE_TRY`
 
-#### **ConnectionEnd（转载自[ICS-3](README.md) ）**
+#### **ConnectionEnd（摘自[ICS-3](README.md) ）**
 
 ```typescript
 interface ConnectionEnd {
@@ -57,14 +57,14 @@ interface ConnectionEnd {
 
 - `state` ：状态由升级协议的握手步骤指定。
 
-可被修改的：
+可修改项目：
 
 - `counterpartyPrefix`：这一前缀可以在升级协议中修改。对方链必须要么接受新提议的前缀值，要么在升级握手期间返回错误。
 - `version` ：版本可以被升级协议修改。在初始连接握手中发生的相同版本协商可用于升级的握手中。
 - `delayPeriodTime` ：延迟时间可以被升级协议修改。对方链必须要么接受新的提议值，要么在升级握手期间返回错误。
 - `delayPeriodBlocks` ：延迟时间可以被升级协议修改。对方链必须要么接受新的提议值，要么在升级握手期间返回错误。
 
-不能修改的：
+不可修改项目：
 
 - `counterpartyConnectionIdentifier`：对方链连接标识符不能被升级协议修改。
 - `clientIdentifier` ：客户端标识符不能被升级协议修改
@@ -356,7 +356,7 @@ function connUpgradeTry(
 }
 ```
 
-注意：如何为`ConnUpgradeTry`函数提供访问控制取决于各个实现。例如链上治理、许可的 actor、DAO 等。链可以决定是否有许可**或**无许可的`UpgradeTry` 。在许可的情况下，两个链都必须明确同意升级；在无许可的情况下，一条链发起升级，另一条链默认同意升级。在无许可的情况下，中继器可以提交`ConnUpgradeTry`数据报文。
+注意：如何为`ConnUpgradeTry`函数提供访问控制取决于各个实现。例如链上治理、许可的 actor、DAO 等。链可以决定是否有许可**或**无许可的`UpgradeTry` 。在许可的情况下，两个链都必须明确同意升级；在无许可的情况下，一条链发起升级，另一条链默认同意升级。在无许可的情况下，中继器可以提交`ConnUpgradeTry`数据报。
 
 ```typescript
 function connUpgradeAck(
