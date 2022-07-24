@@ -56,7 +56,7 @@ function onChanUpgradeInit(
 
 #### **OnChanUpgradeTry**
 
-`onChanUpgradeTry`将验证升级选择的参数并执行自定义`TRY`逻辑。如果升级选择的参数无效，回调必须返回错误以中止握手。如果交易对手选择的版本与此模块支持的版本不兼容，回调必须返回错误以中止握手。如果版本兼容，try 回调必须选择最终版本字符串并将其返回给核心 IBC。 `onChanUpgradeTry`也可以执行自定义初始化逻辑
+`onChanUpgradeTry`将验证升级选择的参数并执行自定义`TRY`逻辑。如果升级选择的参数无效，回调必须返回错误以中止握手。如果交易对手选择的版本与此模块支持的版本不兼容，回调必须返回错误以中止握手。如果版本兼容，try 回调必须选择最终版本字符串并将其返回给核心 IBC。 `onChanUpgradeTry`也可以执行自定义初始化逻辑。
 
 如果返回错误，则核心 IBC 将撤销`onChanUpgradeTry`所做的任何更改并中止握手。
 
