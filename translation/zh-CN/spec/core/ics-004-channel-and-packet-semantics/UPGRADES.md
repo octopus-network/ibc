@@ -11,17 +11,17 @@
 ### 所需属性
 
 - 两条链都必须认同重新协商后的通道参数。
-- 两条链上的通道状态和逻辑应该使用旧参数或新参数，而不能是一个中间状态，例如，应用程序不能运行 v2 逻辑，而其对手方仍在运行 v1 逻辑。
+- 两条链上的通道状态和逻辑应该或者使用旧参数或者新参数，而不能是一个中间状态，例如，应用程序不能运行 v2 逻辑，而其对手方仍在运行 v1 逻辑。
 - 通道升级协议是原子性的，即
     - 要么不成功，然后通道必须回退到原始通道参数；
-    - 要么成功，然后通道两端必须采用新的通道参数并妥善地处理 数据包。
+    - 要么成功，然后通道两端必须采用新的通道参数并妥善地处理数据包。
 - 通道升级协议应该具有改变所有通道相关参数的能力；但是通道升级协议不能改变下层的`ConnectionEnd` 。通道升级协议不得修改通道标识符。
 
-## 技术指标
+## 技术规范
 
 ### 数据结构
 
-`ChannelState`和`ChannelEnd`在[ICS-3](./README.md)中定义。为方便读者，在此转载。 `UPGRADE_INIT` ， `UPGRADE_TRY`是新增的附加状态，以启用升级功能。
+`ChannelState`和`ChannelEnd`在[ICS-4](./README.md)中定义。为方便读者，在此转载。 `UPGRADE_INIT` ， `UPGRADE_TRY`是新增的附加状态，以启用升级功能。
 
 ```typescript
 enum ChannelState {
@@ -55,7 +55,7 @@ interface ChannelEnd {
 
 - `version` ：版本可以被升级协议修改。在初始通道握手中发生的相同版本协商可用于升级的握手中。
 - `ordering` ：升级协议可以修改排序规则。但是，必须满足先前排序是新排序的有效子集。因此，唯一支持的更改是从更严格的排序规则到不太严格的排序。例如，支持从 ORDERED 切换到 UNORDERED，**不支持**从 UNORDERED 切换到 ORDERED。
-- `connectionHops`: connectionHops 不能被升级协议修改.
+- `connectionHops`: connectionHops 可被升级协议修改.
 
 不能修改的：
 
@@ -170,7 +170,7 @@ function verifyChannelUpgradeTimeout(
 
 ```typescript
 function restoreChannel() {
-    //取消升级
+    // 取消升级
     // 将错误收据写入错误路径并恢复原始通道
     errorReceipt = []byte{1}
     provableStore.set(errorPath(portIdentifier, channelIdentifier), errorReceipt)
@@ -200,15 +200,15 @@ function restoreChannel() {
 --- | --- | --- | --- | ---
 Actor | `ChanUpgradeInit` | A | (OPEN, OPEN) | (UPGRADE_INIT, OPEN)
 Actor | `ChanUpgradeTry` | B | (UPGRADE_INIT, OPEN) | (UPGRADE_INIT, UPGRADE_TRY)
-Relayer | `ChanUpgradeAck` | A | (UPGRADE_INIT, UPGRADE_TRY) | (OPEN, UPGRADE_TRY)
-Relayer | `ChanUpgradeConfirm` | B | (OPEN, UPGRADE_TRY) | (OPEN, OPEN)
+中继器 | `ChanUpgradeAck` | A | (UPGRADE_INIT, UPGRADE_TRY) | (OPEN, UPGRADE_TRY)
+中继器 | `ChanUpgradeConfirm` | B | (OPEN, UPGRADE_TRY) | (OPEN, OPEN)
 
 在两个实现子协议的链之间的升级握手结束时，以下属性成立：
 
 - 每条链都在运行它们新升级后的通道端，并根据升级后的参数处理升级后的逻辑和状态。
 - 每条链都知道并同意对方升级的通道参数。
 
-如果一个链不同意提议的对方链`UpgradedChannel` ，它可以通过将错误收据写入`errorPath`并恢复原始通道来中止升级握手。错误收据可以有任意字节并且必须是非空的。
+如果一个链不同意提议的对方链`UpgradedChannel` ，它可以通过将错误收据写入`errorPath`并恢复原始通道来中止升级握手。错误收据可以有任意字节但必须是非空的。
 
 `errorPath(id) => error_receipt`
 
@@ -228,7 +228,7 @@ function chanUpgradeInit(
     currentChannel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnless(channel.state == OPEN)
 
-    // 如果修改了不可修改的字段，则中止事务
+    // 如果修改了不可修改的字段，则中止交易
     // 升级后的通道状态必须是 `UPGRADE_INIT`
     // 注意：默认情况下，任何添加的字段都是可修改的。
     abortTransactionUnless(
@@ -262,7 +262,7 @@ function chanUpgradeInit(
         proposedUpgradeChannel.counterpartyChannelIdentifier,
         proposedUpgradeChannel.version
     )
-    // 如果回调返回错误，则中止事务
+    // 如果回调返回错误，则中止交易
     abortTransactionUnless(err != nil)
 
     // 如果通道版本被修改，将通道版本替换为应用程序返回的版本
@@ -274,7 +274,7 @@ function chanUpgradeInit(
 }
 ```
 
-注意：如何为`ChanUpgradeInit`函数提供访问控制取决于各个实现。例如链上治理、获得许可的 actor、DAO 等。对对方链的访问控制应告知超时值的选择，即如果对方链的`UpgradeTry`由链上治理所把关，则超时值应该很大。
+注意：如何为`ChanUpgradeInit`函数提供访问控制取决于各个实现。例如链上治理、获得许可的 actor、DAO 等。对方链的访问控制应提供超时值的选择，即如果对方链的`UpgradeTry`由链上治理所把关，则超时值应该很大。
 
 ```typescript
 function chanUpgradeTry(
@@ -292,7 +292,7 @@ function chanUpgradeTry(
     currentChannel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnless(currentChannel.state == OPEN || currentChannel.state == UPGRADE_INIT)
 
-    // 如果修改了不可修改的字段，则中止事务
+    // 如果修改了不可修改的字段，则中止交易
     // 升级后的通道状态必须是 `UPGRADE_TRY`
     // 注意：默认情况下，任何添加的字段都是可修改的。
     abortTransactionUnless(
@@ -324,7 +324,7 @@ function chanUpgradeTry(
     // 如果有交叉 hello，即在两个 channelEnds 上都调用了 UpgradeInit，
     // 那么我们要保证对方提出的Upgrade和currentChannel一致
     // 除通道状态外（升级通道将处于 UPGRADE_TRY，当前通道将处于 UPGRADE_INIT）
-    // 如果双方提议的升级不兼容，那么我们将恢复频道并取消升级。
+    // 如果双方提议的升级不兼容，那么我们将恢复通道并取消升级。
         currentChannel.state = UPGRADE_TRY
         if !currentChannel.IsEqual(proposedUpgradeChannel) {
             restoreChannel()
@@ -335,12 +335,12 @@ function chanUpgradeTry(
         // 以防我们稍后需要恢复通道。
         privateStore.set(restorePath(portIdentifier, channelIdentifier), currentChannel)
     } else {
-        // 如果当前通道的状态不是：UPGRADE_INIT 或 OPEN，则中止事务
+        // 如果当前通道的状态不是：UPGRADE_INIT 或 OPEN，则中止交易
         abortTransactionUnless(false)
     }
 
     // 超时高度或时间戳必须非零
-    // 如果升级功能是在 TRY 链上实现的，那么中继者可能会在超时后提交一个 TRY 交易。
+    // 如果升级功能是在 TRY 链上实现的，那么中继器可能会在超时后提交一个 TRY 交易。
     // 这将恢复执行链上的通道，并允许交易对手使用 ChanUpgradeCancelMsg 恢复他们的通道。
     if timeoutHeight == 0 && timeoutTimestamp == 0 {
         restoreChannel()
@@ -374,7 +374,7 @@ function chanUpgradeTry(
         proposedUpgradeChannel.counterpartyChannelIdentifier,
         proposedUpgradeChannel.version
     )
-    // 如果回调返回错误，则恢复频道
+    // 如果回调返回错误，则恢复通道
     if err != nil {
         restoreChannel()
         return
@@ -436,7 +436,7 @@ function chanUpgradeAck(
         return
     }
 
-    //升级完成
+    // 升级完成
     // 将通道设置为 OPEN 并删除不必要的状态
     currentChannel.state = OPEN
     provableStore.set(channelPath(portIdentifier, channelIdentifier), currentChannel)
@@ -534,7 +534,7 @@ function cancelChannelUpgrade(
 
 如果 UPGRADE_TRY 交易根本无法传递给对方链，则通道升级过程可能会在 UPGRADE_TRY 上无限期停止；例如，对方链上可能未启用升级功能。
 
-在这种情况下，我们不希望初始化链无限期地停留在`UPGRADE_INIT`步骤中。因此， `UpgradeInit`消息将包含`TimeoutHeight`和`TimeoutTimestamp` 。如果指定的超时时间已经过去，则对方链应拒绝`UpgradeTry`消息。
+在这种情况下，我们不希望发起链无限期地停留在`UPGRADE_INIT`步骤中。因此， `UpgradeInit`消息将包含`TimeoutHeight`和`TimeoutTimestamp` 。如果指定的超时时间已经过去，则对方链应拒绝`UpgradeTry`消息。
 
 此后，中继器必须向发起链提交`UpgradeTimeout`消息，证明对方链仍处于其原始状态。如果证明成功，则发起链也应恢复其原始通道并取消升级。
 
@@ -553,7 +553,7 @@ function timeoutChannelUpgrade(
     upgradeTimeout = provableStore.get(timeoutPath(portIdentifier, channelIdentifier))
 
     // 证明必须在超时后从某一高度进行。必须定义 timeoutHeight 或 timeoutTimestamp。
-    // 如果定义了 timeoutHeight 并且证明来自于 timeout 高度之前，则中止事务
+    // 如果定义了 timeoutHeight 并且证明来自于 timeout 高度之前，则中止交易
     abortTransactionUnless(upgradeTimeout.timeoutHeight.IsZero() || proofHeight >= upgradeTimeout.timeoutHeight)
     // 如果定义了 timeoutTimestamp，那么从证明高度开始的共识时间必须大于 timeout 时间戳
     connection = queryConnection(currentChannel.connectionIdentifier)
@@ -594,7 +594,7 @@ function timeoutChannelUpgrade(
 
 注意，超时逻辑仅适用于 INIT 步骤。这是为了防止升级链在交易对手无法成功执行 TRY 时卡在非 OPEN 状态。一旦 TRY 步骤成功，则保证双方都启用了升级功能。活性不再是一个问题，因为我们可以等到活性恢复后再执行 ACK 步骤，这必将会使通道进入 OPEN 状态（成功升级或回滚）。
 
-TRY 的链将接收对方链在 INIT 上选择的超时参数，以便它可以拒绝在指定的超时时间后收到的任何 TRY 消息。这可以防止握手进入无效状态，在这种状态下，INIT 链成功处理超时并恢复其与`OPEN`的通道，而 TRY 的链将在之后的一个时间点成功写入`TRY`状态。
+TRY 链将接收对方链在 INIT 上选择的超时参数，以便它可以拒绝在指定的超时时间后收到的任何 TRY 消息。这可以防止握手进入无效状态，在这种状态下，INIT 链成功处理超时并恢复其与`OPEN`的通道，而 TRY 链将在之后的一个时间点成功写入`TRY`状态。
 
 ### 迁移
 

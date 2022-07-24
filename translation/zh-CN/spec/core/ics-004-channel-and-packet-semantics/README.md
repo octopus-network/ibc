@@ -20,9 +20,9 @@ modified: '2019-08-25'
 
 区块链间通信协议使用跨链消息传递模型。 外部中继器进程将 IBC *数据包*从一条链中继到另一条链。链`A`和链`B`独立的确认新的块，并且从一个链到另一个链的数据包可能会被任意延迟、审查或重新排序。数据包对于中继器是可见的，并且可以被任何中继器进程读取，然后被提交给任何其他链。
 
-IBC 协议必须保证顺序（对于有序通道）和仅有一次传递，以允许应用程序探讨两条链上已连接模块的组合状态。
+IBC 协议必须保证顺序（对于有序通道）和仅有一次传递，以允许应用程序得知两条链上已连接模块的组合状态。
 
-> **例如**: 一个应用程序可能希望允许单个通证化的资产在多个区块链之间转移并保留在多个区块链上，同时保留同质化和供应量。当特定的 IBC 数据包提交到链`B`时，应用程序可以在链`B`上铸造资产凭据，并要求链`A`将等额的资产托管在链`A`上，直到以后以相反的 IBC 数据包将凭证兑换回链`A`为止。这种顺序保证配合正确的应用逻辑，可以确保两个链上的资产总量不变，并且在链`B`上铸造的任何资产凭证都可以之后兑换回链`A`上。
+> **例如**: 一个应用程序可能希望允许单个通证化的资产在多个区块链之间转移并保留在多个区块链上，同时保留同质化和供应量。当特定的 IBC 数据包提交到链`B`时，应用程序可以在链`B`上铸造资产凭证，并要求链`A`将等额的资产托管在链`A`上，直到以后以相反的 IBC 数据包将凭证兑换回链`A`为止。这种顺序保证结合正确的应用逻辑，可以确保两个链上的资产总量不变，并且在链`B`上铸造的任何资产凭证都可以之后兑换回链`A`上。
 
 为了向应用层提供所需的排序、仅有一次传递和模块许可语义，区块链间通信协议必须实现一种抽象以强制执行这些语义——通道就是这种抽象。
 
@@ -80,9 +80,9 @@ interface ChannelEnd {
 - `counterpartyChannelIdentifier`标识对应链的通道端。
 - `nextSequenceSend`是单独存储的，追踪下一个要发送的数据包的序号。
 - `nextSequenceRecv`是单独存储的，追踪要接收的下一个数据包的序号。
-- `nextSequenceAck`是单独存储的，追踪要确认收到的下一个数据包的序号。
+- `nextSequenceAck`是单独存储的，追踪下一个准备被确认的数据包的序号。
 - `connectionHops`按顺序的存储在此通道上发送的数据包将途径的连接标识符列表。目前，此列表的长度必须为 1。将来可能会支持多跳通道。
-- `version`字符串存储一个不透明的通道版本号，该版本号在握手期间已达成共识。这可以确定模块级别的配置，例如通道使用哪种数据包编码。核心 IBC 协议不会使用该版本号。
+- `version`字符串存储一个不透明的通道版本，在握手期间达成一致。这可以确定模块级配置，例如通道使用哪种数据包编码。核心 IBC 协议不使用此版本。如果版本字符串包含供应用程序解析和解释的结构化元数据，则最佳做法是在 JSON 结构中编码所有元数据并将编组后的字符串包含在版本字段中。
 
 通道端具有以下*状态* ：
 
@@ -117,7 +117,7 @@ interface Packet {
 
 - `sequence`对应于发送和接收的顺序，其中序号靠前的数据包必须比序号靠后的数据包先发送或接收。
 - `timeoutHeight`指示目标链上的一个共识高度，此高度后不再处理数据包，而是计为已超时。
-- `timeoutTimestamp`指示目标链上的一个时间戳，此后将不再处理数据包，而是计为已超时。
+- `timeoutTimestamp`指示目标链上的一个时间戳，此后将不再处理数据包，而是记为已超时。
 - `sourcePort`标识发送链上的端口。
 - `sourceChannel`标识发送链上的通道端。
 - `destPort`标识接收链上的端口。
@@ -138,7 +138,7 @@ type OpaquePacket = object
 
 - 数据包传输和确认的速度应仅受底层链速度的限制。证明应尽可能是批量化的。
 
-#### 仅一次传递
+#### 仅单次传递
 
 - 在通道的一端发送的 IBC 数据包应仅一次的传递到另一端。
 - 对于仅一次的安全性，不需要网络同步假设。如果其中一条链或两条链都挂起了，则数据包最多传递不超过一次，并且一旦链恢复，数据包就应该能够再次流转。
@@ -152,13 +152,13 @@ type OpaquePacket = object
 
 - 通道应该在握手期间被通道两端的模块许可，并且此后不可变更（更高级别的逻辑可以通过标记端口的所有权来标记通道所有权）。只有与通道端关联的模块才能在其上发送或接收数据包。
 
-## 技术指标
+## 技术规范
 
 ### 数据流可视化
 
 客户端、连接、通道和数据包的体系结构：
 
-![Dataflow Visualisation](../../../../spec/ics-004-channel-and-packet-semantics/dataflow.png)
+![Dataflow Visualisation](dataflow.png)
 
 ### 预备知识
 
@@ -206,7 +206,7 @@ function packetCommitmentPath(portIdentifier: Identifier, channelIdentifier: Ide
 
 存储中缺失的路径相当于占用零位。
 
-数据包确认数据存储在`packetAcknowledgementPath` ：
+数据包接收数据存储在`packetReceiptPath`
 
 ```typescript
 function packetAcknowledgementPath(portIdentifier: Identifier, channelIdentifier: Identifier, sequence: uint64): Path {
@@ -248,14 +248,14 @@ type validateChannelIdentifier = (portIdentifier: Identifier, channelIdentifier:
 
 发起人 | 数据报 | 作用链 | 之前状态 (A, B) | 之后状态 (A, B)
 --- | --- | --- | --- | ---
-参与者 | ChanOpenInit | A | (none, none) | (INIT, none)
+Actor | ChanOpenInit | A | (none, none) | (INIT, none)
 中继器 | ChanOpenTry | B | (INIT, none) | (INIT, TRYOPEN)
 中继器 | ChanOpenAck | A | (INIT, TRYOPEN) | (OPEN, TRYOPEN)
 中继器 | ChanOpenConfirm | B | (OPEN, TRYOPEN) | (OPEN, OPEN)
 
 发起人 | 数据报 | 作用链 | 之前状态 (A, B) | 之后状态 (A, B)
 --- | --- | --- | --- | ---
-参与者 | ChanCloseInit | A | (OPEN, OPEN) | (CLOSED, OPEN)
+Actor | ChanCloseInit | A | (OPEN, OPEN) | (CLOSED, OPEN)
 中继器 | ChanCloseConfirm | B | (CLOSED, OPEN) | (CLOSED, CLOSED)
 
 ##### 建立握手
@@ -288,7 +288,7 @@ function chanOpenInit(
     abortTransactionUnless(provableStore.get(channelPath(portIdentifier, channelIdentifier)) === null)
     connection = provableStore.get(connectionPath(connectionHops[0]))
 
-    // 允许乐观通道握手
+    // 允许Optimistic通道握手
     abortTransactionUnless(connection !== null)
     abortTransactionUnless(authenticateCapability(portPath(portIdentifier), portCapability))
     channel = ChannelEnd{INIT, order, counterpartyPortIdentifier,
@@ -436,7 +436,7 @@ function chanCloseInit(
 
 在调用`chanCloseConfirm`的同时，模块可以原子性的执行其他适当的应用逻辑。
 
-关闭通道后，将无法重新打开通道，并且不能重复使用标识符。防止标识符重用是因为我们要防止潜在的重放先前发送的数据包。重放问题类似于直接使用序列号与带签名的消息，而不是用轻客户端算法对消息（IBC 数据包）进行“签名”，防止重放的序列是端口标识符，通道标识符和数据包序列号的组合-因此我们不允许在序列号重置为零的情况下，再次使用相同的端口标识符和通道标识符，因为这可能允许重放数据包。如果要求并跟踪特定最大高度/时间的超时，则可以安全的重用标识符，将来版本的规范可能包含此功能。
+关闭通道后，将无法重新打开通道，并且不能重复使用标识符。防止标识符重用是因为我们要防止潜在的重放先前发送的数据包。重放问题类似于直接使用序列号与带签名的消息，而不是用轻客户端算法对消息（IBC 数据包）进行“签名”，防止重放的序列值是端口标识符，通道标识符和数据包序列号的组合-因此我们不允许在序列号重置为零的情况下，再次使用相同的端口标识符和通道标识符，因为这可能允许重放数据包。如果要求并跟踪特定最大高度/时间的超时，则可以安全的重用标识符，将来版本的规范可能包含此功能。
 
 ```typescript
 function chanCloseConfirm(
@@ -467,9 +467,9 @@ function chanCloseConfirm(
 
 #### 数据包流和处理
 
-![Packet State Machine](../../../../spec/ics-004-channel-and-packet-semantics/packet-state-machine.png)
+![Packet State Machine](packet-state-machine.png)
 
-##### 一个数据包的日常
+##### 一个数据包的日常工作
 
 以下的步骤发生在一个数据包从机器 *A* 上的模块 *1* 发送到机器 *B* 上的模块 *2*，从头开始。
 
@@ -480,7 +480,7 @@ function chanCloseConfirm(
     2. 在 *B* 上为 *A* 创建客户端（请参阅 [ICS 2](../ics-002-client-semantics) ）
     3. 模块 *1* 绑定到端口（请参阅 [ICS 5](../ics-005-port-allocation) ）
     4. 模块 *2* 绑定到端口（请参阅 [ICS 5](../ics-005-port-allocation) ），该端口以带外方式（out-of-band）传输到模块 *1*
-2. 建立连接和通道，按顺序乐观发送（optimistic send）
+2. 建立连接和通道，按顺序以optimistic方式发送（optimistic send）
     1. 模块 *1* 自 *A* 向 *B* 创建连接握手（请参见 [ICS 3](../ics-003-connection-semantics) ）
     2. 使用新创建的连接（此 ICS），自 *1* 向 *2* 开始创建通道握手
     3. 通过新创建的通道自 *1* 向 *2* 发送数据包（此 ICS）
@@ -508,7 +508,7 @@ IBC 处理程序按顺序执行以下步骤：
 - 递增通道关联的发送序号
 - 存储对数据包数据和数据包超时信息的固定大小加密承诺
 
-请注意，完整的数据包不会存储在链的状态中——仅仅存储数据和超时信息的简短哈希加密承诺。数据包数据可以从交易的执行中计算得出，并可能作为中继器可以索引的日志输出出来。
+请注意，完整的数据包不会存储在链的状态中——仅仅存储数据和超时信息的短长度的哈希加密承诺。数据包数据可以从交易的执行中计算得出，并可能作为中继器可以索引的日志输出出来。
 
 ```typescript
 function sendPacket(
@@ -521,7 +521,7 @@ function sendPacket(
     channel = provableStore.get(channelPath(sourcePort, sourceChannel))
 
     // 检查通道和连接是否打开以发送数据包；
-    // 注意：一旦握手开始就允许乐观发送
+    // 注意：一旦握手开始就允许optimistic发送
     abortTransactionUnless(channel !== null)
     abortTransactionUnless(channel.state !== CLOSED)
     connection = provableStore.get(connectionPath(channel.connectionHops[0]))
@@ -530,7 +530,7 @@ function sendPacket(
     // 检查调用模块是否拥有发送端口
     abortTransactionUnless(authenticateCapability(channelCapabilityPath(sourcePort, sourceChannel), capability))
     
-    // 检查在跟踪接收链的本地客户端中超时高度是否超过
+    // 检查超时高度是否超过本地客户端中跟踪的接收链的高度
     latestClientHeight = provableStore.get(clientPath(connection.clientIdentifier)).latestClientHeight()
     abortTransactionUnless(packet.timeoutHeight === 0 || latestClientHeight < packet.timeoutHeight)
 
@@ -549,7 +549,7 @@ function sendPacket(
 }
 ```
 
-#### 接受数据包
+#### 接收数据包
 
 模块调用`recvPacket`函数以接收和处理在对应的链的通道端发送的 IBC 数据包。
 
@@ -566,7 +566,7 @@ IBC 处理程序按顺序执行以下步骤：
 - 在数据包唯一的存储路径上设置一个不透明确认值（如果确认信息为非空或是无序通道）
 - 递增与通道端关联的数据包接收序号（仅限有序通道）
 
-我们传递签署和提交数据包的`relayer`者的地址，以使模块能够选择性地提供一些奖励。这为费用支付提供了基础，但也可用于其他技术（如计算排行榜）。
+我们传递签署和提交数据包的`relayer`者的地址，以使模块能够选择性地提供一些奖励。这为费用支付提供了基础，但也可用于其他技术（如计算一个排行榜）。
 
 ```typescript
 function recvPacket(
@@ -597,7 +597,7 @@ function recvPacket(
       concat(packet.data, packet.timeoutHeight, packet.timeoutTimestamp)
     ))
 
-    // 所有的断言都通过了（除了序列检查），我们可以改变状态
+    // 所有的断言都通过了（除了序列检查），于是我们可以改变状态
 
     if (channel.order === ORDERED) {
       nextSequenceRecv = provableStore.get(nextSequenceRecvPath(packet.destPort, packet.destChannel))
@@ -619,18 +619,18 @@ function recvPacket(
     emitLogEntry("recvPacket", {sequence: packet.sequence, timeoutHeight: packet.timeoutHeight, port: packet.destPort, channel: packet.destChannel,
                                 timeoutTimestamp: packet.timeoutTimestamp, data: packet.data})
 
-    // 返回透明包
+    // 返回透明的数据包
     return packet
 }
 ```
 
-#### 写回执
+#### 编写回执
 
 `writeAcknowledgement`函数由模块调用，以写入处理 IBC 数据包产生的数据；此IBC数据包可以由发送链验证，是一种“执行回执”或“RPC 调用响应”。
 
 在调用 `writeAcknowledgement`的同时，调用模块必须同时原子性的执行应用逻辑。
 
-这是一个异步回执，接收到回执数据时不需要确定其内容，仅在处理完成时确定。在同步情况下， `writeAcknowledgement`可以在与`recvPacket`相同的事务中（原子地）调用。
+这是一个异步回执，接收到回执数据时不需要确定其内容，仅在处理完成时确定。在同步情况下， `writeAcknowledgement`可以在与`recvPacket`相同的交易中（原子性地）调用。
 
 不需要确认收到数据包；但是，如果有序通道使用回执，则必须确认所有数据包或不确认任何数据包（因为回执是按顺序处理的）。请注意，如果数据包未被确认收到，则无法在源链上删除数据包承诺。 IBC 的未来版本可能包括让模块指定它们是否将确认收到数据包的方法，以允许清理。
 
@@ -665,9 +665,9 @@ function writeAcknowledgement(
 
 模块调用`acknowledgePacket`函数来处理先前发送到交易对手链上的数据包的回执。 `acknowledgePacket`还清理了数据包承诺，由于数据包已被接收并采取行动，因此可以清理。
 
-调用模块可以结合调用`acknowledgePacket`以原子方式执行适当的应用程序回执处理逻辑。
+调用模块可以结合调用`acknowledgePacket`以原子性的执行适当的应用程序回执处理逻辑。
 
-我们像在<a>接收数据包</a>中一样传递<code>relayer</code>器地址，以便在此处也允许可能的激励。
+我们像在<a>接收数据包</a>中一样传递<code>relayer</code>地址，以便在此处也允许可能的激励。
 
 ```typescript
 function acknowledgePacket(
@@ -677,7 +677,7 @@ function acknowledgePacket(
   proofHeight: Height,
   relayer: string): Packet {
 
-    // 中止事务，除非：该通道打开；调用模块拥有相关端口，并且数据包字段匹配
+    // 中止交易，除非：该通道打开；调用模块拥有相关端口，并且数据包字段匹配
     channel = provableStore.get(channelPath(packet.sourcePort, packet.sourceChannel))
     abortTransactionUnless(channel !== null)
     abortTransactionUnless(channel.state === OPEN)
@@ -703,7 +703,7 @@ function acknowledgePacket(
       acknowledgement
     ))
 
-    // 除非按顺序处理回执，否则中止事务
+    // 除非按顺序处理回执，否则中止交易
     if (channel.order === ORDERED) {
       nextSequenceAck = provableStore.get(nextSequenceAckPath(packet.sourcePort, packet.sourceChannel))
       abortTransactionUnless(packet.sequence === nextSequenceAck)
@@ -711,17 +711,17 @@ function acknowledgePacket(
       provableStore.set(nextSequenceAckPath(packet.sourcePort, packet.sourceChannel), nextSequenceAck)
     }
 
-    // 所有的断言都通过了，我们可以改变状态
+    // 所有的断言都通过了，于是我们可以改变状态
 
     // 删除我们的承诺，这样我们就不能再次“确认”
     provableStore.delete(packetCommitmentPath(packet.sourcePort, packet.sourceChannel, packet.sequence))
 
-    // 返回透明包
+    // 返回透明数据包
     return packet
 }
 ```
 
-##### 回执信封
+##### 回执数据封包
 
 从远端链返回的回执在IBC 协议中被定义为任意字节。该数据可以编码后成功执行或失败（除了超时之外）。没有通用的方法来区分这两种情况，因为这要求每个客户端数据包可视化程序都了解每个特定应用程序的协议，以便区分中继成功或失败的情况。为了减少这个问题，我们提供了一个额外的回执格式的规范，这个范式[应该](https://www.ietf.org/rfc/rfc2119.txt)由每个应用程序特定的协议使用。
 
@@ -754,7 +754,7 @@ message Acknowledgement {
 
 如果连续的数据包的超时高度之间是强制的关系，则可以执行所有数据包的安全批量超时而不是使用超时数据包。该规范暂时省略了细节。
 
-我们像在<a>接收数据包</a>中一样传递<code>relayer</code>器地址，以便在此处也允许可能的激励。
+我们像在<a>接收数据包</a>中一样传递<code>relayer</code>地址，以便在此处也允许可能的激励。
 
 ```typescript
 function timeoutPacket(
@@ -816,7 +816,7 @@ function timeoutPacket(
       provableStore.set(channelPath(packet.sourcePort, packet.sourceChannel), channel)
     }
 
-    // 返回透明包
+    // 返回透明数据包
     return packet
 }
 ```
@@ -827,7 +827,7 @@ function timeoutPacket(
 
 在调用`timeoutOnClose`的同时，调用模块可以原子性的执行适当的应用超时处理逻辑。
 
-我们像在<a>接收数据包</a>中一样传递<code>relayer</code>器地址，以便在此处也允许可能的激励。
+我们像在<a>接收数据包</a>中一样传递<code>relayer</code>地址，以便在此处也允许可能的激励。
 
 ```typescript
 function timeoutOnClose(
@@ -894,14 +894,14 @@ function timeoutOnClose(
       provableStore.set(channelPath(packet.sourcePort, packet.sourceChannel), channel)
     }
 
-    // 返回透明包
+    // 返回透明数据包
     return packet
 }
 ```
 
 ##### 清理状态
 
-2019年7月4日-修改无序通道和确认
+必须确认数据包才能进行清理。
 
 #### 关于竞态条件的探讨
 
@@ -911,7 +911,7 @@ function timeoutOnClose(
 
 ##### 标识符分配
 
-在目标链上分配标识符存在不可避免的竞态条件。最好建议模块使用伪随机，无价值的标识符。设法声明另一个模块希望使用的标识符，但是，尽管令人烦恼，中间人却无法在握手期间攻击，因为接收模块必须已经拥有握手所针对的端口。
+在目标链上分配标识符存在不可避免的竞态条件。最好建议模块使用伪随机，无价值的标识符。设法声明另一个模块希望使用的标识符，但是，尽管令人烦恼，中间人却无法在握手期间攻击，因为接收模块必须已经拥有握手用的目标端口。
 
 ##### 超时/数据包确认
 
@@ -935,7 +935,7 @@ function queryChannel(connId: Identifier, chanId: Identifier): ChannelEnd | void
 }
 ```
 
-### 属性和不变量
+### 属性与不变性
 
 - 通道和端口标识符的唯一组合是先到先服务的：分配了一对标示符后，只有拥有相应端口的模块才能在该通道上发送或接收。
 - 假设链在超时窗口后依然有活性，则数据包只传递一次，并且在超时的情况下，只在发送链上超时一次。
@@ -967,10 +967,10 @@ function queryChannel(connId: Identifier, chanId: Identifier): ChannelEnd | void
 
 2019年7月29日-修改以处理连接关闭后的超时
 
-2019年8月13日-各种修改
+2019年8月13日-多处修改
 
 2019年8月25日-清理
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
