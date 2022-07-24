@@ -21,9 +21,9 @@ modified: '2019-08-25'
 
 可能会出现关于哪种模块逻辑可以绑定到特定端口名称的约定，例如“bank”用于处理同质通证，“staking”用于链间抵押的。 这类似于 HTTP 服务器的 80 端口的惯用用法——该协议无法强制将特定的模块逻辑实际上绑定到惯用端口，因此用户必须自己检查。可以创建具有伪随机标识符的临时端口以用于临时协议处理。
 
-模块可以绑定到多个端口，并连接到单独计算机上另一个模块绑定的多个端口。任何数量的（唯一标识的）通道都可以同时使用一个端口。通道是在两个端口之间的端到端的，每个端口必须事先已被模块绑定，然后模块将控制该通道的一端。
+模块可以绑定到多个端口，并连接到不同的计算机上另一个模块绑定的多个端口。任何数量的（唯一标识的）通道都可以同时使用一个端口。通道是在两个端口之间的端到端的，每个端口必须事先已被模块绑定，然后模块将控制该通道的一端。
 
-（可选）主机状态机可以选择将端口绑定通过生成专门用于绑定端口的能力键的方式暴露给特别允许的模块管理器 。然后模块管理器可以使用自定义规则集控制模块可以绑定到哪些端口，和转移端口到仅已验证端口名称和模块的模块。路由模块可以扮演这个角色（请参阅 [ICS 26](../ics-026-routing-module) ）。
+（可选）主机状态机可以选择将端口绑定通过生成专门用于绑定端口的能力键的方式暴露给特别允许的模块管理器 。然后模块管理器可以使用自定义规则集控制模块可以绑定到哪些端口，和仅被管理器验证后端口名称和模块后才转移端口到其他模块。路由模块可以扮演这个角色（请参阅 [ICS 26](../ics-026-routing-module) ）。
 
 ### 定义
 
@@ -31,7 +31,7 @@ modified: '2019-08-25'
 
 *端口*是一种特殊的标识符，用于许可模块创建和使用通道。
 
-*模块*是主机状态机的子组件，独立于 IBC 处理程序。示例包括以太坊智能合约和  Cosmos SDK 和 Substrate 的模块。 除了主机状态机可以使用对象能力或源身份验证来访问模块的许可端口的能力之外，IBC 规范不对模块功能进行任何假设。
+*模块*是主机状态机的子组件，独立于 IBC 处理程序。例如以太坊智能合约和  Cosmos SDK 和 Substrate 的模块。 除了主机状态机可以使用对象能力或源身份验证来访问模块的许可端口的能力之外，IBC 规范不对模块功能进行任何假设。
 
 ### 所需属性
 
@@ -45,7 +45,7 @@ modified: '2019-08-25'
 IBC 概念 | TCP/IP 概念 | 差异性
 --- | --- | ---
 IBC | TCP | 很多，请参阅描述 IBC 的体系结构文档
-端口（例如“bank”） | 端口（例如 80） | 没有数字较小的保留端口，端口为字符串
+端口（例如“bank”） | 端口（例如 80） | 没有低位数字的保留端口，端口为字符串
 模块（例如“bank”） | 应用程序（例如 Nginx） | 特定于应用
 客户端 | - | 没有直接的类比，有点像 L2 路由，也有点像 TLS
 连接 | - | 没有直接的类比，合并进了 TCP 的连接
@@ -67,7 +67,7 @@ type CapabilityKey object
 
 ```typescript
 function newCapability(name: string): CapabilityKey {
-  // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 Cosmos SDK 的 ADR 3 / ScopedCapabilityKeeper
 }
 ```
 
@@ -75,7 +75,7 @@ function newCapability(name: string): CapabilityKey {
 
 ```typescript
 function authenticateCapability(name: string, capability: CapabilityKey): bool {
-  // // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 Cosmos SDK 的 ADR 3 / ScopedCapabilityKeeper
 }
 ```
 
@@ -91,7 +91,7 @@ function claimCapability(name: string, capability: CapabilityKey) {
 
 ```typescript
 function getCapability(name: string): CapabilityKey {
-  // // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 Cosmos SDK 的 ADR 3 / ScopedCapabilityKeeper
 }
 ```
 
@@ -99,7 +99,7 @@ function getCapability(name: string): CapabilityKey {
 
 ```typescript
 function releaseCapability(capability: CapabilityKey) {
-  // // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 Cosmos SDK 的 ADR 3 / ScopedCapabilityKeeper
 }
 ```
 
@@ -111,7 +111,7 @@ type SourceIdentifier string
 
 ```typescript
 function callingModuleIdentifier(): SourceIdentifier {
-  // // 由主状态机提供, 例如 以太坊中的合约地址
+  // 由主状态机提供, 例如 以太坊中的合约地址
 }
 ```
 
@@ -204,7 +204,7 @@ function releasePort(capability: CapabilityKey) {
 }
 ```
 
-### 属性和不变量
+### 属性与不变性
 
 - 默认情况下，端口标识符是先到先服务的：模块绑定到端口后，只有该模块才能使用该端口，直到模块转移或释放它为止。模块管理器可以实现自定义逻辑，以覆盖此逻辑。
 
@@ -214,7 +214,7 @@ function releasePort(capability: CapabilityKey) {
 
 ## 向前兼容性
 
-端口绑定不是线协议（wire protocol），因此只要所有权语义不受影响，接口就可以在单独的链上独立更改。
+端口绑定不是线路协议（wire protocol），因此只要所有权语义不受影响，接口就可以在单独的链上独立更改。
 
 ## 示例实现
 
