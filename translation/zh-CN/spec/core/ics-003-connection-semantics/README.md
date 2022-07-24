@@ -21,9 +21,9 @@ modified: '2019-08-25'
 
 ### 定义
 
-客户端相关的类型和函数被定义在 [ICS 2](../ics-002-client-semantics) 中。
+客户端相关的类型和函数的定义见 [ICS 2](../ics-002-client-semantics) 。
 
-加密承诺证明相关的类型和函数被定义在 [ICS 23](../ics-023-vector-commitments) 中。
+加密承诺证明相关的类型和函数的定义见[ICS 23](../ics-023-vector-commitments) 。
 
 `Identifier`和其他主机状态机的要求如 [ICS 24](../ics-024-host-requirements) 所示。标识符不一定需要是人类可读的名称（基本上也不应该是，来防止对标识符的抢注或争夺）。
 
@@ -60,7 +60,7 @@ modified: '2019-08-25'
 - 在两个链上创建的连接对象均包含发起方指定的共识状态。
 - 其他连接对象不能通过重放数据报的方式在其他链上恶意的被创建。
 
-## 技术指标
+## 技术规范
 
 ### 数据结构
 
@@ -92,7 +92,7 @@ interface ConnectionEnd {
 - `counterpartyPrefix`字段包含用于与此连接关联的对方链上的状态验证的前缀。链应该公开一个端点，以允许中继器查询连接前缀。如果没有指定，默认`counterpartyPrefix`的`"ibc"`应该被使用。
 - `clientIdentifier`字段标识与此连接关联的客户端。
 - `counterpartyClientIdentifier`字段标识与此连接关联的对方链上的客户端。
-- `version`字段是不透明的字符串，可用于确定使用此连接的通道或数据包的编码或协议。如果未指定，则应使用默认`version` `""` 。
+- `version`字段是不透明的字符串，可用于确定使用此连接的通道或数据包的编码或协议。如果未指定，则应使用 `""`的默认`version`。
 - `delayPeriodTime`指示在验证区块头之后必须等待的时间，然后才能处理数据包、回执、接收证明或超时。
 - `delayPeriodBlocks`指示在验证区块头之后必须等待的以块为单位的时间段的数值，然后才能处理数据包、回执、接收证明或超时。
 
@@ -235,7 +235,7 @@ function getTimestampAtHeight(
 
 本 ICS 定义了建立握手子协议。一旦握手建立，连接将不能被关闭，标识符也无法被重新分配（这防止了数据包重放或者身份认证混乱）。
 
-区块头追踪和不良行为检测在 [ICS 2](../ics-002-client-semantics) 中被定义。
+区块头追踪和不良行为检测定义见 [ICS 2](../ics-002-client-semantics) 。
 
 ![State Machine Diagram](https://github.com/octopus-network/ibc/blob/zh-cn-2022/spec/core/ics-003-connection-semantics/state.png?raw=true)
 
@@ -261,7 +261,7 @@ type validateConnectionIdentifier = (id: Identifier) => boolean
 type getCompatibleVersions = () => []string
 ```
 
-一个实现必须定义一个函数`pickVersion`，该函数能从版本列表中选择一个版本。请注意，如果执行握手的两条链实现了不同的`pickVersion`函数，则（可能行为不端）中继器可能能够通过在两条链上执行`INIT`和`OPENTRY`来停止握手，此时它们将选择不同的版本并且无法继续。
+实现必须定义一个函数`pickVersion`，该函数能从版本列表中选择一个版本。请注意，如果执行握手的两条链实现了不同的`pickVersion`函数，则（可能有不良行为的）中继器可能能够通过在两条链上执行`INIT`和`OPENTRY`来停止握手，此时它们将选择不同的版本并且无法继续。
 
 ```typescript
 type pickVersion = ([]string) => string
@@ -277,12 +277,12 @@ type pickVersion = ([]string) => string
 
 发起人 | 数据报 | 作用链 | 之前状态（A，B） | 之后状态（A，B）
 --- | --- | --- | --- | ---
-参与者 | `ConnOpenInit` | A | (none, none) | （INIT，none）
+Actor | `ConnOpenInit` | A | (none, none) | （INIT，none）
 中继器 | `ConnOpenTry` | B | （INIT，none） | （INIT，TRYOPEN）
 中继器 | `ConnOpenAck` | A | （INIT，TRYOPEN） | (OPEN, TRYOPEN)
 中继器 | `ConnOpenConfirm` | B | (OPEN, TRYOPEN) | (OPEN, OPEN)
 
-在实现子协议的两个链之间的建立握手结束时，具有以下属性：
+在实现子协议的两个链之间的建立握手结束时，应具有以下属性：
 
 - 每条链都具有源自发起方所指定的对方链正确共识状态。
 - 每条链都知道且认同另一链上的标识符。
@@ -437,7 +437,7 @@ function queryClientConnections(id: Identifier): Set<Identifier> {
 }
 ```
 
-### 属性和不变性
+### 属性与不变性
 
 - 连接标识符是“先到先得”的：一旦连接被商定，两个链之间就会存在一对唯一的标识符。
 - 连接握手不能被另一条链的 IBC 处理程序作为中间人来进行干预。
@@ -472,4 +472,4 @@ function queryClientConnections(id: Identifier): Set<Identifier> {
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
