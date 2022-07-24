@@ -1,13 +1,13 @@
 ---
-ics: 25
+ics: '25'
 title: 处理程序接口
 stage: 草案
 category: IBC/TAO
 kind: 实例化
 requires: 2, 3, 4, 23, 24
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-04-23
-modified: 2019-08-25
+created: '2019-04-23'
+modified: '2019-08-25'
 ---
 
 ## 概要
@@ -16,11 +16,11 @@ modified: 2019-08-25
 
 ### 动机
 
-IBC 是一种模块间通信协议，旨在促进可靠的，经过身份验证的消息在独立的区块链上的模块之间传递。模块应该能够推理出与之交互的接口以及为了安全的使用接口而必须遵守的要求。
+IBC 是一种模块间通信协议，旨在促进独立区块链上的模块之间可靠、经过身份验证的消息传递。模块应该能够得知它们与之交互的接口以及它们必须遵守的要求，以便安全地使用接口。
 
 ### 定义
 
-相关定义与相应的先前标准（定义了函数）中的定义相同。
+相关定义在参考的先前标准（定义了功能的地方）中适当地定义。
 
 ### 所需属性
 
@@ -46,7 +46,7 @@ IBC 是一种模块间通信协议，旨在促进可靠的，经过身份验证�
 
 ### 通道生命周期管理
 
-默认情况下，通道归创建的端口所有，这意味着只允许绑定到该端口的模块检视，关闭或在通道上发送。模块可以使用同一端口创建任意数量的通道。
+默认情况下，通道归创建端口所有，这意味着只有绑定到该端口的模块才允许在通道上检查、关闭或发送。一个模块可以使用同一端口创建任意数量的通道。
 
 处理程序接口暴露了 [ICS 4](../ics-004-channel-and-packet-semantics) 中定义的`chanOpenInit` ， `chanOpenTry` ， `chanOpenAck` ， `chanOpenConfirm` ， `chanCloseInit` ， `chanCloseConfirm`和`queryChannel` 。
 
@@ -60,7 +60,7 @@ IBC 是一种模块间通信协议，旨在促进可靠的，经过身份验证�
 
 默认  IBC 路由模块应允许外部调用`sendPacket` ， `recvPacket` ， `acknowledgePacket` ， `timeoutPacket` ， `timeoutOnClose`和`cleanupPacket` 。
 
-### 属性和不变量
+### 属性与不变性
 
 此处定义的 IBC 处理程序模块接口继承了其关联规范中定义的功能属性。
 
