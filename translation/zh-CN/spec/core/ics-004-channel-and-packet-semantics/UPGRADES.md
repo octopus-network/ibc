@@ -17,7 +17,7 @@
     - 要么成功，然后通道两端必须采用新的通道参数并妥善地处理 数据包。
 - 通道升级协议应该具有改变所有通道相关参数的能力；但是通道升级协议不能改变下层的`ConnectionEnd` 。通道升级协议不得修改通道标识符。
 
-## 技术指标
+## 技术规范
 
 ### 数据结构
 
@@ -200,8 +200,8 @@ function restoreChannel() {
 --- | --- | --- | --- | ---
 Actor | `ChanUpgradeInit` | A | (OPEN, OPEN) | (UPGRADE_INIT, OPEN)
 Actor | `ChanUpgradeTry` | B | (UPGRADE_INIT, OPEN) | (UPGRADE_INIT, UPGRADE_TRY)
-Relayer | `ChanUpgradeAck` | A | (UPGRADE_INIT, UPGRADE_TRY) | (OPEN, UPGRADE_TRY)
-Relayer | `ChanUpgradeConfirm` | B | (OPEN, UPGRADE_TRY) | (OPEN, OPEN)
+中继器 | `ChanUpgradeAck` | A | (UPGRADE_INIT, UPGRADE_TRY) | (OPEN, UPGRADE_TRY)
+中继器 | `ChanUpgradeConfirm` | B | (OPEN, UPGRADE_TRY) | (OPEN, OPEN)
 
 在两个实现子协议的链之间的升级握手结束时，以下属性成立：
 
