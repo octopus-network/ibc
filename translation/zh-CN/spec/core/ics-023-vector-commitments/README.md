@@ -28,13 +28,13 @@ modified: '2019-08-25'
 
 使用特定的*路径*和*值*类型实例化承诺，它们的类型假定为任意可序列化的数据。
 
-一个*微不足道的函数*是增长速度比任何正多项式的倒数更慢的函数，如[这里](https://en.wikipedia.org/wiki/Negligible_function)的定义 。
+一个*可忽略的函数*是一个比每个正多项式的倒数增长更慢的函数，[如此](https://en.wikipedia.org/wiki/Negligible_function)处所定义。
 
 ### 所需属性
 
-本文档仅定义所需的属性，而不是具体的实现-请参见下面的“属性”。
+本文档仅定义所需的属性，而不是具体的实现——请参见下文中的“属性”。
 
-## 技术指标
+## 技术规范
 
 下面我们定义一个行为和数据类型的概述。有关数据类型定义，请查看[conio/ics23](https://github.com/confio/ics23/blob/master/proofs.proto)代码库。
 
@@ -279,7 +279,7 @@ Probability(verifyMembership(root, proof, applyPrefix(prefix, path), otherValue)
 
 ## 历史
 
-安全性定义主要来自这些文章（并进行了一些简化）：
+安全性定义主要来自以下文章（并进行了一些简化）：
 
 - [向量承诺及其应用](https://eprint.iacr.org/2011/495.pdf)
 - [应用程序对保留匿名撤销的承诺](https://eprint.iacr.org/2017/043.pdf)
@@ -291,4 +291,4 @@ Probability(verifyMembership(root, proof, applyPrefix(prefix, path), otherValue)
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
