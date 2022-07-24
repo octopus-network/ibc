@@ -31,7 +31,7 @@ IBC 处理程序接口提供的所有函数均在 [ICS 25](../ics-025-handler-in
 - 除了调用中间层外，不应为数据包发送和接收增加任何开销。
 - 当路由模块需要对数据包操作时，路由模块应在模块上调用指定的处理程序函数。
 
-## 技术指标
+## 技术规范
 
 > 注意：如果主机状态机正在使用对象能力认证（请参阅 [ICS 005](../ics-005-port-allocation) ），则所有使用端口的函数都需要带有一个附加的能力参数。
 
@@ -58,7 +58,7 @@ function onChanOpenInit(
 
 #### **ChanOpenTry**
 
-`onChanOpenTry`将验证 INIT 选择的参数以及交易对手选择的版本字符串并执行自定义`TRY`逻辑。如果 INIT 选择的参数无效，回调必须返回错误以中止握手。如果交易对手选择的版本与此模块支持的版本不兼容，回调必须返回错误以中止握手。如果版本兼容，try 回调必须选择最终版本字符串并将其返回给核心 IBC。 `onChanOpenTry`也可以执行自定义初始化逻辑
+`onChanOpenTry`将验证 INIT 选择的参数以及交易对手选择的版本字符串并执行自定义`TRY`逻辑。如果 INIT 选择的参数无效，回调必须返回错误以中止握手。如果交易对手选择的版本与此模块支持的版本不兼容，回调必须返回错误以中止握手。如果版本兼容，try 回调必须选择最终版本字符串并将其返回给核心 IBC。 `onChanOpenTry`也可以执行自定义初始化逻辑。
 
 ```typescript
 function onChanOpenTry(
@@ -75,7 +75,7 @@ function onChanOpenTry(
 
 #### **OnChanOpenAck**
 
-onChanOpenAck will error if the counterparty selected version string is invalid to abort the handshake. It may also perform custom ACK logic.
+如果交易对手选择的版本字符串无效以中止握手， `onChanOpenAck`将出错。它还可以执行自定义 ACK 逻辑。
 
 ```typescript
 function onChanOpenAck(
@@ -715,4 +715,4 @@ interface PacketCleanup {
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
