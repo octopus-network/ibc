@@ -51,7 +51,7 @@ IBC | TCP | 很多，请参阅描述 IBC 的体系结构文档
 连接 | - | 没有直接的类比，合并进了 TCP 的连接
 通道 | 连接 | 可以同时打开或关闭任意数量的通道
 
-## 技术指标
+## 技术规范
 
 ### 数据结构
 
@@ -193,7 +193,7 @@ function bindPort(id: Identifier): CapabilityKey {
 
 IBC 处理程序必须实现`releasePort`函数，该函数允许模块释放端口，以便其他模块随后可以绑定到该端口。
 
-`releasePort`应该对所有模块都可用。
+`releasePort`应对所有模块均可用。
 
 > 警告：释放端口将允许其他模块绑定到该端口，并可能拦截传入的通道创建握手请求。仅在安全的情况下，模块才应释放端口。
 
@@ -206,7 +206,7 @@ function releasePort(capability: CapabilityKey) {
 
 ### 属性与不变性
 
-- 默认情况下，端口标识符是先到先服务的：模块绑定到端口后，只有该模块才能使用该端口，直到模块转移或释放它为止。模块管理器可以实现自定义逻辑，以覆盖此逻辑。
+- 默认情况下，端口标识符是遵循“先到先服务”原则的：模块绑定到端口后，只有该模块才能使用该端口，直到模块转移或释放它为止。模块管理器可以实现自定义逻辑，以覆盖此逻辑。
 
 ## 向后兼容性
 
@@ -230,4 +230,4 @@ function releasePort(capability: CapabilityKey) {
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
