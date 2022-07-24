@@ -138,7 +138,7 @@ type OpaquePacket = object
 
 - 数据包传输和确认的速度应仅受底层链速度的限制。证明应尽可能是批量化的。
 
-#### 仅一次传递
+#### 仅单次传递
 
 - 在通道的一端发送的 IBC 数据包应仅一次的传递到另一端。
 - 对于仅一次的安全性，不需要网络同步假设。如果其中一条链或两条链都挂起了，则数据包最多传递不超过一次，并且一旦链恢复，数据包就应该能够再次流转。
@@ -152,7 +152,7 @@ type OpaquePacket = object
 
 - 通道应该在握手期间被通道两端的模块许可，并且此后不可变更（更高级别的逻辑可以通过标记端口的所有权来标记通道所有权）。只有与通道端关联的模块才能在其上发送或接收数据包。
 
-## 技术指标
+## 技术规范
 
 ### 数据流可视化
 
@@ -248,14 +248,14 @@ type validateChannelIdentifier = (portIdentifier: Identifier, channelIdentifier:
 
 发起人 | 数据报 | 作用链 | 之前状态 (A, B) | 之后状态 (A, B)
 --- | --- | --- | --- | ---
-参与者 | ChanOpenInit | A | (none, none) | (INIT, none)
+Actor | ChanOpenInit | A | (none, none) | (INIT, none)
 中继器 | ChanOpenTry | B | (INIT, none) | (INIT, TRYOPEN)
 中继器 | ChanOpenAck | A | (INIT, TRYOPEN) | (OPEN, TRYOPEN)
 中继器 | ChanOpenConfirm | B | (OPEN, TRYOPEN) | (OPEN, OPEN)
 
 发起人 | 数据报 | 作用链 | 之前状态 (A, B) | 之后状态 (A, B)
 --- | --- | --- | --- | ---
-参与者 | ChanCloseInit | A | (OPEN, OPEN) | (CLOSED, OPEN)
+Actor | ChanCloseInit | A | (OPEN, OPEN) | (CLOSED, OPEN)
 中继器 | ChanCloseConfirm | B | (CLOSED, OPEN) | (CLOSED, CLOSED)
 
 ##### 建立握手
@@ -288,7 +288,7 @@ function chanOpenInit(
     abortTransactionUnless(provableStore.get(channelPath(portIdentifier, channelIdentifier)) === null)
     connection = provableStore.get(connectionPath(connectionHops[0]))
 
-    // 允许乐观通道握手
+    // 允许Optimistic通道握手
     abortTransactionUnless(connection !== null)
     abortTransactionUnless(authenticateCapability(portPath(portIdentifier), portCapability))
     channel = ChannelEnd{INIT, order, counterpartyPortIdentifier,
@@ -480,7 +480,7 @@ function chanCloseConfirm(
     2. 在 *B* 上为 *A* 创建客户端（请参阅 [ICS 2](../ics-002-client-semantics) ）
     3. 模块 *1* 绑定到端口（请参阅 [ICS 5](../ics-005-port-allocation) ）
     4. 模块 *2* 绑定到端口（请参阅 [ICS 5](../ics-005-port-allocation) ），该端口以带外方式（out-of-band）传输到模块 *1*
-2. 建立连接和通道，按顺序乐观发送（optimistic send）
+2. 建立连接和通道，按顺序以optimistic方式发送（optimistic send）
     1. 模块 *1* 自 *A* 向 *B* 创建连接握手（请参见 [ICS 3](../ics-003-connection-semantics) ）
     2. 使用新创建的连接（此 ICS），自 *1* 向 *2* 开始创建通道握手
     3. 通过新创建的通道自 *1* 向 *2* 发送数据包（此 ICS）
@@ -549,7 +549,7 @@ function sendPacket(
 }
 ```
 
-#### 接受数据包
+#### 接收数据包
 
 模块调用`recvPacket`函数以接收和处理在对应的链的通道端发送的 IBC 数据包。
 
@@ -624,7 +624,7 @@ function recvPacket(
 }
 ```
 
-#### 写回执
+#### 编写回执
 
 `writeAcknowledgement`函数由模块调用，以写入处理 IBC 数据包产生的数据；此IBC数据包可以由发送链验证，是一种“执行回执”或“RPC 调用响应”。
 
@@ -967,10 +967,10 @@ function queryChannel(connId: Identifier, chanId: Identifier): ChannelEnd | void
 
 2019年7月29日-修改以处理连接关闭后的超时
 
-2019年8月13日-各种修改
+2019年8月13日-多处修改
 
 2019年8月25日-清理
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
