@@ -36,7 +36,7 @@ modified: '2019-12-09'
 
 ### 客户端状态
 
-单机的`ClientState`就是简单的客户端是否被冻结。
+单机的`ClientState`就是简单的指客户端是否被冻结。
 
 ```typescript
 interface ClientState {
@@ -47,9 +47,9 @@ interface ClientState {
 
 ### 共识状态
 
-单机的`ConsensusState`由当前公钥、当前分散器、序列号和时间戳组成。
+单机的`ConsensusState`由当前公钥、当前区分符、序列号和时间戳组成。
 
-分散器是一个任意字符串，在创建客户端时被选定，旨在允许相同的公钥在不同的单机客户端（可能在不同的链上）重复使用，而不会被视为不当行为。
+区分符是一个任意字符串，在创建客户端时被选定，旨在允许相同的公钥在不同的单机客户端（可能在不同的链上）重复使用，而不会被视为不当行为。
 
 ```typescript
 interface ConsensusState {
@@ -66,7 +66,7 @@ interface ConsensusState {
 
 ### 区块头
 
-当机器希望更新公钥或分散器时， `Header` s 必须由单机提供。
+当机器希望更新公钥或区分符时， `Header` 必须由单机提供。
 
 ```typescript
 interface Header {
@@ -175,7 +175,7 @@ function checkMisbehaviourAndUpdateState(
 
 所有单机客户端状态验证函数都仅检查签名，该签名必须由单机提供。
 
-请注意，值连接应该以特定的状态机的转义方式实现。
+请注意，值的拼接应该以特定的状态机的转义方式实现。
 
 ```typescript
 function verifyClientState(
@@ -327,7 +327,7 @@ function verifyNextSequenceRecv(
 }
 ```
 
-### 属性和不变量
+### 属性与不变性
 
 实例化[ICS 2](../../core/ics-002-client-semantics)中定义的接口。
 
