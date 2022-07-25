@@ -80,7 +80,7 @@ interface Header {
 
 ### 确定性证明
 
-一个 GRANDPA 的块确定性证明，它包括一个提交信息和一个祖先证明，其中包括所有预提交目标块到提交目标块之间的所有区块头。例如，最新的块是 A-B-C-D-E-F，其中 A 是最后敲定的块，F 是可以收集到多数投票的位置（投票可能在 B，C，D，E，F 上）。那么证明需要包括从 F 到 A 的所有区块头。
+一个 GRANDPA 的区块确定性证明包括一个commit信息和一个祖先证明（ancestry proof），其中包括所有预提交目标块到提交目标块之间的所有区块头。例如，最新的块是 A-B-C-D-E-F，其中 A 是最后敲定的块，F 是可以收集到多数投票的位置（投票可能在 B，C，D，E，F 上）。那么证明需要包括从 F 到 A 的所有区块头。
 
 ```typescript
 interface Justification {
@@ -187,7 +187,7 @@ function checkMisbehaviourAndUpdateState(
     assert(evidence.h1.height === evidence.h2.height)
     // 断言：承诺是不同的
     assert(evidence.h1.commitmentRoot !== evidence.h2.commitmentRoot)
-    // 获取先前验证的承诺根和权限集
+    // 获取先前验证的承诺根和权威集合
     consensusState = get("clients/{identifier}/consensusStates/{evidence.fromHeight}")
     // 检查轻客户端是否“会被愚弄”
     assert(
@@ -341,7 +341,7 @@ function verifyNextSequenceRecv(
 }
 ```
 
-### 属性和不变量
+### 属性与不变性
 
 正确性保证和 GRANDPA 轻客户端算法相同。
 
