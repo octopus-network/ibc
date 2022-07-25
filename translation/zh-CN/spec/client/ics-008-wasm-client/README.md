@@ -22,7 +22,7 @@ modified: '2020-10-13'
 
 对于没有动态升级能力的轻客户端来说， 想要实现共识算法的升级（并暂停已有的轻客户端）需要等待其他链首先完成硬分叉升级（以便能够支持新的客户端）。共识暂停的升级的一个例子包括从Tendermint V1升级到Tendermint V2（更新轻客户端），以及从Tendermint共识切换到Honeybadger。 对内部状态机逻辑的改变不会影响共识，例如，对staking模块的改变不需要进行IBC升级。
 
-这种要求相关联链的二进制文件都都添加新的客户端实现的方式无疑会减慢IBC网络的升级进程。 因为这会导致每一个实验性、快速迭代的链的部署过程会因为这个过于保守的机制而停滞不前。
+这种要求相关联链的二进制文件都添加新的客户端实现的方式无疑会拖慢IBC网络的升级进程。 因为这会导致每一个实验性、快速迭代的链的部署过程由于这个过于保守的机制而停滞不前。
 
 一旦IBC网络广泛采用可动态升级的客户端，一条链可以随时升级其共识算法，中继器可以升级所有对手链的客户端代码，而不需要对手链自己进行升级。这就避免了在升级自己的共识算法时对于对手链的依赖。
 
@@ -96,7 +96,7 @@ function compare(a: Height, b: Height): Ord {
 }
 ```
 
-这旨在允许高度重置为 `0` ,同时修订号增加1 ,以便通过零高度的升级保持超时.
+这旨在允许高度重置为 `0` ，而修订号增加1，以便通过零高度的升级保持超时状态。
 
 ### 区块头
 
@@ -111,7 +111,7 @@ interface Header {
 
 ### 不良行为
 
-`Misbehaviour` 类型用于检测错误行为并冻结客户端 - 组织数据包流(如果适用). Wasm客户端的 `Misbehaviour` 由两个冲突的头组成, 且这两个头被轻客户端认可有效.
+`Misbehaviour` 类型用于检测不良行为并冻结客户端——并阻止数据包流（如适用）。Wasm 客户端的 `Misbehaviour` 由两个冲突的区块头组成, 且这两个区块头都被轻客户端认可有效。
 
 ```typescript
 interface Misbehaviour {
@@ -123,7 +123,7 @@ interface Misbehaviour {
 
 ### 客户端初始化
 
-Wasm客户端初始化需要一个主观选择的最新共识状态, 由Wasm客户端代码负责解析. `wasmCodeId` 字段是`Wasm Client Code` 的唯一标识符, `initializationData` 值得是不透明数据, 该数据用来初始化由Wasm客户端代码管理的特定客户端.
+Wasm客户端初始化需要一个主观选择的最新共识状态, 由Wasm客户端代码负责解析。`wasmCodeId` 字段是`Wasm Client Code` 的唯一标识符，`initializationData` 指的是不透明数据，该数据用来初始化由Wasm客户端代码管理的特定客户端。
 
 ```typescript
 function initialise(
@@ -150,7 +150,7 @@ function latestClientHeight(clientState: ClientState): Height {
 
 ### 合法性判定
 
-Wasm客户端有效性检测使用底层的Wasm客户端代码. 在确认提供的header是有效之后, 客户端状态被更新, 同时新验证的commitment被写到store.
+Wasm客户端合法性检测使用的是底层Wasm客户端代码。在确认所提供的区块头有效之后，会更新客户端状态，同时将刚刚验证的承诺（commitment）写入存储。
 
 ```typescript
 function checkValidityAndUpdateState(
@@ -180,7 +180,7 @@ function checkMisbehaviourAndUpdateState(
 
 ### 升级
 
-这个轻客户端所追踪的链可以选择在状态中写入一个特殊的预定密钥, 以允许轻客户端在准备升级时更新其客户端状态(例如，使用新的链ID或修订版).
+该轻客户端所追踪的链可以选择在状态中写入一个特殊的预定密钥，以允许轻客户端在准备升级时更新其客户端状态（例如使用新的链ID或修订版本）。
 
 由于客户端的状态改变会被立即执行，一旦新的客户端状态信息被写入预定密钥，客户端将不再能够跟踪旧链上的区块，所以它必须及时升级。
 
@@ -309,7 +309,7 @@ func (c *CodeHandle) isValidClientState(clientState ClientState, height u64) {
 
 #### Wasm客户端接口
 
-每个Wasm客户机代码都需要支持以下消息的接收, 以便用作轻客户端.
+每个Wasm客户端代码都需要支持以下消息的接收，以便用作轻客户端。
 
 ```rust
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -384,9 +384,9 @@ pub enum QueryMsg {
 
 ```
 
-### 属性和不变量
+### 属性与不变性
 
-正确性的保证是借助 `Wasm Client Code`实现的底层算法.
+`Wasm Client Code`实现的底层算法提供的正确性保证。
 
 ## 向后兼容性
 
