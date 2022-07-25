@@ -16,11 +16,11 @@ modified: '2020-10-13'
 
 ### 动机
 
-目前，添加新的客户端实现或升级已有的客户端都需要硬分叉升级，因为客户端的实现是内置在链上静态二进制文件中。链上任何客户端代码的更改都依赖于链上治理的批准，然后才能正式部署。
+目前，添加新的客户端实现或升级已有的客户端都需要进行硬分叉升级，因为客户端的实现是内置在链上静态二进制文件中的。链上任何客户端代码的更改都依赖于链上治理的批准，方可正式部署。
 
-在增加新客户端类型时这是可以接受的, 毕竟当前支持的共识算法数量较少。 但是对于升级轻客户端来说则比较麻烦。
+对于增加新客户端类型来说，这是可以接受的，毕竟当前支持的共识算法数量较少。但是对于升级轻客户端来说则是比较麻烦的做法。
 
-对于没有动态升级能力的轻客户端来说， 想要实现共识算法的升级(需暂停已有轻客户端）需要等待其他链首先完成硬分叉升级（以便能够支持新的客户端）。 共识暂停的升级的一个例子, 从Tendermint V1升级到Tendermint V2(更新轻客户端), 或者从Tendermint共识切换到Honeybadger。 对内部状态机逻辑的改变不会影响共识，例如，对staking模块的改变不需要进行IBC升级。
+对于没有动态升级能力的轻客户端来说， 想要实现共识算法的升级（并暂停已有的轻客户端）需要等待其他链首先完成硬分叉升级（以便能够支持新的客户端）。共识暂停的升级的一个例子包括从Tendermint V1升级到Tendermint V2（更新轻客户端），以及从Tendermint共识切换到Honeybadger。 对内部状态机逻辑的改变不会影响共识，例如，对staking模块的改变不需要进行IBC升级。
 
 这种要求相关联链的二进制文件都都添加新的客户端实现的方式无疑会减慢IBC网络的升级进程。 因为这会导致每一个实验性、快速迭代的链的部署过程会因为这个过于保守的机制而停滞不前。
 
@@ -28,27 +28,27 @@ modified: '2020-10-13'
 
 ### 定义
 
-函数和术语定义在 [ICS 2](../../core/ics-002-client-semantics).
+函数和术语定义见 [ICS 2](../../core/ics-002-client-semantics)。
 
-`currentTimestamp` 定义在 [ICS 24](../../core/ics-024-host-requirements).
+`currentTimestamp` 定义见 [ICS 24](../../core/ics-024-host-requirements)。
 
-`Wasm Client Code` 指的是存储在client store里的Wasm字节码 , 它提供了[ICS 2](../../core/ics-002-client-semantics) 目标区块链的具体实现.
+`Wasm Client Code` 指的是存储在client store里的Wasm字节码，它提供了[ICS 2](../../core/ics-002-client-semantics) 目标区块链的具体实现。
 
-`Wasm Client` 指的是定义在元组 `(Wasm Client Code, ClientID)`中`Wasm Client Code`的特定实例.
+`Wasm Client` 指的是定义在元组 `(Wasm Client Code, ClientID)`中`Wasm Client Code`的特定实例。
 
-`Wasm VM` 指的是能够执行有效Wasm字节码的虚拟机.
+`Wasm VM` 指的是能够执行有效Wasm字节码的虚拟机。
 
 ### 所需属性
 
-该规范必须满足ICS 2中定义的客户端接口.
+该规范必须满足ICS 2中定义的客户端接口。
 
 ## 技术规范
 
-该规范取决于 `Wasm client` 的正确实例化, 并且和任何目标 `blockchain` 的共识算法的具体实现解耦.
+该规范取决于 `Wasm client` 的正确实例化，并且和任何目标 `blockchain` 的共识算法的具体实现解耦。
 
 ### 客户端状态
 
-Wasm客户端状态通过`codeId`跟踪Wasm字节码的位置. `data`字段表示二进制数据, 不透明且仅仅通过Wasm Client Code解析.  `type` 代表客户端类型. `type` 和 `codeId` 都是不可变的.
+Wasm客户端状态通过`codeId`跟踪Wasm字节码的位置。`data`字段表示二进制数据，该数据不透明且仅能通过Wasm Client Code解析。  `type` 代表客户端类型。 `type` 和 `codeId` 都是不可变的。
 
 ```typescript
 interface ClientState {
@@ -60,7 +60,7 @@ interface ClientState {
 
 ### 共识状态
 
-Wasm共识状态跟踪时间戳(区块时间)和`Wasm Client code` 特定字段以及之前已经验证的共识状态的承诺根. `type` 和 `codeId` 都是不可变的.
+Wasm共识状态跟踪时间戳(区块时间)和`Wasm Client code` 特定字段以及之前已经验证的共识状态的承诺根（commitment root）。 `type` 和 `codeId` 都是不可变的。
 
 ```typescript
 interface ConsensusState {
@@ -70,9 +70,9 @@ interface ConsensusState {
 }
 ```
 
-### Height
+### 区块高度
 
-Wasm轻客户端实例的Height由两个`uint64`组成: 修订号和修订的height.
+Wasm轻客户端实例的Height由两个`uint64`组成：修订号和修订的区块高度。
 
 ```typescript
 interface Height {
@@ -81,7 +81,7 @@ interface Height {
 }
 ```
 
-高度之间的比较按以下方式实现:
+高度之间的比较按以下方式实现：
 
 ```typescript
 function compare(a: Height, b: Height): Ord {
@@ -98,9 +98,9 @@ function compare(a: Height, b: Height): Ord {
 
 这旨在允许高度重置为 `0` ,同时修订号增加1 ,以便通过零高度的升级保持超时.
 
-### Headers
+### 区块头
 
-Wasm客户端的header依赖 `Wasm Client Code`.
+Wasm客户端的区块头依赖 `Wasm Client Code`。
 
 ```typescript
 interface Header {
@@ -109,7 +109,7 @@ interface Header {
 }
 ```
 
-### Misbehaviour
+### 不良行为
 
 `Misbehaviour` 类型用于检测错误行为并冻结客户端 - 组织数据包流(如果适用). Wasm客户端的 `Misbehaviour` 由两个冲突的头组成, 且这两个头被轻客户端认可有效.
 
@@ -139,7 +139,7 @@ function initialise(
 }
 ```
 
-`latestClientHeight` 函数返回最新的存储高度,该高度在每次新的高度(最近的)被验证的时候也会跟着更新.
+`latestClientHeight` 函数返回最新的存储高度，该高度在每次新的高度（最近的）被验证的时候也会随之更新。
 
 ```typescript
 function latestClientHeight(clientState: ClientState): Height {
@@ -159,14 +159,14 @@ function checkValidityAndUpdateState(
     store = getStore("clients/{identifier}")
     codeHandle = clientState.codeHandle()
 
-    // 验证provider的header是有效且状态被保存
+    // 验证所提供的区块头有效且状态被保存
     assert(codeHandle.validateHeaderAndCreateConsensusState(store, clientState, header))
 }
 ```
 
-### 不良行为检测
+### 不良行为判定
 
-Wasm客户端的不良行为检测将决定在同一个高度的冲突头哪个将得到轻客户端的认可.
+Wasm客户端的不良行为检测将决定在同一个高度的冲突区块头哪个将得到轻客户端的认可。
 
 ```typescript
 function checkMisbehaviourAndUpdateState(
@@ -182,7 +182,7 @@ function checkMisbehaviourAndUpdateState(
 
 这个轻客户端所追踪的链可以选择在状态中写入一个特殊的预定密钥, 以允许轻客户端在准备升级时更新其客户端状态(例如，使用新的链ID或修订版).
 
-由于客户端状态的改变将立即进行, 一旦新的客户端状态信息被写入预定密钥, 客户端将不再能够跟踪旧链上的区块, 所以它必须及时升级.
+由于客户端的状态改变会被立即执行，一旦新的客户端状态信息被写入预定密钥，客户端将不再能够跟踪旧链上的区块，所以它必须及时升级。
 
 ```typescript
 function upgradeClientState(
@@ -199,11 +199,11 @@ function upgradeClientState(
 }
 ```
 
-对于 Wasm 客户端, 也可以通过区块链特定的管理功能升级 Wasm 客户端代码.
+对于 Wasm客户端，也可以通过区块链特定的管理功能升级 Wasm 客户端代码。
 
 ### 状态验证函数
 
-Wask客户端状态验证函数根据先前验证的承诺根来检查Merkle证明.
+Wasm客户端状态验证函数根据先前验证的承诺根来检查Merkle证明。
 
 ```typescript
 function verifyClientConsensusState(
@@ -296,7 +296,7 @@ function verifyNextSequenceRecv(
 
 #### 什么是代码句柄?
 
-代码句柄是一个对象, 促进Wasm代码和Go代码之间的交互. 比如, 方法`isValidClientState` 可以这样实现:
+代码句柄是一个对象，能够方便在Wasm代码和Go代码之间进行交互。例如，`isValidClientState` 方法可以通过以下方式实现：
 
 ```go
 func (c *CodeHandle) isValidClientState(clientState ClientState, height u64) {
@@ -388,24 +388,24 @@ pub enum QueryMsg {
 
 正确性的保证是借助 `Wasm Client Code`实现的底层算法.
 
-## 向后兼容
+## 向后兼容性
 
 不适用.
 
-## 向前兼容
+## 向前兼容性
 
 只要`Wasm Client Code`与`ICS 02`保持接口一致, 它就是向前兼容的.
 
 ## 示例实现
 
-还没有.
+暂无。
 
 ## 其他实现
 
-目前没有
+目前暂无。
 
 ## 历史
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
