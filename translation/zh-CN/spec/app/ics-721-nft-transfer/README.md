@@ -311,7 +311,7 @@ function createOutgoingPacket(
       // 托管通证
       nft.Transfer(classId, tokenId, channelEscrowAddresses[sourceChannel])
     } else {
-      // 我们是接收链, 烧毁凭证
+      // 我们是接收链, 销毁凭证
       nft.Burn(classId, tokenId)
     }
     tokenUris.push(nft.GetNFT(classId, tokenId).GetUri())
