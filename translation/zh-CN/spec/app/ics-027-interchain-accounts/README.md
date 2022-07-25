@@ -67,7 +67,7 @@ function SendTx(
   portId: Identifier,
   icaPacketData: InterchainAccountPacketData,
   timeoutTimestamp uint64) {
-    // 检查该 portId 与 connectionId当前是否有活动频道
+    // 检查该 portId 与 connectionId当前是否有活动通道
     // 如有，则意味着已通过该 portId 与 connectionId注册过跨链账户
     activeChannelID, found = GetActiveChannelID(portId, connectionId)
     abortTransactionUnless(found)
@@ -83,7 +83,7 @@ function SendTx(
       sendPacket(
       capability,
       portId, // 源端口 ID
-      activeChannelID, // 源频道 ID
+      activeChannelID, // 源通道 ID
       0,
       timeoutTimestamp,
       icaPacketData
@@ -156,7 +156,7 @@ function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifie
 
 要注册链间账户，我们需要一个链下进程（中继器）来监听`ChannelOpenInit`事件，并且有能力根据给定的连接来握手，从而创建通道。
 
-1. 控制链根据一个给定的*链间账户所有者地址*将一个新的IBC端口和控制链portID绑定在一起。**
+1. 控制器链将新的 IBC 端口与给定链间*帐户所有者地址*的控制器端口 ID 绑定。
 
 这个端口将被用来在控制链和主链之间为一对特定的所有者账户/链间账户创建通道。只有链间账户的`{owner-account-address}`与绑定的端口相匹配才会被授权使用相应的通道（该通道是根据控制链的portID创建的）发送IBC数据包。由每个控制链在链上施行此端口注册和访问。
 
@@ -220,7 +220,7 @@ ICS-04 允许每个应用程序通道有特定版本协商协议。对于链间�
 }
 ```
 
-评论：地址留空，因为地址将由主链生成并传回。数据报必须包含连接标识符，以便在需要打开新通道（以防活动通道超时）时确保使用同一连接。这将确保链间账户始终连接到同一个交易对手链。
+注释：地址留空，因为地址将由主链生成并传回。数据报必须包含连接标识符，以便在需要打开新通道（以防活动通道超时）时确保使用同一连接。这将确保链间账户始终连接到同一个交易对手链。
 
 - **TRY**
 
@@ -243,7 +243,7 @@ ICS-04 允许每个应用程序通道有特定版本协商协议。对于链间�
 }
 ```
 
-评论：如果控制链在 INIT 中设置了交易对手版本，则主链上的 ICS-27 应用程序负责返回此版本。主链必须同意控制链请求的单一编码类型和单一交易类型（例如包含在交易对手版本中）。如果不支持请求的编码或交易类型，则主链必须返回错误并中止握手。主链还必须生成链间账户地址，并使用链间账户地址字符串填充版本中的地址字段。
+注释：如果控制链在 INIT 中设置了交易对手版本，则主链上的 ICS-27 应用程序负责返回此版本。主链必须同意控制链请求的单一编码类型和单一交易类型（例如包含在交易对手版本中）。如果不支持请求的编码或交易类型，则主链必须返回错误并中止握手。主链还必须生成链间账户地址，并使用链间账户地址字符串填充版本中的地址字段。
 
 - **ACK**
 
@@ -289,7 +289,7 @@ icaPacketData = InterchainAccountPacketData{
 SendTx(ownerAddress, connectionId, portID, data, timeout)
 ```
 
-1. 主机链收到 IBC 数据包后会调用`DeserializeTx` 。
+1. 主链收到 IBC 数据包后会调用`DeserializeTx` 。
 
 2. 然后主链将为每条消息调用`AuthenticateTx`和`ExecuteTx`，并返回包含成功或错误的回执。
 
@@ -411,7 +411,7 @@ function onChanOpenTry(
 
   cpMetadata = UnmarshalJSON(counterpartyVersion)
   abortTransactionUnless(cpMetadata.Version === "ics27-1")
-  // 如果主链不支持初始化链请求的编码或 txType，则握手失败并中止事务
+  // 如果主链不支持初始化链请求的编码或 txType，则握手失败并中止交易
   abortTransactionUnless(IsSupportedEncoding(cpMetadata.Encoding))
   abortTransactionUnless(IsSupportedTxType(cpMetadata.TxType))
 
@@ -433,7 +433,7 @@ function onChanOpenTry(
 ```
 
 ```typescript
-// 由Relayer在控制链上调用
+// 由中继器在控制链上调用
 function onChanOpenAck(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
@@ -457,7 +457,7 @@ function onChanOpenAck(
 ```
 
 ```typescript
-// 由Relayer在主链上调用
+// 由中继器在主链上调用
 function onChanOpenConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
