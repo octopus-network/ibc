@@ -12,7 +12,7 @@ modified: '2019-08-25'
 
 ## 概要
 
-中继器算法是 IBC 的“物理”连接层-链下进程通过扫描链的状态，构造适当的数据报，并按照 IBC 规定在对方链上执行，从而在运行 IBC 协议的两条链之间中继数据。
+中继器算法是 IBC 的“物理”连接层——链下进程通过扫描链的状态，构造适当的数据报，并按照 IBC 规定在对方链上执行，从而在运行 IBC 协议的两条链之间中继数据。
 
 ### 动机
 
@@ -58,7 +58,7 @@ function relay(C: Set<Chain>) {
 }
 ```
 
-### 数据包，回执，超时
+### 数据包、回执、超时
 
 #### 在有序通道中中继数据包
 
@@ -80,7 +80,7 @@ function relay(C: Set<Chain>) {
 
 `pendingDatagrams`整理要从一台机器发送到另一台机器的数据报。此功能的实现将取决于两台机器都支持的 IBC 协议的子集以及源机器的状态布局。特定的中继器可能还会实现其自己的过滤器功能，以便仅中继可被中继的数据报的子集（例如，一个为了能中继而链下付过费的子集）。
 
-下面概述了在两个链之间执行单向中继的示例实现。通过交换`chain`和`counterparty` ，可以更改为执行双向中继。 哪个中继器进程负责哪个数据报是一个灵活的选择-在此示例中，中继器进程中继在`chain`上开始的所有握手（将数据报发送到两个链），中继从`chain`发送的所有数据包到`counterparty` ，并中继所有数据包的回执从`counterparty`发送到`chain` 。
+下面概述了在两个链之间执行单向中继的示例实现。通过交换`chain`和`counterparty` ，可以更改为执行双向中继。 哪个中继器进程负责哪个数据报是一个灵活的选择——在此示例中，中继器进程中继在`chain`上开始的所有握手（将数据报发送到两个链），中继从`chain`发送的所有数据包到`counterparty` ，并中继所有数据包的回执从`counterparty`发送到`chain` 。
 
 ```typescript
 function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>> {
@@ -259,8 +259,8 @@ function pendingDatagrams(chain: Chain, counterparty: Chain): List<Set<Datagram>
 
 2019年4月15日-修订格式和清晰度
 
-2019年4月23日-注释修订;草案合并
+2019年4月23日-注释修订；草案合并
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
