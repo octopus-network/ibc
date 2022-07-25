@@ -167,7 +167,7 @@ function verifyNextSequenceRecv(
 }
 ```
 
-### 属性和不变量
+### 属性与不变性
 
 语义上类似一个本地帐本的远程客户端。
 
