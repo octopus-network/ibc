@@ -79,7 +79,7 @@ interface ClientState {
 
 ### 共识状态
 
-Tendermint 客户端会跟踪所有先前已验证的共识状态的时间戳（区块时间），验证人集和和承诺根（在取消绑定期之后可以将其清除，但不应该在之前清除）。
+Tendermint 客户端会跟踪所有先前已验证的共识状态的时间戳（区块时间）、验证人集合和承诺根（在取消绑定期之后可以将其清除，但不应该在此之前清除）。
 
 ```typescript
 interface ConsensusState {
@@ -197,7 +197,7 @@ function checkValidityAndUpdateState(
     // 断言：信任期尚未过去
     assert(currentTimestamp() - clientState.latestTimestamp < clientState.trustingPeriod)
     // 断言：区块头时间戳小于未来的信任期。这应该使用中间区块头
-头来解决。
+来解决。
     assert(header.timestamp - clientState.latestTimeStamp < trustingPeriod)
     // 断言：区块头时间戳曾经是当前时间戳
     assert(header.timestamp > clientState.latestTimestamp)
@@ -205,7 +205,7 @@ function checkValidityAndUpdateState(
     assert(header.height > clientState.latestHeight)
     // 调用 `verify` 函数
     assert(verify(clientState.validatorSet, clientState.latestHeight, clientState.trustingPeriod, maxClockDrift, header))
-    // 更新验证者集合
+    // 更新验证人集合
     clientState.validatorSet = header.validatorSet
     // 更新最新高度
     clientState.latestHeight = header.height
@@ -233,9 +233,9 @@ function checkMisbehaviourAndUpdateState(
     assert(misbehaviour.h1.height === misbehaviour.h2.height)
     // 断言：承诺是不同的
     assert(misbehaviour.h1.commitmentRoot !== misbehaviour.h2.commitmentRoot)
-    // 获取先前验证的承诺根和验证者集
+    // 获取先前验证的承诺根和验证人集合
     consensusState = get("clients/{identifier}/consensusStates/{misbehaviour.fromHeight}")
-    // 断言：时间戳不早于大于一个信任期之前
+    // 断言：时间戳不早于一个信任期之前
     assert(currentTimestamp() - misbehaviour.timestamp < clientState.trustingPeriod)
     // 检查轻客户端是否“会被愚弄”
     assert(
@@ -244,7 +244,7 @@ function checkMisbehaviourAndUpdateState(
       )
     // 设置冻结高度
     clientState.frozenHeight = min(clientState.frozenHeight, misbehaviour.h1.height) // which is same as h2.height
-    //保存客户端
+    // 保存客户端
     set("clients/{identifier}", clientState)
 }
 ```
@@ -463,7 +463,7 @@ function verifyNextSequenceRecv(
 }
 ```
 
-### 属性和不变量
+### 属性与不变性
 
 正确性保证和 Tendermint 轻客户端算法相同。
 
