@@ -45,9 +45,9 @@ interface FungibleTokenPacketData {
 }
 ```
 
-当代币使用 ICS 20 协议跨链发送时，它们开始记录它们已使用的通道。此信息被编码到`denom`字段中。
+当通证使用 ICS 20 协议跨链发送时，它们开始记录它们已使用的通道。此信息被编码到`denom`字段中。
 
-ics20 代币面额以`{ics20Port}/{ics20Channel}/{denom}`形式表示，其中`ics20Port`和`ics20Channel`是当前链上资金使用的 ics20 端口和通道。前缀端口和通道表示资金先前通过哪个通道发送。如果`{denom}`包含`/` ，那么它也必须是 ics20 形式，表示该通证具有多跳记录。请注意，这要求在非 IBC 通证面额名称中禁止使用`/` （斜线字符）。
+ics20 通证面额以`{ics20Port}/{ics20Channel}/{denom}`形式表示，其中`ics20Port`和`ics20Channel`是当前链上资金使用的 ics20 端口和通道。前缀端口和通道表示资金先前通过哪个通道发送。如果`{denom}`包含`/` ，那么它也必须是 ics20 形式，表示该通证具有多跳记录。请注意，这要求在非 IBC 通证面额名称中禁止使用`/` （斜线字符）。
 
 发送链可以充当源zone或接收zone。当链通过不等于最后一个前缀端口和通道对的端口和通道发送通证时，它充当源zone。当从源zone发送通证时，目标端口和通道将作为面额的前缀（一旦接收到通证），将另一个跃点添加到通证记录。当链通过端口和通道发送通证时，它等于最后一个前缀端口和通道对，它充当接收zone。当通证从接收zone发送时，面额上的最后一个前缀端口和通道对被删除（一旦收到通证），撤消通证记录中的最后一跳。 [ibc-go implementation ](https://github.com/cosmos/ibc-go/blob/457095517b7832c42ecf13571fee1e550fec02d0/modules/apps/transfer/keeper/relay.go#L18-L49)中有更完整的解释。
 
@@ -68,7 +68,7 @@ interface FungibleTokenPacketError {
 
 请注意，当`FungibleTokenPacketData`和`FungibleTokenPacketAcknowledgement`序列化为数据包数据时，它们都必须是 JSON 编码的（不是 Protobuf 编码的）。另请注意， `uint256`在转换为 JSON 时是字符串编码的，但必须是`[0-9]+`形式的有效十进制数。
 
-可替代令牌转移桥模块跟踪与特定通道相关的托管地址。假定`ModuleState`的字段在范围内。
+同质化通证转移桥模块跟踪与特定通道相关的托管地址。假定`ModuleState`的字段在范围内。
 
 ```typescript
 interface ModuleState {
@@ -217,7 +217,7 @@ function sendFungibleTokens(
     if source {
       // 确定托管账户
       escrowAccount = channelEscrowAddresses[sourceChannel]
-      // 托管源代币（如果余额不足，则假定失败）
+      // 托管源通证（如果余额不足，则假定失败）
       bank.TransferCoins(sender, escrowAccount, denomination, amount)
     } else {
       // 接收者为源链，销毁凭证
