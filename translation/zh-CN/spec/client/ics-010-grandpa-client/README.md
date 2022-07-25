@@ -11,7 +11,7 @@ implements: '2'
 
 ## 概要
 
-本规范文档描述了使用 GRANDPA 最终性小工具的区块链客户端（验证算法）。
+本规范描述了使用 GRANDPA 最终性小工具的区块链客户端（验证算法）。
 
 GRANDPA（GHOST-based Recursive Ancestor Deriving Prefix Agreement）是 Polkadot 中继链将会使用的一个最终性小工具。它现在有一个 Rust 语言实现，并且是 Substrate 框架的一部分，因此使用 Substrate 构建的区块链很可能会使用 GRANDPA 作为其最终性小工具。
 
@@ -21,7 +21,7 @@ GRANDPA（GHOST-based Recursive Ancestor Deriving Prefix Agreement）是 Polkado
 
 ### 定义
 
-功能和术语如 [ICS 2](../../core/ics-002-client-semantics) 中所定义。
+函数和术语定义见 [ICS 2](../../core/ics-002-client-semantics) 。
 
 ### 所需属性
 
@@ -31,9 +31,9 @@ GRANDPA（GHOST-based Recursive Ancestor Deriving Prefix Agreement）是 Polkado
 
 该规范依赖于 [GRANDPA 最终性小工具](https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf)及其轻客户端算法的正确实例化。
 
-### 客户状态
+### 客户端状态
 
-GRANDPA 客户端状态跟踪最新区块高度和可能的冻结区块高度。
+GRANDPA 客户端状态会跟踪最新区块高度和可能的冻结区块高度。
 
 ```typescript
 interface ClientState {
@@ -67,7 +67,7 @@ interface ConsensusState {
 
 ### 区块头
 
-GRANDPA 客户端区块头包括区块高度，承诺根，块的确定性证明和权威集合。 （实际上，区块头中包含的是一个权威集合的证明，而不是权威集合本身，但是我们可以使用一个固定的键来验证证明并提取出真实集合，这里忽略了细节）
+GRANDPA 客户端区块头包括区块高度、承诺根、区块的确定性证明和权威集合。（实际上，区块头中包含的是一个权威集合的证明，而不是权威集合本身，但是我们可以使用一个固定的键来验证证明并提取出真实集合，本规范不包含相关细节）
 
 ```typescript
 interface Header {
@@ -80,7 +80,7 @@ interface Header {
 
 ### 确定性证明
 
-一个 GRANDPA 的块确定性证明，它包括一个提交信息和一个祖先证明，其中包括所有预提交目标块到提交目标块之间的所有区块头。例如，最新的块是 A-B-C-D-E-F，其中 A 是最后敲定的块，F 是可以收集到多数投票的位置（投票可能在 B，C，D，E，F 上）。那么证明需要包括从 F 到 A 的所有区块头。
+一个 GRANDPA 的区块确定性证明包括一个commit信息和一个祖先证明（ancestry proof），其中包括所有预提交目标块到提交目标块之间的所有区块头。例如，最新的块是 A-B-C-D-E-F，其中 A 是最后敲定的块，F 是可以收集到多数投票的位置（投票可能在 B，C，D，E，F 上）。那么证明需要包括从 F 到 A 的所有区块头。
 
 ```typescript
 interface Justification {
@@ -90,9 +90,9 @@ interface Justification {
 }
 ```
 
-### 提交信息
+### Commit 信息
 
-提交消息，它是已签名的预提交的汇总。
+Commit消息是已签名的预提交的汇总。
 
 ```typescript
 interface Commit {
@@ -106,9 +106,9 @@ interface SignedPrecommit {
 }
 ```
 
-### 证据
+### 不良行为
 
-`Evidence`类型用于检测不良行为并冻结客户端-以防止进一步的数据包流-如果适用。 GRANDPA 客户端`Evidence`由两个高度相同的，轻客户端认为都是有效的区块头组成。
+`Evidence`类型用于检测不良行为并冻结客户端-以防止进一步的数据包流（如果适用）。 GRANDPA 客户端`Evidence`由两个高度相同的、且由轻客户端判定有效的区块头组成。
 
 ```typescript
 interface Evidence {
@@ -142,7 +142,7 @@ function latestClientHeight(clientState: ClientState): uint64 {
 
 ### 合法性判定式
 
-GRANDPA 客户端合法性检查将验证区块头是否由当前权威集合签名，并验证权威集合证明以确定是否存在对权威集合更改。如果提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
+GRANDPA 客户端合法性检查将验证区块头是否由当前权威集合签名，并验证权威集合证明以确定是否存在对权威集合的更改。如果所提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
 
 ```typescript
 function checkValidityAndUpdateState(
@@ -175,9 +175,9 @@ function verify(
 }
 ```
 
-### 不良行为判定式
+### 不良行为判定
 
-GRANDPA 客户端的不良行为检查将确定在相同高度的两个冲突的区块头是否都轻客户端认定有效。
+GRANDPA 客户端的不良行为检测将确定在相同高度的两个冲突的区块头是否都被轻客户端认定有效。
 
 ```typescript
 function checkMisbehaviourAndUpdateState(
@@ -187,7 +187,7 @@ function checkMisbehaviourAndUpdateState(
     assert(evidence.h1.height === evidence.h2.height)
     // 断言：承诺是不同的
     assert(evidence.h1.commitmentRoot !== evidence.h2.commitmentRoot)
-    // 获取先前验证的承诺根和权限集
+    // 获取先前验证的承诺根和权威集合
     consensusState = get("clients/{identifier}/consensusStates/{evidence.fromHeight}")
     // 检查轻客户端是否“会被愚弄”
     assert(
@@ -203,7 +203,7 @@ function checkMisbehaviourAndUpdateState(
 
 ### 状态验证函数
 
-GRANDPA 客户端状态验证函数对照先前已验证的承诺根检查默克尔证明。
+GRANDPA 客户端状态验证函数对照先前已验证的承诺根检查Merkle证明。
 
 ```typescript
 function verifyClientConsensusState(
@@ -341,7 +341,7 @@ function verifyNextSequenceRecv(
 }
 ```
 
-### 属性和不变量
+### 属性与不变性
 
 正确性保证和 GRANDPA 轻客户端算法相同。
 
@@ -355,11 +355,11 @@ function verifyNextSequenceRecv(
 
 ## 示例实现
 
-还没有。
+暂无。
 
 ## 其他实现
 
-目前没有。
+目前暂无。
 
 ## 历史
 
@@ -367,4 +367,4 @@ function verifyNextSequenceRecv(
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。

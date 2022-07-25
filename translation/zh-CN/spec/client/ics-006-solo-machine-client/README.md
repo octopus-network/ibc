@@ -12,17 +12,17 @@ modified: '2019-12-09'
 
 ## 概要
 
-本规范文档描述了具有单个可更新公钥的单机客户端（验证算法），该客户端实现了 [ICS 2](../../core/ics-002-client-semantics) 接口。
+本标准描述了具有单个可更新公钥的单机客户端（验证算法），该客户端实现了 [ICS 2](../../core/ics-002-client-semantics) 接口。
 
 ### 动机
 
-单机，可能是诸如手机，浏览器或笔记本电脑之类的设备，它们希望与使用 IBC 的其他机器和多副本帐本进行交互，并且可以通过统一的客户端接口来实现。
+单机——可能是诸如手机，浏览器或笔记本电脑之类的设备，它们希望与使用 IBC 的其他机器和多副本帐本进行交互，并且可以通过统一的客户端接口来实现。
 
-单机客户端大致类似于“隐式帐户”，可以用来代替账本上的“常规交易”，从而允许所有交易通过 IBC 的统一接口进行。
+单机客户端大致类似于”隐式帐户”，可以用来代替账本上的“常规交易”，从而允许所有交易通过 IBC 的统一接口进行。
 
 ### 定义
 
-函数和术语如 [ICS 2](../../core/ics-002-client-semantics) 中所定义。
+函数和术语定义见 [ICS 2](../../core/ics-002-client-semantics) 。
 
 ### 所需属性
 
@@ -36,7 +36,7 @@ modified: '2019-12-09'
 
 ### 客户端状态
 
-单机的`ClientState`就是简单的客户端是否被冻结。
+单机的`ClientState`就是简单的指客户端是否被冻结。
 
 ```typescript
 interface ClientState {
@@ -47,9 +47,9 @@ interface ClientState {
 
 ### 共识状态
 
-单机的`ConsensusState`由当前公钥、当前分散器、序列号和时间戳组成。
+单机的`ConsensusState`由当前公钥、当前区分符、序列号和时间戳组成。
 
-分散器是一个任意字符串，在创建客户端时被选定，旨在允许相同的公钥在不同的单机客户端（可能在不同的链上）重复使用，而不会被视为不当行为。
+区分符是一个任意字符串，在创建客户端时被选定，旨在允许相同的公钥在不同的单机客户端（可能在不同的链上）重复使用，而不会被视为不当行为。
 
 ```typescript
 interface ConsensusState {
@@ -60,13 +60,13 @@ interface ConsensusState {
 }
 ```
 
-### 高度
+### 区块高度
 
 单机的`Height`只是一个`uint64` ，可以用来做普通的比较操作。
 
 ### 区块头
 
-当机器希望更新公钥或分散器时， `Header` s 必须由单机提供。
+当机器希望更新公钥或区分符时， `Header` 必须由单机提供。
 
 ```typescript
 interface Header {
@@ -127,7 +127,7 @@ function latestClientHeight(clientState: ClientState): uint64 {
 }
 ```
 
-### 合法性判定式
+### 合法性判定
 
 单机客户端的`checkValidityAndUpdateState`函数检查当前注册的公共密钥是否对新的公共密钥和正确的序号进行了签名。
 
@@ -145,7 +145,7 @@ function checkValidityAndUpdateState(
 }
 ```
 
-### 不良行为判定式
+### 不良行为判定
 
 任何当前公钥在不同消息上的重复签名都会冻结单机客户端。
 
@@ -175,7 +175,7 @@ function checkMisbehaviourAndUpdateState(
 
 所有单机客户端状态验证函数都仅检查签名，该签名必须由单机提供。
 
-请注意，值连接应该以特定的状态机的转义方式实现。
+请注意，值的拼接应该以特定的状态机的转义方式实现。
 
 ```typescript
 function verifyClientState(
@@ -327,7 +327,7 @@ function verifyNextSequenceRecv(
 }
 ```
 
-### 属性和不变量
+### 属性与不变性
 
 实例化[ICS 2](../../core/ics-002-client-semantics)中定义的接口。
 
@@ -341,16 +341,16 @@ function verifyNextSequenceRecv(
 
 ## 示例实现
 
-还没有.
+暂无。
 
 ## 其他实现
 
-目前没有。
+目前暂无。
 
 ## 历史
 
-2019年12月9日-初始版本 2019年12月17日-最终初稿
+2019年12月9日-2019年12月17日初始版本-最后一份初稿
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
