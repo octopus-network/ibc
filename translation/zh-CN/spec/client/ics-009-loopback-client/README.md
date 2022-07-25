@@ -1,14 +1,14 @@
 ---
-ics: 9
+ics: '9'
 title: 回环客户端
 stage: 草案
 category: IBC/TAO
 kind: 实例化
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2020-01-17
-modified: 2020-01-17
-requires: 2
-implements: 2
+created: '2020-01-17'
+modified: '2020-01-17'
+requires: '2'
+implements: '2'
 ---
 
 ## 概要
@@ -17,11 +17,11 @@ implements: 2
 
 ### 动机
 
-如果调用模块不了解目标模块的确切位置，并且希望使用统一的 IBC 消息传递接口（类似于 TCP/IP 中的 `127.0.0.1` ），则回环客户端可能很有用。
+如果调用模块不了解目标模块的确切位置，并且希望使用统一的 IBC 消息传递接口（类似于 TCP/IP 中的 `127.0.0.1` ），则回环客户端可能会派上用场。
 
 ### 定义
 
-函数和术语如 [ICS 2](../../core/ics-002-client-semantics) 中所定义。
+函数和术语定义见 [ICS 2](../../core/ics-002-client-semantics)。
 
 ### 所需属性
 
@@ -31,7 +31,7 @@ implements: 2
 
 ### 数据结构
 
-回环客户端不需要客户端状态，共识状态，区块头或证据数据结构。
+回环客户端不需要客户端状态、共识状态、区块头或证据数据结构。
 
 ```typescript
 type ClientState object
@@ -53,7 +53,7 @@ function initialise(): ClientState {
 }
 ```
 
-### 合法性判定式
+### 合法性判定
 
 在回环客户端中，无需进行合法性检查；该函数永远不应该被调用。
 
@@ -65,7 +65,7 @@ function checkValidityAndUpdateState(
 }
 ```
 
-### 不良行为判定式
+### 不良行为判定
 
 在回环客户端中无需进行任何不良行为检查；该函数永远不应该被调用。
 
@@ -185,7 +185,7 @@ function verifyNextSequenceRecv(
 
 ## 其他实现
 
-目前没有。
+目前暂无。
 
 ## 历史
 
@@ -193,4 +193,4 @@ function verifyNextSequenceRecv(
 
 ## 版权
 
-本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
