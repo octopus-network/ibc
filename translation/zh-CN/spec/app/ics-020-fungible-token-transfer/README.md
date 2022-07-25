@@ -28,7 +28,7 @@ modified: '2020-02-24'
 - 保持供应量不变（在单一源链和模块上保持不变或通胀）。
 - 无许可的通证转移，无需将连接（connections）、模块或通证面额加入白名单。
 - 对称（所有链实现相同的逻辑，hubs 和 zones 无协议差别）。
-- 容错：防止由于链`B`的拜占庭行为造成源自链`A`的通证的拜占庭通货膨胀（尽管任何将通证转移到链`B`上的用户都面临风险）。
+- 故障遏制：防止源自链`A`的通证由于链`B`的拜占庭行为而发生拜占庭膨胀（尽管任何将通证发送到链`B`的用户都可能面临风险）。
 
 ## 技术规范
 
@@ -49,7 +49,7 @@ interface FungibleTokenPacketData {
 
 ics20 代币面额以`{ics20Port}/{ics20Channel}/{denom}`形式表示，其中`ics20Port`和`ics20Channel`是当前链上资金使用的 ics20 端口和通道。前缀端口和通道表示资金先前通过哪个通道发送。如果`{denom}`包含`/` ，那么它也必须是 ics20 形式，表示该通证具有多跳记录。请注意，这要求在非 IBC 通证面额名称中禁止使用`/` （斜线字符）。
 
-发送链可以充当源zone或目标区。当链通过不等于上一个前缀端口和通道对的端口和通道发送通证时，它充当源zone。当从源zone发送令牌时，目标端口和通道将作为面额的前缀（一旦接收到通证），将另一个跳跃点添加到通证记录。当链通过端口和通道发送通证时，如果所用端口和通道等于上一个前缀端口和通道对，它充当目标区。当令牌从目标区发送时，面额上的最后一个前缀端口和通道对被删除（一旦收到通证），并且撤消通证记录中的最后一跳。 [ibc-go implementation 中](https://github.com/cosmos/ibc-go/blob/457095517b7832c42ecf13571fee1e550fec02d0/modules/apps/transfer/keeper/relay.go#L18-L49)有更完整的解释。
+发送链可以充当源zone或接收zone。当链通过不等于最后一个前缀端口和通道对的端口和通道发送通证时，它充当源zone。当从源zone发送通证时，目标端口和通道将作为面额的前缀（一旦接收到通证），将另一个跃点添加到通证记录。当链通过端口和通道发送通证时，它等于最后一个前缀端口和通道对，它充当接收zone。当通证从接收zone发送时，面额上的最后一个前缀端口和通道对被删除（一旦收到通证），撤消通证记录中的最后一跳。 [ibc-go implementation ](https://github.com/cosmos/ibc-go/blob/457095517b7832c42ecf13571fee1e550fec02d0/modules/apps/transfer/keeper/relay.go#L18-L49)中有更完整的解释。
 
 回执数据类型描述转账是成功还是失败，以及失败的原因（如果有）。
 
@@ -66,9 +66,9 @@ interface FungibleTokenPacketError {
 }
 ```
 
-请注意，当`FungibleTokenPacketData`和`FungibleTokenPacketAcknowledgement`序列化为数据包时，它们都必须是 JSON 编码的（不是 Protobuf 编码的）。另请注意， `uint256`在转换为 JSON 时是字符串编码的，但必须是`[0-9]+`形式的有效十进制数。
+请注意，当`FungibleTokenPacketData`和`FungibleTokenPacketAcknowledgement`序列化为数据包数据时，它们都必须是 JSON 编码的（不是 Protobuf 编码的）。另请注意， `uint256`在转换为 JSON 时是字符串编码的，但必须是`[0-9]+`形式的有效十进制数。
 
-同质通证转移桥接模块跟踪与状态中指定通道关联的托管地址。假设`ModuleState`的字段在范围内。
+可替代令牌转移桥模块跟踪与特定通道相关的托管地址。假定`ModuleState`的字段在范围内。
 
 ```typescript
 interface ModuleState {
@@ -78,7 +78,7 @@ interface ModuleState {
 
 ### 子协议
 
-本文所述的子协议应该在“同质通证转移桥接”模块中实现，并且可以访问 band 模块和 IBC 路由模块。
+本文所述的子协议应该在“同质通证转移桥接”模块中实现，并且可以访问 bank 模块和 IBC 路由模块。
 
 #### 端口 &amp; 通道设置
 
@@ -128,7 +128,7 @@ function onChanOpenInit(
   abortTransactionUnless(order === UNORDERED)
   // 断言版本是“ics20-1”
   abortTransactionUnless(version === "ics20-1")
-  //分配一个托管地址
+  // 分配一个托管地址
   channelEscrowAddresses[channelIdentifier] = newAddress()
 }
 ```
@@ -177,7 +177,7 @@ function onChanOpenConfirm(
 function onChanCloseInit(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-    // 总是中止事务
+    // 总是中止交易
     abortTransactionUnless(FALSE)
 }
 ```
@@ -195,11 +195,11 @@ function onChanCloseConfirm(
 用简单文字来描述就是，在 `A` 和`B`两个链间：
 
 - 在源 zone 上，桥接模块会在发送链上托管现有的本地资产面额，并在接收链上生成凭证。
-- 在目标 zone 上，桥接模块会在发送链上销毁本地凭证，并在接收链上解除对本地资产面额的托管。
+- 在接收 zone 上，桥接模块会在发送链上销毁本地凭证，并在接收链上解除对本地资产面额的托管。
 - 当数据包超时时，本地资产将解除托管并退还给发送者，或将凭证发回给发送者。
-- 回执数据用于处理失败，例如无效面额或无效目标帐户。返回失败的回执比终止交易更可取，因为它更容易使发送链根据失败的本质而采取适当的措施。
+- 回执数据用于处理失败，例如无效面额或无效目标帐户。返回失败的回执比终止交易更可取，因为它更容易使发送链根据失败的类型而采取适当的措施。
 
-`sendFungibleTokens`必须由模块中的事务处理程序调用，该处理程序对于宿主状态机上特定的帐户所有者，执行适当的签名检查。
+`sendFungibleTokens`必须由模块中的交易处理程序调用，该处理程序对于宿主状态机上特定的帐户所有者，执行适当的签名检查。
 
 ```typescript
 function sendFungibleTokens(
@@ -250,17 +250,17 @@ function onRecvPacket(packet: Packet) {
   // 如果数据包以发送链为前缀，我们就是源链
   source = data.denom.slice(0, len(prefix)) === prefix
   if source {
-  // 接收者是源链：取消托管令牌
-  // 确定托管账户
+    // 接收者是源链：取消托管通证
+    // 确定托管账户
     escrowAccount = channelEscrowAddresses[packet.destChannel]
-    // 将代币取消托管并发给接收者（如果余额不足，则失败）
+    // 将通证取消托管并发给接收者（如果余额不足，则失败）
     err = bank.TransferCoins(escrowAccount, data.receiver, data.denom.slice(len(prefix)), data.amount)
     if (err !== nil)
       ack = FungibleTokenPacketAcknowledgement{false, "transfer coins failed"}
   } else {
     prefix = "{packet.destPort}/{packet.destChannel}/"
     prefixedDenomination = prefix + data.denom
-    // 发送者是来源，将代金券铸造给接收者（如果余额不足，则失败）
+    // 发送者是来源，将凭证铸造给接收者（如果余额不足，则失败）
     err = bank.MintCoins(data.receiver, prefixedDenomination, data.amount)
     if (err !== nil)
       ack = FungibleTokenPacketAcknowledgement{false, "mint coins failed"}
@@ -275,7 +275,7 @@ function onRecvPacket(packet: Packet) {
 function onAcknowledgePacket(
   packet: Packet,
   acknowledgement: bytes) {
-  // 如果转账失败，退还代币
+  // 如果转账失败，退还通证
   if (!ack.success)
     refundTokens(packet)
 }
@@ -285,7 +285,7 @@ function onAcknowledgePacket(
 
 ```typescript
 function onTimeoutPacket(packet: Packet) {
-  // 数据包超时，所以退还代币
+  // 数据包超时，所以退还通证
   refundTokens(packet)
 }
 ```
@@ -299,11 +299,11 @@ function refundTokens(packet: Packet) {
   // 如果面额没有前缀，我们就是来源
   source = data.denom.slice(0, len(prefix)) !== prefix
   if source {
-    // 发送人是源链，取消托管代币返回给发送人
+    // 发送人是源链，取消托管通证返回给发送人
     escrowAccount = channelEscrowAddresses[packet.srcChannel]
     bank.TransferCoins(escrowAccount, data.sender, data.denom, data.amount)
   } else {
-    // 接收者是源链，将铸造代金券返还给发送者
+    // 接收者是源链，将铸造凭证返还给发送者
     bank.MintCoins(data.sender, data.denom, data.amount)
   }
 }
@@ -329,12 +329,12 @@ function onTimeoutPacketClose(packet: Packet) {
 
 此规范不能直接处理“菱形问题”，在该问题中，用户将源自链 A 的通证发送到链 B，然后又发送给链 D，并希望通过 D-&gt; C-&gt; A 归还它，由于此时通证的供应量被认为是由链 B 控制（面额将为“ {portOnD} / {channelOnD} / {portOnB} / {channelOnB} / denom”），链 C 不能充当中介。尚不清楚该场景是否应按协议处理—可能只需要原路返回就可以了（如果在这两个途径上都有频繁的流动性和一定的结余，菱形路径将在大多数情况下适用）。较长的赎回路径引起的复杂性可能导致网络拓扑结构中出现中心链。
 
-为了跟踪沿着各种路径在链网络中移动的所有面额，对于特定的链实现一个注册表将有助于跟踪每个面额的“全局”源链。最终用户服务提供商（例如钱包作者）可能希望集成这样的注册表，或保留自己的典范源链和人类可读名称的映射，以改善 UX。
+为了跟踪沿着各种路径在链网络中移动的所有面额，对于特定的链实现一个注册表将有助于跟踪每个面额的“全局”源链。最终用户服务提供商（例如钱包作者）可能希望集成这样的注册表，或保留自己的典范源链和人类可读名称的映射，以改善用户体验。
 
 #### 可选附录
 
-- 每个本地链都可以选择保留一个查找表，以在状态中使用简短，用户友好的本地面额，在发送和接收数据包时，它们会与较长面额进行转换。
-- 可能会对与哪些其他机器连接以及建立哪些通道施加其他限制。
+- 每个本地链都可以选择保留一个查找表，以在状态中使用简短，用户友好的本地面额，在发送和接收数据包时，它们会与较长的面额进行转换。
+- 可以对可以连接哪些其他机器以及可以建立哪些通道施加额外的限制。
 
 ## 向后兼容性
 
