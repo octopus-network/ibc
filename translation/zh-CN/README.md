@@ -59,3 +59,19 @@ Interchain Standard Number | Standard Title | Stage
 [27](spec/app/ics-027-interchain-accounts/README.md) | Interchain Accounts | Draft
 [29](spec/app/ics-029-fee-payment) | General Relayer Incentivisation Mechanism | Candidate
 [30](spec/app/ics-030-middleware) | IBC Application Middleware | Candidate
+
+## 中文译者
+
+* [Julian](https://github.com/en) <julian@oct.network>
+* [Kim](https://github.com/emmkim404) <630467286@qq.com>
+* [Burt](https://github.com/livelybug) <burt@oct.network>
+* [Arthas](https://github.com/arthaszeng) <sli616@163.com>
+* [Jeffrey](https://github.com/hulatown) <huzhiwei@outlook.com>
+* [Alex](https://github.com/alexwanng) <idea.wangtj@gmail.com>
+* [Evie](https://github.com/eviexu2) <evie@bianjie.ai>
+* [John](https://github.com/Satoshi-Kusumoto)
+* [Vincent](https://github.com/chengwenxi) <vincent.ch.cn@gmail.com>
+* [Leo](https://github.com/leoyoung0)
+* [Lester](https://github.com/lesterli) <lester@oct.network>
+* [xiangjianmeng](https://github.com/xiangjianmeng) <mengxiangjian888@Gmail.com>
+* [Louis](https://github.com/toliuyi) <louis@oct.network>
