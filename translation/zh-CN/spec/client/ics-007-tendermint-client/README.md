@@ -54,7 +54,7 @@ Tendermint 轻客户端使用 ICS 8 中定义的通用Merkle证明格式。
 
 ## 技术指标
 
-该规范依赖于[Tendermint 共识算法](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)和[轻客户端算法](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md)的正确实例化。
+该规范依赖于[Tendermint 共识算法](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)和[轻客户端算法](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/README.md)的正确实例化。
 
 ### 客户端状态
 

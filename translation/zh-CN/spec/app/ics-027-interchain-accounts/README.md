@@ -163,8 +163,8 @@ function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifie
 1. 在给定连接的情况下，控制链会发出一个事件信号，在此端口上打开一个新通道。
 2. 监听`ChannelOpenInit`事件的中继器将继续为创建通道而进行握手。
 3. 在主链的`OnChanOpenTry`回调过程中，一个链间账户将被注册，并将链间账户地址到所有者帐户地址的映射存储在账户状态中（用于在执行时验证主链上的交易）。
-4. 在控制链的`OnChanOpenAck`回调过程中，一个链间账户之前在主链上的`OnChanOpenTry`注册的记录会被写入到所有者的状态中，记录中包含从 portID -&gt; 链间账户地址的映射。实现细节请参见以下的[元数据协商](#Metadata-negotiation)部分。
-5. 在控制链和主链上分别进行`OnChanOpenAck`和`OnChanOpenConfirm`回调期间，此链间帐户/所有者对的[活动通道](#Active-channels)将被写进链间账户/所有者的状态。
+4. 在控制链的`OnChanOpenAck`回调过程中，一个链间账户之前在主链上的`OnChanOpenTry`注册的记录会被写入到所有者的状态中，记录中包含从 portID -&gt; 链间账户地址的映射。实现细节请参见以下的[元数据协商](#元数据协商)部分。
+5. 在控制链和主链上分别进行`OnChanOpenAck`和`OnChanOpenConfirm`回调期间，此链间帐户/所有者对的[活动通道](#活动通道)将被写进链间账户/所有者的状态。
 
 #### 活动通道
 
@@ -189,11 +189,11 @@ function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifie
 
 #### **元数据协商**
 
-ICS-27 利用[ICS-04 通道版本协商](../../core/ics-004-channel-and-packet-semantics/README.md#versioning)在通道握手期间协商元数据和通道参数。元数据将包含编码格式以及交易类型，以便交易对手可以就跨链交易的结构和编码达成一致。在 TRY 步骤从主链发送的元数据也将包含链间帐户地址，以便可以将其中继到控制链。在通道握手结束时，控制链和主链都会存储控制链 portID 到新注册的链间账户地址的映射（[账户注册流程](#Register-account-flow)）。
+ICS-27 利用[ICS-04 通道版本协商](../../core/ics-004-channel-and-packet-semantics/README.md#versioning)在通道握手期间协商元数据和通道参数。元数据将包含编码格式以及交易类型，以便交易对手可以就跨链交易的结构和编码达成一致。在 TRY 步骤从主链发送的元数据也将包含链间帐户地址，以便可以将其中继到控制链。在通道握手结束时，控制链和主链都会存储控制链 portID 到新注册的链间账户地址的映射（[账户注册流程](#注册链间账户的流程)）。
 
-ICS-04 允许每个应用程序通道有特定版本协商协议。对于链间账户来说，通道版本将是一个 JSON 结构的字符串，其中包含所有相关元数据，这些元数据旨在在通道握手期间转发给交易对手（[参见下文摘要](#Metadata-negotiation-summary)）。
+ICS-04 允许每个应用程序通道有特定版本协商协议。对于链间账户来说，通道版本将是一个 JSON 结构的字符串，其中包含所有相关元数据，这些元数据旨在在通道握手期间转发给交易对手（[参见下文摘要](#元数据协商总结)）。
 
-结合每个跨链帐户绑定一个通道的规定，这种元数据协商方法允许我们将链间帐户的地址传递回控制链，并在`OnChanOpenAck`回调期间创建从控制链端口 ID 到链间帐户地址的映射。如[控制流程](#Controlling-flow)中所述，控制链需要知道已注册链间帐户的地址，以便将交易发送到主链上的链间帐户。
+结合每个跨链帐户绑定一个通道的规定，这种元数据协商方法允许我们将链间帐户的地址传递回控制链，并在`OnChanOpenAck`回调期间创建从控制链端口 ID 到链间帐户地址的映射。如[控制流程](#控制流程)中所述，控制链需要知道已注册链间帐户的地址，以便将交易发送到主链上的链间帐户。
 
 #### **元数据协商总结**
 
@@ -307,7 +307,7 @@ message InterchainAccountPacketData  {
 }
 ```
 
-回执包结构在[ics4](https://github.com/cosmos/ibc-go/blob/main/proto/ibc/core/channel/v1/channel.proto#L135-L148)中定义。如果主链上发生错误，则回执包含错误消息。
+回执包结构在[ics4](https://github.com/cosmos/ibc-go/blob/6b4aa9a50096d69f1e392e25809f0efc15b3a5f4/proto/ibc/core/channel/v1/channel.proto#L156)中定义。如果主链上发生错误，则回执包含错误消息。
 
 ```proto
 message Acknowledgement {
@@ -327,7 +327,7 @@ ICS-27 通过[ICS-30 中间件架构](../ics-030-middleware)允许应用程序�
 
 ### 端口和通道设置
 
-主链上的链间帐户模块必须始终绑定到 id 为 `icahost`的端口。控制链将动态绑定端口，如标识符格式[部分](#identifer-formats)中所指定。
+主链上的链间帐户模块必须始终绑定到 id 为 `icahost`的端口。控制链将动态绑定端口，如标识符格式[部分](#标识符格式)中所指定。
 
 下方示例假设一个模块正在实现整个`InterchainAccountModule`接口。 `setup`函数必须在创建模块时（可能是在区块链本身在初始化时）仅调用一次以绑定到对应端口。
 

@@ -462,7 +462,7 @@ function queryClientConnections(id: Identifier): Set<Identifier> {
 
 ## 历史
 
-本文档的部分内容受到[先前 IBC 规范](../../../archive)的启发。
+本文档的部分内容受到[先前 IBC 规范](../../../../../archive)的启发。
 
 2019年3月29日-提交初稿
 
