@@ -158,7 +158,7 @@ type OpaquePacket = object
 
 客户端、连接、通道和数据包的体系结构：
 
-![Dataflow Visualisation](dataflow.png)
+![Dataflow Visualisation](../../../../../spec/core/ics-004-channel-and-packet-semantics/dataflow.png)
 
 ### 预备知识
 
@@ -244,7 +244,7 @@ type validateChannelIdentifier = (portIdentifier: Identifier, channelIdentifier:
 
 #### 通道生命周期管理
 
-![Channel State Machine](channel-state-machine.png)
+![Channel State Machine](../../../../../spec/core/ics-004-channel-and-packet-semantics/channel-state-machine.png)
 
 发起人 | 数据报 | 作用链 | 之前状态 (A, B) | 之后状态 (A, B)
 --- | --- | --- | --- | ---
@@ -467,7 +467,7 @@ function chanCloseConfirm(
 
 #### 数据包流和处理
 
-![Packet State Machine](packet-state-machine.png)
+![Packet State Machine](../../../../../spec/core/ics-004-channel-and-packet-semantics/packet-state-machine.png)
 
 ##### 一个数据包的日常工作
 
@@ -492,7 +492,7 @@ function chanCloseConfirm(
 
 从空间上表示，两台机器之间的数据包传输可以表示如下：
 
-![Packet Transit](packet-transit.png)
+![Packet Transit](../../../../../spec/core/ics-004-channel-and-packet-semantics/packet-transit.png)
 
 ##### 发送数据包
 
