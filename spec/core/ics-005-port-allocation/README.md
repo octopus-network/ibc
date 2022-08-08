@@ -1,123 +1,109 @@
 ---
-ics: 5
-title: Port Allocation
-stage: Draft
-requires: 24
-required-by: 4
+ics: '5'
+title: 端口分配
+stage: 草案
+requires: '24'
+required-by: '4'
 category: IBC/TAO
-kind: interface
+kind: 接口
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-06-20
-modified: 2019-08-25
+created: '2019-06-20'
+modified: '2019-08-25'
 ---
 
-## Synopsis
+## 概要
 
-This standard specifies the port allocation system by which modules can bind to uniquely named ports allocated by the IBC handler.
-Ports can then be used to open channels and can be transferred or later released by the module which originally bound to them.
+该标准指定了端口分配系统，模块可以通过该系统绑定到由 IBC 处理程序分配的唯一命名的端口。 然后可以将端口用于创建通道，并且可以被最初绑定到端口的模块转移或释放。
 
-### Motivation
+### 动机
 
-The interblockchain communication protocol is designed to facilitate module-to-module traffic, where modules are independent, possibly mutually distrusted, self-contained
-elements of code executing on sovereign ledgers. In order to provide the desired end-to-end semantics, the IBC handler must permission channels to particular modules.
-This specification defines the *port allocation and ownership* system which realises that model.
+区块链间通信协议旨在促进模块之间的通信，其中模块是独立的，可能相互不信任，在自治账本上执行的自成一体的代码。为了提供所需的端到端语义，IBC 处理程序必须实现对特定模块许可的通道。 该规范定义了实现该模型的*端口分配和所有权*系统。
 
-Conventions may emerge as to what kind of module logic is bound to a particular port name, such as "bank" for fungible token handling or "staking" for interchain collateralisation.
-This is analogous to port 80's common use for HTTP servers — the protocol cannot enforce that particular module logic is actually bound to conventional ports, so
-users must check that themselves. Ephemeral ports with pseudorandom identifiers may be created for temporary protocol handling.
+可能会出现关于哪种模块逻辑可以绑定到特定端口名称的约定，例如“bank”用于处理同质通证，“staking”用于链间抵押的。 这类似于 HTTP 服务器的 80 端口的惯用用法——该协议无法强制将特定的模块逻辑实际上绑定到惯用端口，因此用户必须自己检查。可以创建具有伪随机标识符的临时端口以用于临时协议处理。
 
-Modules may bind to multiple ports and connect to multiple ports bound to by another module on a separate machine. Any number of (uniquely identified) channels can utilise a single
-port simultaneously. Channels are end-to-end between two ports, each of which must have been previously bound to by a module, which will then control that end of the channel.
+模块可以绑定到多个端口，并连接到不同的计算机上另一个模块绑定的多个端口。任何数量的（唯一标识的）通道都可以同时使用一个端口。通道是在两个端口之间的端到端的，每个端口必须事先已被模块绑定，然后模块将控制该通道的一端。
 
-Optionally, the host state machine can elect to expose port binding only to a specially-permissioned module manager,
-by generating a capability key specifically for the ability to bind ports. The module manager
-can then control which ports modules can bind to with a custom rule-set, and transfer ports to modules only when it
-has validated the port name & module. This role can be played by the routing module (see [ICS 26](../ics-026-routing-module)).
+（可选）主机状态机可以选择将端口绑定通过生成专门用于绑定端口的能力键的方式暴露给特别允许的模块管理器 。然后模块管理器可以使用自定义规则集控制模块可以绑定到哪些端口，和仅被管理器验证后端口名称和模块后才转移端口到其他模块。路由模块可以扮演这个角色（请参阅 [ICS 26](../ics-026-routing-module) ）。
 
-### Definitions
+### 定义
 
-`Identifier`, `get`, `set`, and `delete` are defined as in [ICS 24](../ics-024-host-requirements).
+`Identifier` ， `get` ， `set`和`delete`的定义与 [ICS 24](../ics-024-host-requirements) 中的相同。
 
-A *port* is a particular kind of identifier which is used to permission channel opening and usage to modules.
+*端口*是一种特殊的标识符，用于许可模块创建和使用通道。
 
-A *module* is a sub-component of the host state machine independent of the IBC handler. Examples include Ethereum smart contracts and Cosmos SDK & Substrate modules.
-The IBC specification makes no assumptions of module functionality other than the ability of the host state machine to use object-capability or source authentication to permission ports to modules.
+*模块*是主机状态机的子组件，独立于 IBC 处理程序。例如以太坊智能合约和  Cosmos SDK 和 Substrate 的模块。 除了主机状态机可以使用对象能力或源身份验证来访问模块的许可端口的能力之外，IBC 规范不对模块功能进行任何假设。
 
-### Desired Properties
+### 所需属性
 
-- Once a module has bound to a port, no other modules can use that port until the module releases it
-- A module can, on its option, release a port or transfer it to another module
-- A single module can bind to multiple ports at once
-- Ports are allocated first-come first-serve, and "reserved" ports for known modules can be bound when the chain is first started
+- 一个模块绑定到端口后，其他模块将无法使用该端口，直到该模块释放它
+- 一个模块可以选择释放端口或将其转移到另一个模块
+- 单个模块可以一次绑定到多个端口
+- 分配端口时，先到先得，先绑定先服务，链可以在第一次启动时将已知模块绑定“保留”端口。
 
-As a helpful comparison, the following analogies to TCP are roughly accurate:
+作为一个有帮助的比较，以下 TCP 的类比大致准确：
 
-| IBC Concept             | TCP/IP Concept            | Differences                                                           |
-| ----------------------- | ------------------------- | --------------------------------------------------------------------- |
-| IBC                     | TCP                       | Many, see the architecture documents describing IBC                   |
-| Port (e.g. "bank")      | Port (e.g. 80)            | No low-number reserved ports, ports are strings                       |
-| Module (e.g. "bank")    | Application (e.g. Nginx)  | Application-specific                                                  |
-| Client                  | -                         | No direct analogy, a bit like L2 routing and a bit like TLS           |
-| Connection              | -                         | No direct analogy, folded into connections in TCP                     |
-| Channel                 | Connection                | Any number of channels can be opened to or from a port simultaneously |
+IBC 概念 | TCP/IP 概念 | 差异性
+--- | --- | ---
+IBC | TCP | 很多，请参阅描述 IBC 的体系结构文档
+端口（例如“bank”） | 端口（例如 80） | 没有低位数字的保留端口，端口为字符串
+模块（例如“bank”） | 应用程序（例如 Nginx） | 特定于应用
+客户端 | - | 没有直接的类比，有点像 L2 路由，也有点像 TLS
+连接 | - | 没有直接的类比，合并进了 TCP 的连接
+通道 | 连接 | 可以同时打开或关闭任意数量的通道
 
-## Technical Specification
+## 技术规范
 
-### Data Structures
+### 数据结构
 
-The host state machine MUST support either object-capability reference or source authentication for modules.
+主机状态机务必支持对象能力引用或模块的源认证。
 
-In the former object-capability case, the IBC handler must have the ability to generate *object-capabilities*, unique, opaque references
-which can be passed to a module and will not be duplicable by other modules. Two examples are store keys as used in the Cosmos SDK ([reference](https://github.com/cosmos/cosmos-sdk/blob/97eac176a5d533838333f7212cbbd79beb0754bc/store/types/store.go#L275))
-and object references as used in Agoric's Javascript runtime ([reference](https://github.com/Agoric/SwingSet)).
+在前一种支持对象能力的情况下，IBC 处理程序必须支持生成唯一的，不透明的*对象能力*引用的能力，它可以传递给某个模块，而其他模块则无法复制。两个示例是 Cosmos SDK（ [参考](https://github.com/cosmos/cosmos-sdk/blob/97eac176a5d533838333f7212cbbd79beb0754bc/store/types/store.go#L275) ）中使用的存储密钥和 Agoric 的 Javascript 运行时中使用的对象引用（ [参考](https://github.com/Agoric/SwingSet) ）。
 
 ```typescript
 type CapabilityKey object
 ```
 
-`newCapability` must take a name and generate a unique capability key, such that the name is locally mapped to the capability key and can be used with `getCapability` later.
+`newCapability`必须使用一个名称生成唯一的能力键，这样该名称将本地映射到能力键，并且以后可以与`getCapability`一起使用。
 
 ```typescript
 function newCapability(name: string): CapabilityKey {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 Cosmos SDK 的 ADR 3 / ScopedCapabilityKeeper
 }
 ```
 
-`authenticateCapability` must take a name & a capability and check whether the name is locally mapped to the provided capability. The name can be untrusted user input.
+`authenticateCapability`必须接受一个名称和能力键，并检查名称是否在本地映射到所提供的能力。该名称可以是不受信任的用户输入。
 
 ```typescript
 function authenticateCapability(name: string, capability: CapabilityKey): bool {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 Cosmos SDK 的 ADR 3 / ScopedCapabilityKeeper
 }
 ```
 
-`claimCapability` must take a name & a capability (provided by another module) and locally map the name to the capability, "claiming" it for future usage.
+`claimCapability`必须接受一个名称和能力键（由另一个模块提供），并将其本地映射到能力，“声明”该能力以备将来使用。
 
 ```typescript
 function claimCapability(name: string, capability: CapabilityKey) {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // // 由主状态机提供, 例如 ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
 }
 ```
 
-`getCapability` must allow a module to lookup a capability which it has previously created or claimed by name.
+`getCapability`必须允许模块查找其先前创建的能力或按名称声明的能力。
 
 ```typescript
 function getCapability(name: string): CapabilityKey {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 Cosmos SDK 的 ADR 3 / ScopedCapabilityKeeper
 }
 ```
 
-`releaseCapability` must allow a module to release a capability which it owns.
+`releaseCapability`必须允许模块释放其拥有的能力。
 
 ```typescript
 function releaseCapability(capability: CapabilityKey) {
-  // provided by host state machine, e.g. ADR 3 / ScopedCapabilityKeeper in Cosmos SDK
+  // 由主状态机提供, 例如 Cosmos SDK 的 ADR 3 / ScopedCapabilityKeeper
 }
 ```
 
-In the latter source authentication case, the IBC handler must have the ability to securely read the *source identifier* of the calling module,
-a unique string for each module in the host state machine, which cannot be altered by the module or faked by another module.
-An example is smart contract addresses as used by Ethereum ([reference](https://ethereum.github.io/yellowpaper/paper.pdf)).
+在后一种源身份验证的情况下，IBC 处理程序必须具有安全读取调用模块的*源标识符*的能力， 主机状态机中每个模块的唯一字符串，不能由该模块更改或由另一个模块伪造。 一个示例是以太坊（ [参考](https://ethereum.github.io/yellowpaper/paper.pdf) ）使用的智能合约地址。
 
 ```typescript
 type SourceIdentifier string
@@ -125,11 +111,11 @@ type SourceIdentifier string
 
 ```typescript
 function callingModuleIdentifier(): SourceIdentifier {
-  // provided by host state machine, e.g. contract address in Ethereum
+  // 由主状态机提供, 例如 以太坊中的合约地址
 }
 ```
 
-`newCapability`, `authenticateCapability`, `claimCapability`, `getCapability`, and `releaseCapability` are then implemented as follows:
+然后按以下方式实现`newCapability` ， `authenticateCapability` ， `claimCapability` ， `getCapability`和`releaseCapability` ：
 
 ```typescript
 function newCapability(name: string): CapabilityKey {
@@ -145,26 +131,26 @@ function authenticateCapability(name: string, capability: CapabilityKey) {
 
 ```typescript
 function claimCapability(name: string, capability: CapabilityKey) {
-  // no-op
+  // 无操作
 }
 ```
 
 ```typescript
 function getCapability(name: string): CapabilityKey {
-  // not actually used
+  // 实际没有用到
   return nil
 }
 ```
 
 ```typescript
 function releaseCapability(capability: CapabilityKey) {
-  // no-op
+  // 无操作
 }
 ```
 
-#### Store paths
+#### 储存路径
 
-`portPath` takes an `Identifier` and returns the store path under which the object-capability reference or owner module identifier associated with a port should be stored.
+`portPath`接受一个`Identifier`参数并返回存储路径，在该路径下应存储与端口关联的对象能力引用或所有者模块标识符。
 
 ```typescript
 function portPath(id: Identifier): Path {
@@ -172,25 +158,23 @@ function portPath(id: Identifier): Path {
 }
 ```
 
-### Sub-protocols
+### 子协议
 
-#### Identifier validation
+#### 标识符验证
 
-Owner module identifier for ports are stored under a unique `Identifier` prefix.
-The validation function `validatePortIdentifier` MAY be provided.
+端口的所有者模块标识符存储在唯一的`Identifier`前缀下。 可以提供验证函数`validatePortIdentifier` 。
 
 ```typescript
 type validatePortIdentifier = (id: Identifier) => boolean
 ```
 
-If not provided, the default `validatePortIdentifier` function will always return `true`. 
+如果未提供，默认的`validatePortIdentifier`函数将始终返回`true` 。
 
+#### 绑定到端口
 
-#### Binding to a port
+IBC 处理程序必须实现`bindPort` 。 `bindPort`绑定到未分配的端口，如果该端口已被分配，则绑定失败。
 
-The IBC handler MUST implement `bindPort`. `bindPort` binds to an unallocated port, failing if the port has already been allocated.
-
-If the host state machine does not implement a special module manager to control port allocation, `bindPort` SHOULD be available to all modules. If it does, `bindPort` SHOULD only be callable by the module manager.
+如果主机状态机未实现特殊的模块管理器来控制端口分配，则`bindPort`应该对所有模块都可用。否则`bindPort`应该只能由模块管理器调用。
 
 ```typescript
 function bindPort(id: Identifier): CapabilityKey {
@@ -201,17 +185,17 @@ function bindPort(id: Identifier): CapabilityKey {
 }
 ```
 
-#### Transferring ownership of a port
+#### 转让端口所有权
 
-If the host state machine supports object-capabilities, no additional protocol is necessary, since the port reference is a bearer capability.
+如果主机状态机支持对象能力，则不需要增加此协议，因为端口的引用承载了能力。
 
-#### Releasing a port
+#### 释放端口
 
-The IBC handler MUST implement the `releasePort` function, which allows a module to release a port such that other modules may then bind to it.
+IBC 处理程序必须实现`releasePort`函数，该函数允许模块释放端口，以便其他模块随后可以绑定到该端口。
 
-`releasePort` SHOULD be available to all modules.
+`releasePort`应对所有模块均可用。
 
-> Warning: releasing a port will allow other modules to bind to that port and possibly intercept incoming channel opening handshakes. Modules should release ports only when doing so is safe.
+> 警告：释放端口将允许其他模块绑定到该端口，并可能拦截传入的通道创建握手请求。仅在安全的情况下，模块才应释放端口。
 
 ```typescript
 function releasePort(capability: CapabilityKey) {
@@ -220,30 +204,30 @@ function releasePort(capability: CapabilityKey) {
 }
 ```
 
-### Properties & Invariants
+### 属性与不变性
 
-- By default, port identifiers are first-come-first-serve: once a module has bound to a port, only that module can utilise the port until the module transfers or releases it. A module manager can implement custom logic which overrides this.
+- 默认情况下，端口标识符是遵循“先到先服务”原则的：模块绑定到端口后，只有该模块才能使用该端口，直到模块转移或释放它为止。模块管理器可以实现自定义逻辑，以覆盖此逻辑。
 
-## Backwards Compatibility
+## 向后兼容性
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 向前兼容性
 
-Port binding is not a wire protocol, so interfaces can change independently on separate chains as long as the ownership semantics are unaffected.
+端口绑定不是线路协议（wire protocol），因此只要所有权语义不受影响，接口就可以在单独的链上独立更改。
 
-## Example Implementation
+## 示例实现
 
-Coming soon.
+即将到来。
 
-## Other Implementations
+## 其他实现
 
-Coming soon.
+即将到来。
 
-## History
+## 历史
 
-Jun 29, 2019 - Initial draft
+2019年6月29日-初稿
 
-## Copyright
+## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。

@@ -1,42 +1,42 @@
 ---
-ics: 6
-title: Solo Machine Client
-stage: draft
+ics: '6'
+title: 单机客户端
+stage: 草案
 category: IBC/TAO
-kind: instantiation
-implements: 2
+kind: 实例化
+implements: '2'
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-12-09
-modified: 2019-12-09
+created: '2019-12-09'
+modified: '2019-12-09'
 ---
 
-## Synopsis
+## 概要
 
-This specification document describes a client (verification algorithm) for a solo machine with a single updateable public key which implements the [ICS 2](../../core/ics-002-client-semantics) interface.
+本标准描述了具有单个可更新公钥的单机客户端（验证算法），该客户端实现了 [ICS 2](../../core/ics-002-client-semantics) 接口。
 
-### Motivation
+### 动机
 
-Solo machines — which might be devices such as phones, browsers, or laptops — might like to interface with other machines & replicated ledgers which speak IBC, and they can do so through the uniform client interface.
+单机——可能是诸如手机，浏览器或笔记本电脑之类的设备，它们希望与使用 IBC 的其他机器和多副本帐本进行交互，并且可以通过统一的客户端接口来实现。
 
-Solo machine clients are roughly analogous to "implicit accounts" and can be used in lieu of "regular transactions" on a ledger, allowing all transactions to work through the unified interface of IBC.
+单机客户端大致类似于”隐式帐户”，可以用来代替账本上的“常规交易”，从而允许所有交易通过 IBC 的统一接口进行。
 
-### Definitions
+### 定义
 
-Functions & terms are as defined in [ICS 2](../../core/ics-002-client-semantics).
+函数和术语定义见 [ICS 2](../../core/ics-002-client-semantics) 。
 
-### Desired Properties
+### 所需属性
 
-This specification must satisfy the client interface defined in [ICS 2](../../core/ics-002-client-semantics).
+该规范必须满足 [ICS 2](../../core/ics-002-client-semantics) 中定义的客户端接口。
 
-Conceptually, we assume "big table of signatures in the universe" - that signatures produced are public - and incorporate replay protection accordingly.
+从概念上讲，我们假设有一个“全局的大签名表”（生成的签名是公开的）并相应的包含了重放保护。
 
-## Technical Specification
+## 技术指标
 
-This specification contains implementations for all of the functions defined by [ICS 2](../../core/ics-002-client-semantics).
+该规范包含 [ICS 2](../../core/ics-002-client-semantics) 定义的所有函数的实现。
 
-### Client state
+### 客户端状态
 
-The `ClientState` of a solo machine is simply whether or not the client is frozen.
+单机的`ClientState`就是简单的指客户端是否被冻结。
 
 ```typescript
 interface ClientState {
@@ -45,11 +45,11 @@ interface ClientState {
 }
 ```
 
-### Consensus state
+### 共识状态
 
-The `ConsensusState` of a solo machine consists of the current public key, current diversifier, sequence number, and timestamp.
+单机的`ConsensusState`由当前公钥、当前区分符、序列号和时间戳组成。
 
-The diversifier is an arbitrary string, chosen when the client is created, designed to allow the same public key to be re-used across different solo machine clients (potentially on different chains) without being considered misbehaviour.
+区分符是一个任意字符串，在创建客户端时被选定，旨在允许相同的公钥在不同的单机客户端（可能在不同的链上）重复使用，而不会被视为不当行为。
 
 ```typescript
 interface ConsensusState {
@@ -60,13 +60,13 @@ interface ConsensusState {
 }
 ```
 
-### Height
+### 区块高度
 
-The `Height` of a solo machine is just a `uint64`, with the usual comparison operations.
+单机的`Height`只是一个`uint64` ，可以用来做普通的比较操作。
 
-### Headers
+### 区块头
 
-`Header`s must only be provided by a solo machine when the machine wishes to update the public key or diversifier.
+当机器希望更新公钥或区分符时， `Header` 必须由单机提供。
 
 ```typescript
 interface Header {
@@ -78,9 +78,9 @@ interface Header {
 }
 ```
 
-### Misbehaviour 
+### 不良行为
 
-`Misbehaviour` for solo machines consists of a sequence and two signatures over different messages at that sequence.
+单机器的`不良行为`包括一个序号和该序号上不同消息的两个签名。
 
 ```typescript
 interface SignatureAndData {
@@ -95,9 +95,9 @@ interface Misbehaviour {
 }
 ```
 
-### Signatures
+### 签名
 
-Signatures are provided in the `Proof` field of client state verification functions. They include data & a timestamp, which must also be signed over.
+签名在客户端状态验证功能的`Proof`字段中提供。其中的数据和时间戳也必须签名。
 
 ```typescript
 interface Signature {
@@ -106,9 +106,9 @@ interface Signature {
 }
 ```
 
-### Client initialisation
+### 客户端初始化
 
-The solo machine client `initialise` function starts an unfrozen client with the initial consensus state.
+单机客户端`initialise`函数以初始共识状态启动一个未冻结的客户端。
 
 ```typescript
 function initialise(consensusState: ConsensusState): ClientState {
@@ -119,7 +119,7 @@ function initialise(consensusState: ConsensusState): ClientState {
 }
 ```
 
-The solo machine client `latestClientHeight` function returns the latest sequence.
+单机客户端`latestClientHeight`函数返回最新的序号。
 
 ```typescript
 function latestClientHeight(clientState: ClientState): uint64 {
@@ -127,9 +127,9 @@ function latestClientHeight(clientState: ClientState): uint64 {
 }
 ```
 
-### Validity predicate
+### 合法性判定
 
-The solo machine client `checkValidityAndUpdateState` function checks that the currently registered public key has signed over the new public key with the correct sequence.
+单机客户端的`checkValidityAndUpdateState`函数检查当前注册的公共密钥是否对新的公共密钥和正确的序号进行了签名。
 
 ```typescript
 function checkValidityAndUpdateState(
@@ -145,9 +145,9 @@ function checkValidityAndUpdateState(
 }
 ```
 
-### Misbehaviour predicate
+### 不良行为判定
 
-Any duplicate signature on different messages by the current public key freezes a solo machine client.
+任何当前公钥在不同消息上的重复签名都会冻结单机客户端。
 
 ```typescript
 function checkMisbehaviourAndUpdateState(
@@ -158,24 +158,24 @@ function checkMisbehaviourAndUpdateState(
     pubkey = clientState.consensusState.publicKey
     diversifier = clientState.consensusState.diversifier
     timestamp = clientState.consensusState.timestamp
-    // assert that timestamp could have fooled the light client
+    // 断言：时间戳可能已经欺骗了轻客户端
     assert(misbehaviour.h1.signature.timestamp >= timestamp)
     assert(misbehaviour.h2.signature.timestamp >= timestamp)
-    // assert that signature data is different
+    // 断言：签名数据不同
     assert(misbehaviour.h1.signature.data !== misbehaviour.h2.signature.data)
-    // assert that the signatures validate
+    // 断言：签名有效
     assert(checkSignature(pubkey, misbehaviour.sequence, diversifier, misbehaviour.h1.signature.data))
     assert(checkSignature(pubkey, misbehaviour.sequence, diversifier, misbehaviour.h2.signature.data))
-    // freeze the client
+    // 冻结客户端
     clientState.frozen = true
 }
 ```
 
-### State verification functions
+### 状态验证函数
 
-All solo machine client state verification functions simply check a signature, which must be provided by the solo machine.
+所有单机客户端状态验证函数都仅检查签名，该签名必须由单机提供。
 
-Note that value concatenation should be implemented in a state-machine-specific escaped fashion.
+请注意，值的拼接应该以特定的状态机的转义方式实现。
 
 ```typescript
 function verifyClientState(
@@ -186,9 +186,8 @@ function verifyClientState(
   clientIdentifier: Identifier,
   counterpartyClientState: ClientState) {
     path = applyPrefix(prefix, "clients/{clientIdentifier}/clientState")
-    // ICS 003 will not increment the proof height after connection verification
-    // the solo machine client must increment the proof height to ensure it matches 
-    // the expected sequence used in the signature
+    // ICS 003 在连接验证后不会增加证明高度
+    // 单机客户端必须增加证明高度以确保匹配签名中使用的预期序列
     abortTransactionUnless(height + 1 == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
     abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
@@ -207,9 +206,8 @@ function verifyClientConsensusState(
   consensusStateHeight: uint64,
   consensusState: ConsensusState) {
     path = applyPrefix(prefix, "clients/{clientIdentifier}/consensusState/{consensusStateHeight}")
-    // ICS 003 will not increment the proof height after connection or client state verification
-    // the solo machine client must increment the proof height by 2 to ensure it matches 
-    // the expected sequence used in the signature
+    // ICS 003 在连接或客户端状态验证后不会增加证明高度
+    // 单机客户端必须将证明高度增加 2 以确保匹配签名中使用的预期序列
     abortTransactionUnless(height + 2 == clientState.consensusState.sequence)
     abortTransactionUnless(!clientState.frozen)
     abortTransactionUnless(proof.timestamp >= clientState.consensusState.timestamp)
@@ -329,31 +327,30 @@ function verifyNextSequenceRecv(
 }
 ```
 
-### Properties & Invariants
+### 属性与不变性
 
-Instantiates the interface defined in [ICS 2](../../core/ics-002-client-semantics).
+实例化[ICS 2](../../core/ics-002-client-semantics)中定义的接口。
 
-## Backwards Compatibility
+## 向后兼容性
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 向前兼容性
 
-Not applicable. Alterations to the client verification algorithm will require a new client standard.
+不适用。更改客户端验证算法将需要新的客户端标准。
 
-## Example Implementation
+## 示例实现
 
-None yet.
+暂无。
 
-## Other Implementations
+## 其他实现
 
-None at present.
+目前暂无。
 
-## History
+## 历史
 
-December 9th, 2019 - Initial version
-December 17th, 2019 - Final first draft
+2019年12月9日-2019年12月17日初始版本-最后一份初稿
 
-## Copyright
+## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。

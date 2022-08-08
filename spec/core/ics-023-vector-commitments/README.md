@@ -1,107 +1,104 @@
 ---
-ics: 23
-title: Vector Commitments
-stage: draft
+ics: '23'
+title: 向量承诺
+stage: 草案
 required-by: 2, 24
 category: IBC/TAO
-kind: interface
+kind: 接口
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-04-16
-modified: 2019-08-25
+created: '2019-04-16'
+modified: '2019-08-25'
 ---
 
-## Synopsis
+## 概要
 
-A *vector commitment* is a construction that produces a constant-size, binding commitment to an indexed vector of elements and short membership and/or non-membership proofs for any indices & elements in the vector.
-This specification enumerates the functions and properties required of commitment constructions used in the IBC protocol. In particular, commitments utilised in IBC are required to be *positionally binding*: they must be able to prove existence or
-nonexistence of values at specific positions (indices).
+*向量承诺*是一种构造，它对向量中任何索引和元素的成员资格/非成员资格的短证明产生恒定大小的绑定承诺。 本规范列举了 IBC 协议中使用的承诺构造所需的函数和特性。特别是，IBC 中使用的承诺必须具有*位置约束力* ：它们必须能够证明在特定位置（索引）的值存在或不存在。
 
-### Motivation
+### 动机
 
-In order to provide a guarantee of a particular state transition having occurred on one chain which can be verified on another chain, IBC requires an efficient cryptographic construction to prove inclusion or non-inclusion of particular values at particular paths in state.
+为了提供可以在另一条链上验证的一条链上发生的特定状态转换的保证，IBC 需要一种有效的密码构造来证明在状态的特定路径上包含或不包含特定值。
 
-### Definitions
+### 定义
 
-The *manager* of a vector commitment is the actor with the ability and responsibility to add or remove items from the commitment. Generally this will be the state machine of a blockchain.
+向量承诺的*管理者*是具有在承诺中添加或删除条目的能力和责任的参与者。通常，这将是区块链的状态机。
 
-The *prover* is the actor responsible for generating proofs of inclusion or non-inclusion of particular elements. Generally this will be a relayer (see [ICS 18](../../relayer/ics-018-relayer-algorithms)).
+*证明者*是负责生成包含或不包含特定元素的证明的参与者。通常，这将是一个中继器（请参阅 [ICS 18](../../relayer/ics-018-relayer-algorithms) ）。
 
-The *verifier* is the actor who checks proofs in order to verify that the manager of the commitment did or did not add a particular element. Generally this will be an IBC handler (module implementing IBC) running on another chain.
+*验证者*是检查证明来验证承诺的管理者是否添加了特定元素的参与者。通常，这将是在另一条链上运行的 IBC 处理程序（实现 IBC 的模块）。
 
-Commitments are instantiated with particular *path* and *value* types, which are assumed to be arbitrary serialisable data.
+使用特定的*路径*和*值*类型实例化承诺，它们的类型假定为任意可序列化的数据。
 
-A *negligible function* is a function that grows more slowly than the reciprocal of every positive polynomial, as defined [here](https://en.wikipedia.org/wiki/Negligible_function).
+一个*可忽略的函数*是一个比每个正多项式的倒数增长更慢的函数，[如此](https://en.wikipedia.org/wiki/Negligible_function)处所定义。
 
-### Desired Properties
+### 所需属性
 
-This document only defines desired properties, not a concrete implementation — see "Properties" below.
+本文档仅定义所需的属性，而不是具体的实现——请参见下文中的“属性”。
 
-## Technical Specification
+## 技术规范
 
-Below we define a behaviour and an overview of datatypes. For data type definition look at [confio/ics23](https://github.com/confio/ics23/blob/master/proofs.proto) repository.
+下面我们定义一个行为和数据类型的概述。有关数据类型定义，请查看[conio/ics23](https://github.com/confio/ics23/blob/master/proofs.proto)代码库。
 
+### 数据类型
 
-### Datatypes
+承诺构造必须指定以下数据类型，这些数据类型可以是不透明的（不需要外部检视），但必须是可序列化的：
 
-A commitment construction MUST specify the following datatypes, which are otherwise opaque (need not be introspected) but MUST be serialisable:
+#### 承诺状态
 
-#### Commitment State
-
-A `CommitmentState` is the full state of the commitment, which will be stored by the manager.
+`CommitmentState`是承诺的完整状态，将由管理器存储。
 
 ```typescript
 type CommitmentState = object
 ```
 
-#### Commitment Root
+#### 承诺根
 
-A `CommitmentRoot` commits to a particular commitment state and should be constant-size.
+`CommitmentRoot`确保一个特定的承诺状态，并且应为恒定大小。
 
-In certain commitment constructions with constant-size states, `CommitmentState` and `CommitmentRoot` may be the same type.
+在状态大小恒定的某些承诺构造中， `CommitmentState`和`CommitmentRoot`可以是同一类型。
 
 ```typescript
 type CommitmentRoot = object
 ```
 
-#### Commitment Path
+#### 承诺路径
 
-A `CommitmentPath` is the path used to verify commitment proofs, which can be an arbitrary structured object (defined by a commitment type). It must be computed by `applyPrefix` (defined below).
+`CommitmentPath`是用于验证承诺证明的路径，该路径可以是任意结构化对象（由承诺类型定义）。它必须由通过`applyPrefix`  （定义如下）计算出来。
 
 ```typescript
 type CommitmentPath = object
 ```
 
-#### Prefix
+#### 前缀
 
-A `CommitmentPrefix` defines a store prefix of the commitment proof. It is applied to the path before the path is passed to the proof verification functions. 
+`CommitmentPrefix`定义了承诺证明的存储前缀。它在路径传递给证明验证函数之前应用于路径。
 
 ```typescript
 type CommitmentPrefix = object
 ```
 
-The function `applyPrefix` constructs a new commitment path from the arguments. It interprets the path argument in the context of the prefix argument. 
+函数`applyPrefix`从参数构造一个新的提交路径。它在前缀参数的上下文中解释路径参数。
 
-For two `(prefix, path)` tuples, `applyPrefix(prefix, path)` MUST return the same key only if the tuple elements are equal.
+对于两个`(prefix, path)`元组， `applyPrefix(prefix, path)`必须仅在元组元素相等时才返回相同的键。
 
-`applyPrefix` MUST be implemented per `Path`, as `Path` can have different concrete structures. `applyPrefix` MAY accept multiple `CommitmentPrefix` types.
+`applyPrefix`必须按`Path`来实现，因为`Path`可以具有不同的具体结构。 `applyPrefix`可以接受多种`CommitmentPrefix`类型。
 
-The `CommitmentPath` returned by `applyPrefix` does not need to be serialisable (e.g. it might be a list of tree node identifiers), but it does need an equality comparison.
+`applyPrefix`返回的`CommitmentPath`不需要是可序列化的（例如，它可能是树节点标识符的列表），但它需要可以被比较是否相等。
 
 ```typescript
 type applyPrefix = (prefix: CommitmentPrefix, path: Path) => CommitmentPath
 ```
 
-#### Proof
+#### 证明
 
-A `CommitmentProof` demonstrates membership or non-membership for an element or set of elements, verifiable in conjunction with a known commitment root. Proofs should be succinct.
+一个`CommitmentProof`证明一个元素或一组元素的成员资格或非成员资格，可以与已知的承诺根一起验证。证明应是简洁的。
 
 ```typescript
 type CommitmentProof = object
 ```
 
-### Required functions
+### 所需函数
 
-A commitment construction MUST provide the following functions, defined over paths as serialisable objects and values as byte arrays:
+承诺构造必须提供以下函数，这些函数在路径上定义为可序列化的对象，在值上定义为字节数组：
 
 ```typescript
 type Path = string
@@ -109,81 +106,81 @@ type Path = string
 type Value = []byte
 ```
 
-#### Initialisation
+#### 初始化
 
-The `generate` function initialises the state of the commitment from an initial (possibly empty) map of paths to values.
+`generate`函数从一个路径到值的映射（可能为空）初始化承诺的状态。
 
 ```typescript
 type generate = (initial: Map<Path, Value>) => CommitmentState
 ```
 
-#### Root calculation
+#### 根计算
 
-The `calculateRoot` function calculates a constant-size commitment to the commitment state which can be used to verify proofs.
+`calculateRoot`函数计算承诺状态的恒定大小的承诺，可用于验证证明。
 
 ```typescript
 type calculateRoot = (state: CommitmentState) => CommitmentRoot
 ```
 
-#### Adding & removing elements
+#### 添加和删除元素
 
-The `set` function sets a path to a value in the commitment.
+`set`函数将承诺中的一个路径设置为值。
 
 ```typescript
 type set = (state: CommitmentState, path: Path, value: Value) => CommitmentState
 ```
 
-The `remove` function removes a path and associated value from a commitment.
+`remove`函数从承诺中删除路径和其关联值。
 
 ```typescript
 type remove = (state: CommitmentState, path: Path) => CommitmentState
 ```
 
-#### Proof generation
+#### 证明生成
 
-The `createMembershipProof` function generates a proof that a particular commitment path has been set to a particular value in a commitment.
+`createMembershipProof`函数生成一个证明，证明特定承诺路径已被设置为承诺中的特定值。
 
 ```typescript
 type createMembershipProof = (state: CommitmentState, path: CommitmentPath, value: Value) => CommitmentProof
 ```
 
-The `createNonMembershipProof` function generates a proof that a commitment path has not been set to any value in a commitment.
+`createNonMembershipProof`函数生成一个证明，证明承诺路径尚未设置为任何值。
 
 ```typescript
 type createNonMembershipProof = (state: CommitmentState, path: CommitmentPath) => CommitmentProof
 ```
 
-#### Proof verification
+#### 证明验证
 
-The `verifyMembership` function verifies a proof that a path has been set to a particular value in a commitment.
+`verifyMembership`函数验证在承诺中已将路径设置为特定值的证明。
 
 ```typescript
 type verifyMembership = (root: CommitmentRoot, proof: CommitmentProof, path: CommitmentPath, value: Value) => boolean
 ```
 
-The `verifyNonMembership` function verifies a proof that a path has not been set to any value in a commitment.
+`verifyNonMembership`函数验证在承诺中尚未将路径设置为任何值的证明。
 
 ```typescript
 type verifyNonMembership = (root: CommitmentRoot, proof: CommitmentProof, path: CommitmentPath) => boolean
 ```
 
-### Optional functions
+### 可选函数
 
-A commitment construction MAY provide the following functions:
+承诺构造可以提供以下函数：
 
-The `batchVerifyMembership` function verifies a proof that many paths have been set to specific values in a commitment.
+`batchVerifyMembership`函数验证在承诺中已将多个路径设置为特定值的证明。
 
 ```typescript
 type batchVerifyMembership = (root: CommitmentRoot, proof: CommitmentProof, items: Map<CommitmentPath, Value>) => boolean
 ```
 
-The `batchVerifyNonMembership` function verifies a proof that many paths have not been set to any value in a commitment.
+`batchVerifyNonMembership`函数可验证证明在承诺中尚未将多个路径设置为任何值的证明。
 
 ```typescript
 type batchVerifyNonMembership = (root: CommitmentRoot, proof: CommitmentProof, paths: Set<CommitmentPath>) => boolean
 ```
 
-If defined, these functions MUST produce the same result as the conjunctive union of `verifyMembership` and `verifyNonMembership` respectively (efficiency may vary):
+如果定义这些函数，必须和使用`verifyMembership`和`verifyNonMembership`联合在一起的结果相同（效率可能有所不同）：
 
 ```typescript
 batchVerifyMembership(root, proof, items) ===
@@ -195,17 +192,17 @@ batchVerifyNonMembership(root, proof, items) ===
   all(items.map((item) => verifyNonMembership(root, proof, item.path)))
 ```
 
-If batch verification is possible and more efficient than individual verification of one proof per element, a commitment construction SHOULD define batch verification functions.
+如果批量验证是可行的并且比单独验证每个元素的证明更有效，则承诺构造应定义批量验证函数。
 
-### Properties & Invariants
+### 属性与不变性
 
-Commitments MUST be *complete*, *sound*, and *position binding*. These properties are defined with respect to a security parameter `k`, which MUST be agreed upon by the manager, prover, and verifier (and often will be constant for the commitment algorithm).
+承诺必须是*完整的*，*合理的*和*有位置约束的*。这些属性是相对于安全性参数`k`定义的，此安全性参数必须由管理者，证明者和验证者达成一致（并且对于承诺算法通常是恒定的）。
 
-#### Completeness
+#### 完整性
 
-Commitment proofs MUST be *complete*: path => value mappings which have been added to the commitment can always be proved to have been included, and paths which have not been included can always be proved to have been excluded, except with probability negligible in `k`.
+承诺证明必须是*完整的* ：已添加到承诺中的路径/值映射始终可以被证明已包含在内，未包含的路径始终可以被证明已被排除，除非是`k`定义的可以忽略的概率。
 
-For any prefix `prefix` and any path `path` last set to a value `value` in the commitment `acc`,
+对于最后一个设置承诺`acc`中的值`value`的任何前缀`prefix`和任何路径`path`，
 
 ```typescript
 root = getRoot(acc)
@@ -216,7 +213,7 @@ proof = createMembershipProof(acc, applyPrefix(prefix, path), value)
 Probability(verifyMembership(root, proof, applyPrefix(prefix, path), value) === false) negligible in k
 ```
 
-For any prefix `prefix` and any path `path` not set in the commitment `acc`, for all values of `proof` and all values of `value`,
+对于没有在承诺`acc`中设置的任何前缀`prefix`和任何路径`path` ，对于`proof`的所有值和`value`的所有值的
 
 ```typescript
 root = getRoot(acc)
@@ -227,27 +224,27 @@ proof = createNonMembershipProof(acc, applyPrefix(prefix, path))
 Probability(verifyNonMembership(root, proof, applyPrefix(prefix, path)) === false) negligible in k
 ```
 
-#### Soundness
+#### 合理性
 
-Commitment proofs MUST be *sound*: path => value mappings which have not been added to the commitment cannot be proved to have been included, or paths which have been added to the commitment excluded, except with probability negligible in a configurable security parameter `k`.
+承诺证明必须是*合理的* ：除非在可配置安全性参数`k`概率下可以忽略不计，否则不能将未添加到承诺中的路径/值映射证明为已包含，或者将已经添加到承诺中的路径证明为已排除。
 
-For any prefix `prefix` and any path `path` last set to a value `value` in the commitment `acc`, for all values of `proof`,
+对于最后一个设置值`value`在承诺`acc`中的任何前缀`prefix`和任何路径`path`，对于`proof` 的所有值，
 
 ```
 Probability(verifyNonMembership(root, proof, applyPrefix(prefix, path)) === true) negligible in k
 ```
 
-For any prefix `prefix` and any path `path` not set in the commitment `acc`, for all values of `proof` and all values of `value`,
+对于没有在承诺`acc`中设置的任何前缀`prefix`和任何路径`path`，对于`proof`的所有值和`value`的所有值 ，
 
 ```
 Probability(verifyMembership(root, proof, applyPrefix(prefix, path), value) === true) negligible in k
 ```
 
-#### Position binding
+#### 位置绑定
 
-Commitment proofs MUST be *position binding*: a given commitment path can only map to one value, and a commitment proof cannot prove that the same path opens to a different value except with probability negligible in k.
+承诺证明必须是*有位置约束的* ：给定的承诺路径只能映射到一个值，并且承诺证明不能证明同一路径适用于不同的值，除非在概率k下可以被忽略。
 
-For any prefix `prefix` and any path `path` set in the commitment `acc`, there is one `value` for which:
+对于在承诺`acc`设置的任何前缀`prefix`和任何路径`path` ，都有一个`value` ：
 
 ```typescript
 root = getRoot(acc)
@@ -258,39 +255,40 @@ proof = createMembershipProof(acc, applyPrefix(prefix, path), value)
 Probability(verifyMembership(root, proof, applyPrefix(prefix, path), value) === false) negligible in k
 ```
 
-For all other values `otherValue` where `value !== otherValue`, for all values of `proof`,
+对于所有其他值`otherValue` ，其中`value !== otherValue` ，对于`proof`的所有值，
 
 ```
 Probability(verifyMembership(root, proof, applyPrefix(prefix, path), otherValue) === true) negligible in k
 ```
 
-## Backwards Compatibility
+## 向后兼容性
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 向前兼容性
 
-Commitment algorithms are expected to be fixed. New algorithms can be introduced by versioning connections and channels.
+承诺算法将是固定的。可以通过对连接和通道进行版本控制来引入新算法。
 
-## Example Implementation
+## 示例实现
 
-Coming soon.
+即将到来。
 
-## Other Implementations
+## 其他实现
 
-Coming soon.
+即将到来。
 
-## History
+## 历史
 
-Security definitions are mostly sourced from these papers (and simplified somewhat):
-- [Vector Commitments and their Applications](https://eprint.iacr.org/2011/495.pdf)
-- [Commitments with Applications to Anonymity-Preserving Revocation](https://eprint.iacr.org/2017/043.pdf)
-- [Batching Techniques for Commitments with Applications to IOPs and Stateless Blockchains](https://eprint.iacr.org/2018/1188.pdf)
+安全性定义主要来自以下文章（并进行了一些简化）：
 
-Thanks to Dev Ojha for extensive comments on this specification.
+- [向量承诺及其应用](https://eprint.iacr.org/2011/495.pdf)
+- [应用程序对保留匿名撤销的承诺](https://eprint.iacr.org/2017/043.pdf)
+- [用于 IOP 和无状态区块链的承诺批处理技术](https://eprint.iacr.org/2018/1188.pdf)
 
-Apr 25, 2019 - Draft submitted
+感谢 Dev Ojha 对这个规范的广泛评论。
 
-## Copyright
+2019年4月25日-提交的草稿
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+## 版权
+
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。

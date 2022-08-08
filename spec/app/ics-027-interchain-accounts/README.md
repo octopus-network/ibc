@@ -1,66 +1,55 @@
 ---
-ics: 27
-title: Interchain Accounts
-stage: Draft
+ics: '27'
+title: 链间账户
+stage: 草案
 category: IBC/APP
 requires: 25, 26
-kind: instantiation
-author: Tony Yun <tony@chainapsis.com>, Dogemos <josh@tendermint.com>, Sean King <sean@interchain.io>
-created: 2019-08-01
-modified: 2020-07-14
+kind: 实例化
+author: Tony Yun <yunjh1994@everett.zone>, Dogemos <josh@tendermint.com>, Sean King <sean@interchain.io>
+created: '2019-08-01'
+modified: '2020-07-14'
 ---
 
-## Synopsis
+## 概要
 
-This standard document specifies packet data structure, state machine handling logic, and encoding details for the account management system over an IBC channel between separate chains.
+该标准指定了不同链之间 IBC 通道之上的帐户管理系统的数据包数据结构，状态机处理逻辑和编码详细信息。
 
-### Motivation
+### 动机
 
-ICS-27 Interchain Accounts outlines a cross-chain account management protocol built upon IBC. ICS-27 enabled chains can programmatically create accounts on other ICS-27 enabled chains & control these accounts via IBC transactions (instead of signing with a private key). Interchain accounts retain all of the capabilities of a normal account (i.e. stake, send, vote) but instead are managed by a separate chain via IBC in a way such that the owner account on the controller chain retains full control over any interchain account(s) it registers on host chain(s). 
+ICS-27链间帐户标准规定了基于IBC的跨链账户管理协议。具备ICS-27功能的区块链可以通过交易（而不是用私钥签名）在其他具备ICS-27功能的区块链上创建并管理账户。链间账户保留了普通账户的所有功能（例如：质押，投票，转帐，发交易），但这是由另外一条链通过IBC的方式管理的，这使得在控制链上的所有者账户能够完全操控它在主链上注册的链间账户。
 
-### Definitions 
+### 定义
 
-- `Host Chain`: The chain where the interchain account is registered. The host chain listens for IBC packets from a controller chain which contain instructions (e.g. cosmos SDK messages) that the interchain account will execute.
-- `Controller Chain`: The chain registering and controlling an account on a host chain. The controller chain sends IBC packets to the host chain to control the account.
-- `Interchain Account`: An account on a host chain. An interchain account has all the capabilities of a normal account. However, rather than signing transactions with a private key, a controller chain will send IBC packets to the host chain which signals what transactions the interchain account must execute. 
-- `Interchain Account Owner`: An account on the controller chain. Every interchain account on a host chain has a respective owner account on the controller chain. 
+- 主链：链间账户在主链上注册。主链监听来自控制链的 IBC 数据包，数据包内含有链间账户可执行的控制指令（例如：Cosmos SDK信息）。
+- 控制链：控制链在主链上注册并管理账户。控制链通过向主链发送 IBC 数据包来控制主链上的账户。
+- 链间账户：链间账户是主链上的账户。链间账户拥有普通账户的所有功能。但控制链并不通过私钥签发交易，而是通过向主链发送 IBC 数据包，指示链间账户处理交易。
+- 链间账户所有者：控制链上的账户。主链上的每个链间账户在控制链上都有一个对应的所有者账户。
 
-The IBC handler interface & IBC relayer module interface are as defined in [ICS-25](../../core/ics-025-handler-interface) and [ICS-26](../../core/ics-026-routing-module), respectively.
+IBC 处理程序接口和 IBC 中继模块接口分别在 [ICS 25](../../core/ics-025-handler-interface) 和 [ICS 26](../../core/ics-026-routing-module) 中定义。
 
-### Desired properties
+### 所需属性
 
-- Permissionless: An interchain account may be created by any actor without the approval of a third party (e.g. chain governance). Note: Individual implementations may implement their own permissioning scheme, however the protocol must not require permissioning from a trusted party to be secure.
-- Fault isolation: A controller chain must not be able to control accounts registered by other controller chains. For example, in the case of a fork attack on a controller chain, only the interchain accounts registered by the forked chain will be vulnerable.
-- The ordering of transactions sent to an interchain account on a host chain must be maintained. Transactions must be executed by an interchain account in the order in which they are sent by the controller chain.
-- If a channel closes, the controller chain must be able to regain access to registered interchain accounts by simply opening a new channel.
-- Each interchain account is owned by a single account on the controller chain. Only the owner account on the controller chain is authorized to control the interchain account. The controller chain is responsible for enforcing this logic.
-- The controller chain must store the account address of any owned interchain accounts registered on host chains.
-- A host chain must have the ability to limit interchain account functionality on its chain as necessary (e.g. a host chain can decide that interchain accounts registered on the host chain cannot take part in staking).
+- 无需许可：链间账户可以由任意的参与者创建，并且无需第三方的许可（如链上治理）。需要注意的是：不同的创建方法可能有不同的许可方案，IBC 协议对于这些方案的安全性未作规定。
+- 故障隔离：一条控制链无法管理其它控制链注册的控制账户。比如，如果一条控制链受到了分叉攻击，只有分叉链注册的链间账户会受到影响。
+- 发送至主链链间账户的交易顺序必须保持不变。链间账户执行交易的顺序必须和控制链发送交易顺序一致。
+- 如果一条通道关闭，控制链必须有能力通过创建一条新通道来重新访问已注册的链间账户。
+- 每个链间账户都隶属于控制链上的一个所有者账户。只有所有者账户有权控制隶属于自己的链间账户。相应的权限控制由控制链施行。
+- 控制链必须存储所有隶属于自己的链间账户地址。
+- 主链必须有能力限制链上的链间账户的功能（例如，主链可以决定链上的链间账户能不能参与质押）。
 
+## 技术规范
 
-## Technical specification
+### 总体设计
 
-### General design 
+一条链可以同时使用链间账户协议的两部分（控制链协议和主链协议）或其中任意一部分。在其它主链上注册链间账户的控制链不一定要允许其他控制链在本链注册链间账户，反之亦然。
 
-A chain can utilize one or both parts of the interchain accounts protocol (*controlling* and *hosting*). A controller chain that registers accounts on other host chains (that support interchain accounts) does not necessarily have to allow other controller chains to register accounts on its chain, and vice versa. 
+该标准定义了注册链间账户和发送交易数据的总体方法，其中的交易数据将会代表所有者账户被链间账户执行。主链负责反序列化并执行交易数据；控制链在发送交易数据之前必须知道主链会如何处理交易数据，这是在创建通道的过程中控制链和主链通过握手达成的。
 
-This specification defines the general way to register an interchain account and send tx bytes to be executed on behalf of the owner account. The host chain is responsible for deserializing and executing the tx bytes and the controller chain must know how the host chain will handle the tx bytes in advance of sending a packet, thus this must be negotiated during channel creation.
-
-### Controller chain contract
+### 控制链合约
 
 #### **RegisterInterchainAccount**
 
-`RegisterInterchainAccount` is the entry point to registering an interchain account.
-It generates a new controller portID using the owner account address.
-It will bind to the controller portID and
-call 04-channel `ChanOpenInit`. An error is returned if the controller portID is already in use.
-A `ChannelOpenInit` event is emitted which can be picked up by an offchain process such as a relayer.
-The account will be registered during the `OnChanOpenTry` step on the host chain.
-This function must be called after an `OPEN` connection is already established with the given connection identifier.
-The caller must provide the complete channel version. This MUST include the ICA version with complete metadata and it MAY include 
-versions of other middleware that is wrapping ICA on both sides of the channel. Note this will require contextual information
-on what middleware is enabled on either end of the channel. Thus it is recommended that an ICA-auth application construct the ICA
-version automatically and allow for users to optionally enable additional middleware versioning.
+`RegisterInterchainAccount` 是注册链间账户的切入点。它可以用所有者账户地址生成新的控制者portID。它将绑定一个控制者portID并且调用04-channel的`ChanOpenInit`。控制者portID如果已经被占用，`RegisterInterchainAccount`会返回错误。 `ChannelOpenInit`事件将被触发并被链下进程（如中继器）检测到。链间账户通过`OnChanOpenTry`步骤在主链上注册。这一方法必须在`OPEN`的连接被创建之后才能使用给定的connectionID来调用。调用者必须提供完整的通道版本，其中必须包括带有完整元数据的 ICA 版本并且可能包括其他中间件的版本，其中中间件的作用是在通道两端包装  ICA。这将会需要通道两端的中间件信息。所以，建议 ICA 认证的应用自动构建 ICA 版本并且允许用户启用额外的中间件版本号更新。
 
 ```typescript
 function RegisterInterchainAccount(connectionId: Identifier, owner: string, version: string) returns (error) {
@@ -69,34 +58,32 @@ function RegisterInterchainAccount(connectionId: Identifier, owner: string, vers
 
 #### **SendTx**
 
-`SendTx` is used to send an IBC packet containing instructions (messages) to an interchain account on a host chain for a given interchain account owner.
+`SendTx` 用于发送IBC数据包，数据包中包含链间账户所有者发给链间账户的指令（消息）。
 
 ```typescript
 function SendTx(
-  capability: CapabilityKey, 
+  capability: CapabilityKey,
   connectionId: Identifier,
-  portId: Identifier, 
-  icaPacketData: InterchainAccountPacketData, 
+  portId: Identifier,
+  icaPacketData: InterchainAccountPacketData,
   timeoutTimestamp uint64) {
-    // check if there is a currently active channel for
-    // this portId and connectionId, which also implies an 
-    // interchain account has been registered using 
-    // this portId and connectionId
+    // 检查该 portId 与 connectionId当前是否有活动通道
+    // 如有，则意味着已通过该 portId 与 connectionId注册过跨链账户
     activeChannelID, found = GetActiveChannelID(portId, connectionId)
     abortTransactionUnless(found)
 
-    // validate timeoutTimestamp
+    // 验证 timeoutTimestamp
     abortTransactionUnless(timeoutTimestamp <= currentTimestamp())
 
-    // validate icaPacketData
+    // 验证 icaPacketData
     abortTransactionUnless(icaPacketData.type == EXECUTE_TX)
     abortTransactionUnless(icaPacketData.data != nil)
 
-    // send icaPacketData to the host chain on the active channel
-    handler.sendPacket(
+    // 将 icaPacketData 通过活动通道处理程序发送至主链
+      sendPacket(
       capability,
-      portId, // source port ID
-      activeChannelID, // source channel ID 
+      portId, // 源端口 ID
+      activeChannelID, // 源通道 ID
       0,
       timeoutTimestamp,
       icaPacketData
@@ -104,24 +91,23 @@ function SendTx(
 }
 ```
 
-### Host chain contract
+### 主链合约
 
 #### **RegisterInterchainAccount**
 
-`RegisterInterchainAccount` is called on the `OnChanOpenTry` step during the channel creation handshake.
+在通过握手创建通道的过程中，`RegisterInterchainAccount`在执行`OnChanOpenTry`时被调用。
 
 ```typescript
 function RegisterInterchainAccount(counterpartyPortId: Identifier, connectionID: Identifier) returns (nil) {
-   // checks to make sure the account has not already been registered
-   // creates a new address on chain deterministically given counterpartyPortId and underlying connectionID
-   // calls SetInterchainAccountAddress()
+// 检查以确保帐户尚未注册
+// 在给定交易对手端口 ID 和底层连接 ID 的情况下，在链上创建一个新地址
+// 调用 SetInterchainAccountAddress()
 }
 ```
 
 #### **AuthenticateTx**
 
-`AuthenticateTx` is called before `ExecuteTx`.
-`AuthenticateTx` checks that the signer of a particular message is the interchain account associated with the counterparty portID of the channel that the IBC packet was sent on.
+`AuthenticateTx` 在执行`ExecuteTx`之前被调用。 `AuthenticateTx` 核实特定消息的签名者为链间账户，并且该链间账户与发送IBC数据包的对端通道portID相关联。
 
 ```typescript
 function AuthenticateTx(msgs []Any, connectionId string, portId string) returns (error) {
@@ -132,96 +118,97 @@ function AuthenticateTx(msgs []Any, connectionId string, portId string) returns 
 
 #### **ExecuteTx**
 
-Executes each message sent by the owner account on the controller chain.
+执行所有者账户在控制链上发送的每则消息。
 
 ```typescript
 function ExecuteTx(sourcePort: Identifier, channel Channel, msgs []Any) returns (resultString, error) {
-  // validate each message
-  // retrieve the interchain account for the given channel by passing in source port and channel's connectionID
-  // verify that interchain account is authorized signer of each message
-  // execute each message
-  // return result of transaction
+// 验证每条消息
+// 通过传入的源端口和通道的 connectionID 检索给定通道的链间帐户
+// 验证跨链账户是每条消息的授权签名者
+// 执行每条消息
+// 返回交易结果
 }
 ```
 
-### Utility functions
+### 实用函数
 
 ```typescript
-// Sets the active channel for a given portID and connectionID.
+// 为给定的 portID 和 connectionID 设置活动通道。
 function SetActiveChannelID(portId: Identifier, connectionId: Identifier, channelId: Identifier) returns (error){
 }
 
-// Returns the ID of the active channel for a given portID and connectionID, if present.
+// 根据 portID 和 connectionID，返回活动通道的 ID（如果存在）。
 function GetActiveChannelID(portId: Identifier, connectionId: Identifier) returns (Identifier, boolean){
 }
 
-// Stores the address of the interchain account in state.
+// 在状态中存储链间账户的地址。
 function SetInterchainAccountAddress(portId: Identifier, connectionId: Identifier, address: string) returns (string) {
 }
 
-// Retrieves the interchain account from state.
+// 从状态中检索链间帐户。
 function GetInterchainAccountAddress(portId: Identifier, connectionId: Identifier) returns (string, bool){
 }
 ```
 
-### Register & controlling flows
+### 注册与控制流程
 
-#### Register account flow
+#### 注册链间账户的流程
 
-To register an interchain account we require an off-chain process (relayer) to listen for `ChannelOpenInit` events with the capability to finish a channel creation handshake on a given connection. 
+要注册链间账户，我们需要一个链下进程（中继器）来监听`ChannelOpenInit`事件，并且有能力根据给定的连接来握手，从而创建通道。
 
-1. The controller chain binds a new IBC port with the controller portID for a given *interchain account owner address*.
+1. 控制器链将新的 IBC 端口与给定链间*帐户所有者地址*的控制器端口 ID 绑定。
 
-This port will be used to create channels between the controller & host chain for a specific owner/interchain account pair. Only the account with `{owner-account-address}` matching the bound port will be authorized to send IBC packets over channels created with the controller portID. It is up to each controller chain to enforce this port registration and access on the controller side. 
+这个端口将被用来在控制链和主链之间为一对特定的所有者账户/链间账户创建通道。只有链间账户的`{owner-account-address}`与绑定的端口相匹配才会被授权使用相应的通道（该通道是根据控制链的portID创建的）发送IBC数据包。由每个控制链在链上施行此端口注册和访问。
 
-2. The controller chain emits an event signaling to open a new channel on this port given a connection. 
-3. A relayer listening for `ChannelOpenInit` events will continue the channel creation handshake.
-4. During the `OnChanOpenTry` callback on the host chain an interchain account will be registered and a mapping of the interchain account address to the owner account address will be stored in state (this is used for authenticating transactions on the host chain at execution time). 
-5. During the `OnChanOpenAck` callback on the controller chain a record of the interchain account address registered on the host chain during `OnChanOpenTry` is set in state with a mapping from portID -> interchain account address. See [metadata negotiation](#Metadata-negotiation) section below for how to implement this.
-6. During the `OnChanOpenAck` & `OnChanOpenConfirm` callbacks on the controller & host chains respectively, the [active-channel](#Active-channels) for this interchain account/owner pair, is set in state.
+1. 在给定连接的情况下，控制链会发出一个事件信号，在此端口上打开一个新通道。
+2. 监听`ChannelOpenInit`事件的中继器将继续为创建通道而进行握手。
+3. 在主链的`OnChanOpenTry`回调过程中，一个链间账户将被注册，并将链间账户地址到所有者帐户地址的映射存储在账户状态中（用于在执行时验证主链上的交易）。
+4. 在控制链的`OnChanOpenAck`回调过程中，一个链间账户之前在主链上的`OnChanOpenTry`注册的记录会被写入到所有者的状态中，记录中包含从 portID -&gt; 链间账户地址的映射。实现细节请参见以下的[元数据协商](#元数据协商)部分。
+5. 在控制链和主链上分别进行`OnChanOpenAck`和`OnChanOpenConfirm`回调期间，此链间帐户/所有者对的[活动通道](#活动通道)将被写进链间账户/所有者的状态。
 
-#### Active channels
+#### 活动通道
 
-The controller and host chain must keep track of an `active-channel` for each registered interchain account. The `active-channel` is set during the channel creation handshake process. This is a safety mechanism that allows a controller chain to regain access to an interchain account on a host chain in case of a channel closing. 
+控制链和主链必须跟踪每个注册的链间帐户的`active-channel` 。 `active-channel`是在为创建通道而握手的过程中设置的。这是一种安全机制，允许控制链在通道关闭的情况下重新获得对主链上链间帐户的访问权限。
 
-An example of an active channel on the controller chain can look like this:
+控制链上的活动通道的数据结果示例：
 
 ```typescript
 {
- // Controller Chain
+ // 控制链
  SourcePortId: `icacontroller-<owner-account-address>`,
  SourceChannelId: `<channel-id>`,
- // Host Chain
+ // 主链
  CounterpartyPortId: `icahost`,
  CounterpartyChannelId: `<channel-id>`,
 }
 ```
 
-In the event of a channel closing, the active channel may be replaced by starting a new channel handshake with the same port identifiers on the same underlying connection of the original active channel. ICS-27 channels can only be closed in the event of a timeout (if the implementation uses ordered channels) or in the unlikely event of a light client attack. Controller chains must retain the ability to open new ICS-27 channels and reset the active channel for a particular portID (containing `{owner-account-address}`) and connectionID pair.
+如果一条通道关闭，控制链可以使用和之前的通道同样的端口和底层连接，通过握手创建一条新通道， 来取代现有的活动通道。ICS-27通道只能在两种情况下被关闭：即超时（如果通道是有序通道）或者轻客户端受到攻击（可能性很小）时。因此控制链必须具有以下两种功能： 创建新的ICS-27通道；重置某一对端口号（包含`{owner-account-address}`）和连接对应的活动通道。
 
-The controller and host chains must verify that any new channel maintains the same metadata as the previous active channel to ensure that the parameters of the interchain account remain the same even after replacing the active channel. The `Address` of the metadata should not be verified since it is expected to be empty at the INIT stage, and the host chain will regenerate the exact same address on TRY, because it is expected to generate the interchain account address deterministically from the controller portID and connectionID (both of which must remain the same).
+控制链和主链必须验证任何新通道与之前的活动通道保持相同的元数据，以确保链间帐户的参数即使在更换活动通道后也保持不变。不应验证元数据的`Address`，因为其在 INIT 阶段应为空，且主链将在 TRY 上重新生成完全相同的地址，因为它会从控制链端口 ID 确定性地生成链间帐户地址和connectionID（两者均须保持不变）。
 
-#### **Metadata negotiation**
+#### **元数据协商**
 
-ICS-27 takes advantage of [ICS-04 channel version negotiation](../../core/ics-004-channel-and-packet-semantics/README.md#versioning) to negotiate metadata and channel parameters during the channel handshake. The metadata will contain the encoding format along with the transaction type so that the counterparties can agree on the structure and encoding of the interchain transactions. The metadata sent from the host chain on the TRY step will also contain the interchain account address, so that it can be relayed to the controller chain. At the end of the channel handshake, both the controller and host chains will store a mapping of the controller chain portID to the newly registered interchain account address ([account registration flow](#Register-account-flow)). 
+ICS-27 利用[ICS-04 通道版本协商](../../core/ics-004-channel-and-packet-semantics/README.md#versioning)在通道握手期间协商元数据和通道参数。元数据将包含编码格式以及交易类型，以便交易对手可以就跨链交易的结构和编码达成一致。在 TRY 步骤从主链发送的元数据也将包含链间帐户地址，以便可以将其中继到控制链。在通道握手结束时，控制链和主链都会存储控制链 portID 到新注册的链间账户地址的映射（[账户注册流程](#注册链间账户的流程)）。
 
-ICS-04 allows for each channel version negotiation to be application-specific. In the case of interchain accounts, the channel version will be a string of a JSON struct containing all the relevant metadata intended to be relayed to the counterparty during the channel handshake step ([see summary below](#Metadata-negotiation-summary)).
+ICS-04 允许每个应用程序通道有特定版本协商协议。对于链间账户来说，通道版本将是一个 JSON 结构的字符串，其中包含所有相关元数据，这些元数据旨在在通道握手期间转发给交易对手（[参见下文摘要](#元数据协商总结)）。
 
-Combined with the one channel per interchain account approach, this method of metadata negotiation allows us to pass the address of the interchain account back to the controller chain and create a mapping from controller portID -> interchain account address during the `OnChanOpenAck` callback. As outlined in the [controlling flow](#Controlling-flow), a controller chain will need to know the address of a registered interchain account in order to send transactions to the account on the host chain.
+结合每个跨链帐户绑定一个通道的规定，这种元数据协商方法允许我们将链间帐户的地址传递回控制链，并在`OnChanOpenAck`回调期间创建从控制链端口 ID 到链间帐户地址的映射。如[控制流程](#控制流程)中所述，控制链需要知道已注册链间帐户的地址，以便将交易发送到主链上的链间帐户。
 
-#### **Metadata negotiation summary**
+#### **元数据协商总结**
 
-`interchain-account-address` is the address of the interchain account registered on the host chain by the controller chain.
+`interchain-account-address`是控制链在主链上注册的链间账户地址。
 
 - **INIT**
 
-Initiator: Controller
+发起者：控制链
 
-Datagram: ChanOpenInit
+数据报：ChanOpenInit
 
-Chain Acted Upon: Controller
+作用于链：控制链
 
-Version: 
+版本：
+
 ```json
 {
   "Version": "ics27-1",
@@ -233,17 +220,18 @@ Version:
 }
 ```
 
-Comments: The address is left empty since this will be generated and relayed back by the host chain. The connection identifiers must be included to ensure that if a new channel needs to be opened (in case active channel times out), then we can ensure that the new channel is opened on the same connection. This will ensure that the interchain account is always connected to the same counterparty chain.
+注释：地址留空，因为地址将由主链生成并传回。数据报必须包含连接标识符，以便在需要打开新通道（以防活动通道超时）时确保使用同一连接。这将确保链间账户始终连接到同一个交易对手链。
 
 - **TRY**
 
-Initiator: Relayer
+发起者：中继者
 
-Datagram: ChanOpenTry
+数据报：ChanOpenTry
 
-Chain Acted Upon: Host
+被作用链：主链
 
-Version: 
+版本：
+
 ```json
 {
   "Version": "ics27-1",
@@ -255,18 +243,18 @@ Version:
 }
 ```
 
-Comments: The ICS-27 application on the host chain is responsible for returning this version given the counterparty version set by the controller chain in INIT. The host chain must agree with the single encoding type and a single tx type that is requested by the controller chain (ie. included in counterparty version). If the requested encoding or tx type is not supported, then the host chain must return an error and abort the handshake.
-The host chain must also generate the interchain account address and populate the address field in the version with the interchain account address string.
+注释：如果控制链在 INIT 中设置了交易对手版本，则主链上的 ICS-27 应用程序负责返回此版本。主链必须同意控制链请求的单一编码类型和单一交易类型（例如包含在交易对手版本中）。如果不支持请求的编码或交易类型，则主链必须返回错误并中止握手。主链还必须生成链间账户地址，并使用链间账户地址字符串填充版本中的地址字段。
 
-- **ACK** 
+- **ACK**
 
-Initiator: Relayer
+发起者：中继者
 
-Datagram: ChanOpenAck
+数据报：ChanOpenAck
 
-Chain Acted Upon: Controller
+被作用链：控制链
 
-CounterpartyVersion: 
+交易对手版本：
+
 ```json
 {
   "Version": "ics27-1",
@@ -278,16 +266,15 @@ CounterpartyVersion:
 }
 ```
 
-Comments: On the ChanOpenAck step, the ICS27 application on the controller chain must verify the version string chosen by the host chain on ChanOpenTry. The controller chain must verify that it can support the negotiated encoding and tx type selected by the host chain. If either is unsupported, then it must return an error and abort the handshake.
-If both are supported, then the controller chain must store a mapping from the channel's portID to the provided interchain account address and return successfully.
+注释：在 ChanOpenAck 步骤中，控制链上的 ICS27 应用程序必须验证主链在 ChanOpenTry 中选择的版本字符串。控制链必须验证该字符串可支持主链选择的协商编码和 tx 类型。如果其中任何一个不受支持，则必须返回错误并中止握手。如果两者都支持，则控制链必须存储从通道的 portID 到所提供的链间帐户地址的映射，并返回成功。
 
-#### Controlling flow
+#### 控制流程
 
-Once an interchain account is registered on the host chain a controller chain can begin sending instructions (messages) to the host chain to control the account. 
+一旦在主链上注册了链间帐户，控制链就可以开始向主链发送指令（消息）以控制该帐户。
 
-1. The controller chain calls `SendTx` and passes message(s) that will be executed on the host side by the associated interchain account (determined by the controller side port identifier)
+1. 控制链调用`SendTx`并传递将由关联的链间帐户在主链执行的消息（由控制链端的端口标识符确定）
 
-Cosmos SDK pseudo-code example:
+Cosmos SDK 伪代码示例：
 
 ```golang
 interchainAccountAddress := GetInterchainAccountAddress(portId)
@@ -298,18 +285,19 @@ icaPacketData = InterchainAccountPacketData{
    Memo: "memo",
 }
 
-// Sends the message to the host chain, where it will eventually be executed 
+// 发送信息到主链，信息将最终在主链被执行
 SendTx(ownerAddress, connectionId, portID, data, timeout)
 ```
 
-2. The host chain upon receiving the IBC packet will call `DeserializeTx`. 
-    
-3. The host chain will then call `AuthenticateTx` and `ExecuteTx` for each message and return an acknowledgment containing a success or error.  
+1. 主链收到 IBC 数据包后会调用`DeserializeTx` 。
 
-Messages are authenticated on the host chain by taking the controller side port identifier and calling `GetInterchainAccountAddress(controllerPortId)` to get the expected interchain account address for the current controller port. If the signer of this message does not match the expected account address then authentication will fail.
+2. 然后主链将为每条消息调用`AuthenticateTx`和`ExecuteTx`，并返回包含成功或错误的回执。
 
-### Packet Data
-`InterchainAccountPacketData` contains an array of messages that an interchain account can execute and a memo string that is sent to the host chain as well as the packet `type`. ICS-27 version 1 has only one type `EXECUTE_TX`.
+通过获取控制链端口标识符，并调用`GetInterchainAccountAddress(controllerPortId)`以获取当前控制链端口的预期链间帐户地址，在主链上对消息进行身份验证。如果此消息的签名者与预期的帐户地址不匹配，则身份验证失败。
+
+### 数据包数据
+
+`InterchainAccountPacketData`包含一个链间帐户可以执行的消息数组和一个发送到主链的备忘录字符串以及数据包`type` 。 ICS-27 版本1只有一种类型的`EXECUTE_TX` 。
 
 ```proto
 message InterchainAccountPacketData  {
@@ -319,11 +307,11 @@ message InterchainAccountPacketData  {
 }
 ```
 
-The acknowledgment packet structure is defined as in [ics4](https://github.com/cosmos/ibc-go/blob/main/proto/ibc/core/channel/v1/channel.proto#L135-L148). If an error occurs on the host chain the acknowledgment contains the error message.
+回执包结构在[ics4](https://github.com/cosmos/ibc-go/blob/6b4aa9a50096d69f1e392e25809f0efc15b3a5f4/proto/ibc/core/channel/v1/channel.proto#L156)中定义。如果主链上发生错误，则回执包含错误消息。
 
 ```proto
 message Acknowledgement {
-  // response contains either a result or an error and must be non-empty
+  // 响应包含结果或错误，并且必须为非空
   oneof response {
     bytes  result = 21;
     string error  = 22;
@@ -331,17 +319,17 @@ message Acknowledgement {
 }
 ```
 
-### Custom logic
+### 自定义逻辑
 
-ICS-27 relies on [ICS-30 middleware architecture](../ics-030-middleware) to provide the option for application developers to apply custom logic on the success or fail of ICS-27 packets. 
+ICS-27 通过[ICS-30 中间件架构](../ics-030-middleware)允许应用程序开发人员自定义 ICS-27 数据包执行成功或失败的处理逻辑。
 
-Controller chains will wrap `OnAcknowledgementPacket` & `OnTimeoutPacket` to handle the success or fail cases for ICS-27 packets. 
+控制链将包装`OnAcknowledgementPacket`和`OnTimeoutPacket`以处理 ICS-27 数据包执行成功或失败的情况。
 
-### Port & channel setup
+### 端口和通道设置
 
-The interchain account module on a host chain must always bind to a port with the id `icahost`. Controller chains will bind to ports dynamically, as specified in the identifier format [section](#identifer-formats).
+主链上的链间帐户模块必须始终绑定到 id 为 `icahost`的端口。控制链将动态绑定端口，如标识符格式[部分](#标识符格式)中所指定。
 
-The example below assumes a module is implementing the entire `InterchainAccountModule` interface. The `setup` function must be called exactly once when the module is created (perhaps when the blockchain itself is initialized) to bind to the appropriate port.
+下方示例假设一个模块正在实现整个`InterchainAccountModule`接口。 `setup`函数必须在创建模块时（可能是在区块链本身在初始化时）仅调用一次以绑定到对应端口。
 
 ```typescript
 function setup() {
@@ -361,17 +349,17 @@ function setup() {
 }
 ```
 
-Once the `setup` function has been called, channels can be created via the IBC routing module.
+一旦调用了`setup`函数，就可以通过 IBC 路由模块创建通道。
 
-### Channel lifecycle management
+### 通道生命周期管理
 
-An interchain account module will accept new channels from any module on another machine, if and only if:
+链间帐户模块将接受来自另一台机器上任何模块的新通道，当且仅当：
 
-- The channel being created is ordered.
-- The channel initialization step is being invoked from the controller chain.
+- 正在创建的通道是有序的。
+- 控制链正在进行通道初始化。
 
 ```typescript
-// Called on Controller Chain by InitInterchainAccount
+//  在控制链上被InitInterchainAccount调用
 function onChanOpenInit(
   order: ChannelOrder,
   connectionHops: [Identifier],
@@ -380,30 +368,30 @@ function onChanOpenInit(
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
   version: string) {
-  // only ordered channels allowed
+  // 只允许有序通道
   abortTransactionUnless(order === ORDERED)
-  // validate port format
+  // 验证端口格式
   abortTransactionUnless(validateControllerPortParams(portIdentifier))
-  // only allow channels to be created on the "icahost" port on the counterparty chain
+  // 只允许在交易对手链上的“icahost”端口上创建通道
   abortTransactionUnless(counterpartyPortIdentifier === "icahost")
-  // only open the channel if there is no active channel already set (with status OPEN)
+  // 只有在没有设置活动通道（状态为 OPEN）时才打开通道
   abortTransactionUnless(activeChannel === nil)
 
-  // validate metadata
+  // 验证元数据
   metadata = UnmarshalJSON(version)
   abortTransactionUnless(metadata.Version === "ics27-1")
-  // all elements in encoding list and tx type list must be supported
+  // 必须支持编码列表和 tx 类型列表中的所有元素
   abortTransactionUnless(IsSupportedEncoding(metadata.Encoding))
   abortTransactionUnless(IsSupportedTxType(metadata.TxType))
 
-  // connectionID and counterpartyConnectionID is retrievable in Channel
+  // connectionID和交易对手connectionID在通道中是可获取的
   abortTransactionUnless(metadata.ControllerConnectionId === connectionId)
   abortTransactionUnless(metadata.HostConnectionId === counterpartyConnectionId)
 }
 ```
 
 ```typescript
-// Called on Host Chain by Relayer
+// 在主链上由中继器调用
 function onChanOpenTry(
   order: ChannelOrder,
   connectionHops: [Identifier],
@@ -412,25 +400,22 @@ function onChanOpenTry(
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
   counterpartyVersion: string) (version: string) {
-  // only ordered channels allowed
+  // 只允许有序通道
   abortTransactionUnless(order === ORDERED)
-  // validate port ID
+  // 验证端口ID
   abortTransactionUnless(portIdentifier === "icahost")
-  // only allow channels to be created on host chain if the counteparty port ID
-  // is in the expected controller portID format.
+  // 只有当对方端口ID采用预期的控制链端口ID 格式时才允许在主链上创建通道
   abortTransactionUnless(validateControllerPortParams(counterpartyPortIdentifier))
-  // create the interchain account with the counterpartyPortIdentifier
-  // and the underlying connectionID on the host chain.
+  // 使用交易对手端口标识符以及主链上的底层connectionID创建链间账户
   address = RegisterInterchainAccount(counterpartyPortIdentifier, connectionID)
 
   cpMetadata = UnmarshalJSON(counterpartyVersion)
   abortTransactionUnless(cpMetadata.Version === "ics27-1")
-  // If encoding or txType requested by initializing chain is not supported by host chain then
-  // fail handshake and abort transaction
+  // 如果主链不支持初始化链请求的编码或 txType，则握手失败并中止交易
   abortTransactionUnless(IsSupportedEncoding(cpMetadata.Encoding))
   abortTransactionUnless(IsSupportedTxType(cpMetadata.TxType))
 
-  // connectionID and counterpartyConnectionID is retrievable in Channel
+  // connectionID和交易对手connectionID在通道中是可获取的
   abortTransactionUnless(cpMetadata.ControllerConnectionId === counterpartyConnectionId)
   abortTransactionUnless(cpMetadata.HostConnectionId === connectionId)
   
@@ -448,14 +433,14 @@ function onChanOpenTry(
 ```
 
 ```typescript
-// Called on Controller Chain by Relayer
+// 由中继器在控制链上调用
 function onChanOpenAck(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   counterpartyChannelIdentifier,
   counterpartyVersion: string) {
 
-  // validate counterparty metadata decided by host chain
+  // 验证主链的交易对手元数据
   metadata = UnmarshalJSON(version)
   abortTransactionUnless(metadata.Version === "ics27-1")
   abortTransactionUnless(IsSupportedEncoding(metadata.Encoding))
@@ -464,25 +449,25 @@ function onChanOpenAck(
   abortTransactionUnless(metadata.HostConnectionId === counterpartyConnectionId)
 
   
-  // state change to keep track of successfully registered interchain account
+  // 状态更改以记录成功注册的跨链帐户
   SetInterchainAccountAddress(portID, metadata.Address)
-  // set the active channel for this owner/interchain account pair
+  // 设置此所有者/链间帐户对的活动通道
   setActiveChannel(SourcePortId)
 }
 ```
 
 ```typescript
-// Called on Host Chain by Relayer
+// 由中继器在主链上调用
 function onChanOpenConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-  // set the active channel for this owner/interchain account pair
+  // 设置此所有者/链间帐户对的活动通道
   setActiveChannel(portIdentifier)
 }
 ```
 
 ```typescript
-// The controller portID must have the format: `icacontroller-{ownerAddress}`
+// 控制器端口 ID 必须具有以下格式：`icacontroller-{ownerAddress}`
 function validateControllerPortParams(portIdentifier: Identifier) {
   split(portIdentifier, "-")
   abortTransactionUnless(portIdentifier[0] === "icacontroller")
@@ -490,13 +475,13 @@ function validateControllerPortParams(portIdentifier: Identifier) {
 }
 ```
 
-### Closing handshake
+### 结束握手
 
 ```typescript
 function onChanCloseInit(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
- 	// disallow user-initiated channel closing for interchain account channels
+ 	// 不允许用户发起的通道关闭链间账户通道
   return err
 }
 ```
@@ -508,15 +493,15 @@ function onChanCloseConfirm(
 }
 ```
 
-### Packet relay
-`onRecvPacket` is called by the routing module when a packet addressed to this module has been received.
+### 数据包中继
+
+路由模块收到数据包后调用`onRecvPacket` 。
 
 ```typescript
 function OnRecvPacket(packet Packet) {
   ack = NewResultAcknowledgement([]byte{byte(1)})
 
-	// only attempt the application logic if the packet data
-	// was successfully decoded
+	// 仅在数据包数据成功解码时尝试应用程序逻辑
   switch data.Type {
   case types.EXECUTE_TX:
   msgs, err = types.DeserializeTx(data.Data)
@@ -524,15 +509,15 @@ function OnRecvPacket(packet Packet) {
     return NewErrorAcknowledgement(err)
   }
 
-  // ExecuteTx calls the AuthenticateTx function defined above 
+  // ExecuteTx 调用上面定义的 AuthenticateTx 函数
   result, err = ExecuteTx(ctx, packet.SourcePort, packet.DestinationPort, packet.DestinationChannel, msgs)
   if err != nil {
-    // NOTE: The error string placed in the acknowledgement must be consistent across all
-    // nodes in the network or there will be a fork in the state machine. 
+    // 注意：网络中的节点放置在确认中的错误字符串必须在所有内容中保持一致
+    // ，否则状态机中会有一个分叉。
     return NewErrorAcknowledgement(err)
   }
 
-  // return acknowledgement containing the transaction result after executing on host chain
+  // 在主链上执行后返回包含交易结果的确认
   return NewAcknowledgement(result)
 
   default:
@@ -541,62 +526,60 @@ function OnRecvPacket(packet Packet) {
 }
 ```
 
-`onAcknowledgePacket` is called by the routing module when a packet sent by this module has been acknowledged.
+在路由模块发送的数据包被确认后，该模块将调用`onAcknowledgePacket`。
 
 ```typescript
 function onAcknowledgePacket(
   packet: Packet,
   acknowledgement: bytes) {
-    // call underlying app's OnAcknowledgementPacket callback 
-    // see ICS-30 middleware for more information
+    // 调用底层应用的 OnAcknowledgementPacket 回调
+    // 更多信息请参见 ICS-30 中间件
 }
 ```
 
 ```typescript
 function onTimeoutPacket(packet: Packet) {
-    // call underlying app's OnTimeoutPacket callback 
-    // see ICS-30 middleware for more information
+    // 调用底层应用的 OnTimeoutPacket 回调
+    // 更多信息请参见 ICS-30 中间件
 }
 ```
 
-### Identifier formats
+### 标识符格式
 
-These are the formats that the port identifiers on each side of an interchain accounts channel must follow to be accepted by a correct interchain accounts module.
+链间账户通道两侧的端口标识符必须遵循的这些格式，才能被正确的链间账户模块接受。
 
-Controller Port Identifier: `icacontroller-{owner-account-address}`
+控制链端口标识符： `icacontroller-{owner-account-address}`
 
-Host Port Identifier: `icahost`
+主链端口标识符： `icahost`
 
-## Example Implementation
+## 示例实现
 
-Repository for Cosmos-SDK implementation of ICS-27: https://github.com/cosmos/ibc-go
+ICS-27 的 Cosmos-SDK 实现的代码库：https://github.com/cosmos/ibc-go
 
-## Future Improvements
+## 未来的改进
 
-A future version of interchain accounts may be greatly simplified by the introduction of an IBC channel type that is ORDERED but does not close the channel on timeouts, and instead proceeds to accept and receive the next packet. If such a channel type is made available by core IBC, Interchain accounts could require the use of this channel type and remove all logic and state pertaining to "active channels". The metadata format can also be simplified to remove any reference to the underlying connection identifiers.
+未来的链间账户可能会通过引入一种 IBC 通道类型来大大简化，该通道类型是有序通道，但不会在超时时关闭通道，而是继续接收下一个数据包。如果核心 IBC 提供了这种通道类型，链间账户可能请求使用这种通道类型并删除与“活动通道”相关的所有逻辑和状态。元数据格式中的底层连接标识符的引用也可以被删除，由此元数据格式可以得到简化。
 
-The "active channel" setting and unsetting is currently necessary to allow interchain account owners to create a new channel in case the current active channel closes during channel timeout. The connection identifiers are part of the metadata to ensure that any new channel that gets opened are established on top of the original connection. All of this logic becomes unnecessary once the channel is ordered **and** unclosable, which can only be achieved by the introduction of a new channel type to core IBC.
+设置和取消“活动通道”在当前是必要的，旨在允许链间帐户所有者创建一个新通道，防止当前活动通道在通道超时情况下被关闭。连接标识符是元数据的一部分，旨在确保被启用的新通道均建立在原始连接上。如果要让通道有序**且**不可关闭，只能通过向核心 IBC 引入新的通道类型来实现，新通道类型实现后，这些逻辑就变得不必要了。
 
-## History
+## 历史
 
-Aug 1, 2019 - Concept discussed
+2019年8月1日-讨论概念
 
-Sep 24, 2019 - Draft suggested
+2019年9月24日-建议草案
 
-Nov 8, 2019 - Major revisions
+2019年11月8日-重大修订
 
-Dec 2, 2019 - Minor revisions (Add more specific description & Add interchain account on Ethereum)
+2019年12月2日-较小修订（在以太坊上添加更多具体描述并添加链间账户）
 
-July 14, 2020 - Major revisions
+2020年7月14日-主要修订
 
-April 27, 2021 - Redesign of ics27 specification
+2021年4月27日-重新设计ics27规范
 
-November 11, 2021 - Update with latest changes from implementation
+2021年11月11日-根据代码实现的最新变化更新翻译
 
-December 14, 2021 - Revisions to spec based on audits and maintainer reviews
-    
-## Copyright
+2021年12月14日-根据审计和维护人员的审查对规范进行修订
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+## 版权
 
-
+本文中的所有内容均根据[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)获得许可。

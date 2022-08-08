@@ -1,39 +1,39 @@
 ---
-ics: 10
-title: GRANDPA Client
-stage: draft
+ics: '10'
+title: GRANDPA 客户端
+stage: 草案
 category: IBC/TAO
-kind: instantiation
+kind: 实例化
 author: Yuanchao Sun <ys@cdot.network>, John Wu <john@cdot.network>
-created: 2020-03-15
-implements: 2
+created: '2020-03-15'
+implements: '2'
 ---
 
-## Synopsis
+## 概要
 
-This specification document describes a client (verification algorithm) for a blockchain using GRANDPA.
+本规范描述了使用 GRANDPA 最终性小工具的区块链客户端（验证算法）。
 
-GRANDPA (GHOST-based Recursive Ancestor Deriving Prefix Agreement) is a finality gadget that will be used by the Polkadot relay chain. It now has a Rust implementation and is part of the Substrate, so likely blockchains built using Substrate will use GRANDPA as its finality gadget.
+GRANDPA（GHOST-based Recursive Ancestor Deriving Prefix Agreement）是 Polkadot 中继链将会使用的一个最终性小工具。它现在有一个 Rust 语言实现，并且是 Substrate 框架的一部分，因此使用 Substrate 构建的区块链很可能会使用 GRANDPA 作为其最终性小工具。
 
-### Motivation
+### 动机
 
-Blockchains using GRANDPA finality gadget might like to interface with other replicated state machines or solo machines over IBC.
+使用 GRANDPA 最终性小工具的区块链可能希望通过 IBC 与其他状态机或单机进行交互。
 
-### Definitions
+### 定义
 
-Functions & terms are as defined in [ICS 2](../../core/ics-002-client-semantics).
+函数和术语定义见 [ICS 2](../../core/ics-002-client-semantics) 。
 
-### Desired Properties
+### 所需属性
 
-This specification must satisfy the client interface defined in ICS 2.
+该规范必须满足 ICS 2 中定义的客户端接口。
 
-## Technical Specification
+## 技术指标
 
-This specification depends on correct instantiation of the [GRANDPA finality gadget](https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf) and its light client algorithm.
+该规范依赖于 [GRANDPA 最终性小工具](https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf)及其轻客户端算法的正确实例化。
 
-### Client state
+### 客户端状态
 
-The GRANDPA client state tracks latest height and a possible frozen height.
+GRANDPA 客户端状态会跟踪最新区块高度和可能的冻结区块高度。
 
 ```typescript
 interface ClientState {
@@ -42,21 +42,21 @@ interface ClientState {
 }
 ```
 
-### Authority set
+### 权威集合
 
-A set of authorities for GRANDPA.
+GRANDPA 的一组权威账户。
 
 ```typescript
 interface AuthoritySet {
-  // this is incremented every time the set changes
+  // 每次集合更改时都会递增
   setId: uint64
   authorities: List<Pair<AuthorityId, AuthorityWeight>>
 }
 ```
 
-### Consensus state
+### 共识状态
 
-The GRANDPA client tracks authority set and commitment root for all previously verified consensus states.
+GRANDPA 客户端跟踪所有先前已验证的共识状态的权威集合和承诺根。
 
 ```typescript
 interface ConsensusState {
@@ -65,11 +65,9 @@ interface ConsensusState {
 }
 ```
 
-### Headers
+### 区块头
 
-The GRANDPA client headers include the height, the commitment root, a justification of block and authority set.
-(In fact, here is a proof of authority set rather than the authority set itself, but we can using a fixed key to verify
-the proof and extract the real set, the details are ignored here)
+GRANDPA 客户端区块头包括区块高度、承诺根、区块的确定性证明和权威集合。（实际上，区块头中包含的是一个权威集合的证明，而不是权威集合本身，但是我们可以使用一个固定的键来验证证明并提取出真实集合，本规范不包含相关细节）
 
 ```typescript
 interface Header {
@@ -80,10 +78,9 @@ interface Header {
 }
 ```
 
-### Justification
+### 确定性证明
 
-A GRANDPA justification for block finality, it includes a commit message and an ancestry proof including all headers routing all precommit target blocks to the commit target block.
-For example, the latest blocks are A - B - C - D - E - F, where A is the last finalised block, F is the point where a majority for vote (they may on B, C, D, E, F) can be collected. Then the proof need to include all headers from F back to A.
+一个 GRANDPA 的区块确定性证明包括一个commit信息和一个祖先证明（ancestry proof），其中包括所有预提交目标块到提交目标块之间的所有区块头。例如，最新的块是 A-B-C-D-E-F，其中 A 是最后敲定的块，F 是可以收集到多数投票的位置（投票可能在 B，C，D，E，F 上）。那么证明需要包括从 F 到 A 的所有区块头。
 
 ```typescript
 interface Justification {
@@ -93,9 +90,9 @@ interface Justification {
 }
 ```
 
-### Commit
+### Commit 信息
 
-A commit message which is an aggregate of signed precommits.
+Commit消息是已签名的预提交的汇总。
 
 ```typescript
 interface Commit {
@@ -109,22 +106,21 @@ interface SignedPrecommit {
 }
 ```
 
-### Misbehaviour
+### 不良行为
 
-The `Misbehaviour` type is used for detecting misbehaviour and freezing the client - to prevent further packet flow - if applicable.
-GRANDPA client `Misbehaviour` consists of two headers at the same height both of which the light client would have considered valid.
+`Evidence`类型用于检测不良行为并冻结客户端-以防止进一步的数据包流（如果适用）。 GRANDPA 客户端`Evidence`由两个高度相同的、且由轻客户端判定有效的区块头组成。
 
 ```typescript
-interface Misbehaviour {
+interface Evidence {
   fromHeight: uint64
   h1: Header
   h2: Header
 }
 ```
 
-### Client initialisation
+### 客户初始化
 
-GRANDPA client initialisation requires a (subjectively chosen) latest consensus state, including the full authority set.
+GRANDPA 客户端初始化要求（主观选择）一个最新的共识状态，包括完整的权威集合。
 
 ```typescript
 function initialise(identifier: Identifier, height: uint64, consensusState: ConsensusState): ClientState {
@@ -136,7 +132,7 @@ function initialise(identifier: Identifier, height: uint64, consensusState: Cons
 }
 ```
 
-The GRANDPA client `latestClientHeight` function returns the latest stored height, which is updated every time a new (more recent) header is validated.
+GRANDPA 客户端的`latestClientHeight`函数返回最新存储的区块高度，该高度在每次验证一个新的（更接近现在的）区块头时都会更新。
 
 ```typescript
 function latestClientHeight(clientState: ClientState): uint64 {
@@ -144,25 +140,25 @@ function latestClientHeight(clientState: ClientState): uint64 {
 }
 ```
 
-### Validity predicate
+### 合法性判定式
 
-GRANDPA client validity checking verifies a header is signed by the current authority set and verifies the authority set proof to determine if there is a expected change to the authority set. If the provided header is valid, the client state is updated & the newly verified commitment written to the store.
+GRANDPA 客户端合法性检查将验证区块头是否由当前权威集合签名，并验证权威集合证明以确定是否存在对权威集合的更改。如果所提供的区块头有效，那么将更新客户端状态并将新验证的承诺写入存储。
 
 ```typescript
 function checkValidityAndUpdateState(
   clientState: ClientState,
   header: Header) {
-    // assert header height is newer than any we know
+    // 断言：区块头高度比我们所知道的要新
     assert(header.height > clientState.latestHeight)
     consensusState = get("clients/{identifier}/consensusStates/{clientState.latestHeight}")
-    // verify that the provided header is valid
+    // 验证提供的区块头是否有效
     assert(verify(consensusState.authoritySet, header))
-    // update latest height
+    // 更新最新高度
     clientState.latestHeight = header.height
-    // create recorded consensus state, save it
+    // 创建记录的共识状态，并保存
     consensusState = ConsensusState{header.authoritySet, header.commitmentRoot}
     set("clients/{identifier}/consensusStates/{header.height}", consensusState)
-    // save the client
+    // 保存客户端
     set("clients/{identifier}", clientState)
 }
 
@@ -179,35 +175,35 @@ function verify(
 }
 ```
 
-### Misbehaviour predicate
+### 不良行为判定
 
-GRANDPA client misbehaviour checking determines whether or not two conflicting headers at the same height would have convinced the light client.
+GRANDPA 客户端的不良行为检测将确定在相同高度的两个冲突的区块头是否都被轻客户端认定有效。
 
 ```typescript
 function checkMisbehaviourAndUpdateState(
   clientState: ClientState,
-  misbehaviour: Misbehaviour) {
-    // assert that the heights are the same
-    assert(misbehaviour.h1.height === misbehaviour.h2.height)
-    // assert that the commitments are different
-    assert(misbehaviour.h1.commitmentRoot !== misbehaviour.h2.commitmentRoot)
-    // fetch the previously verified commitment root & authority set
-    consensusState = get("clients/{identifier}/consensusStates/{misbehaviour.fromHeight}")
-    // check if the light client "would have been fooled"
+  evidence: Evidence) {
+    // 断言：高度相同
+    assert(evidence.h1.height === evidence.h2.height)
+    // 断言：承诺是不同的
+    assert(evidence.h1.commitmentRoot !== evidence.h2.commitmentRoot)
+    // 获取先前验证的承诺根和权威集合
+    consensusState = get("clients/{identifier}/consensusStates/{evidence.fromHeight}")
+    // 检查轻客户端是否“会被愚弄”
     assert(
-      verify(consensusState.authoritySet, misbehaviour.h1) &&
-      verify(consensusState.authoritySet, misbehaviour.h2)
+      verify(consensusState.authoritySet, evidence.h1) &&
+      verify(consensusState.authoritySet, evidence.h2)
       )
-    // set the frozen height
-    clientState.frozenHeight = min(clientState.frozenHeight, misbehaviour.h1.height) // which is same as h2.height
-    // save the client
+    // 设置冻结高度
+    clientState.frozenHeight = min(clientState.frozenHeight, evidence.h1.height) // which is same as h2.height
+    //保存客户端
     set("clients/{identifier}", clientState)
 }
 ```
 
-### State verification functions
+### 状态验证函数
 
-GRANDPA client state verification functions check a Merkle proof against a previously validated commitment root.
+GRANDPA 客户端状态验证函数对照先前已验证的承诺根检查Merkle证明。
 
 ```typescript
 function verifyClientConsensusState(
@@ -219,13 +215,13 @@ function verifyClientConsensusState(
   consensusStateHeight: uint64,
   consensusState: ConsensusState) {
     path = applyPrefix(prefix, "clients/{clientIdentifier}/consensusState/{consensusStateHeight}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided consensus state has been stored
+    // 验证提供的共识状态是否已存储
     assert(root.verifyMembership(path, consensusState, proof))
 }
 
@@ -237,13 +233,13 @@ function verifyConnectionState(
   connectionIdentifier: Identifier,
   connectionEnd: ConnectionEnd) {
     path = applyPrefix(prefix, "connections/{connectionIdentifier}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided connection end has been stored
+    // 验证提供的连接端是否已存储
     assert(root.verifyMembership(path, connectionEnd, proof))
 }
 
@@ -256,13 +252,13 @@ function verifyChannelState(
   channelIdentifier: Identifier,
   channelEnd: ChannelEnd) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided channel end has been stored
+    // 验证提供的通道端是否已存储
     assert(root.verifyMembership(path, channelEnd, proof))
 }
 
@@ -276,13 +272,13 @@ function verifyPacketData(
   sequence: uint64,
   data: bytes) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/packets/{sequence}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided commitment has been stored
+    // 验证提供的承诺是否已被存储
     assert(root.verifyMembership(path, hash(data), proof))
 }
 
@@ -296,17 +292,17 @@ function verifyPacketAcknowledgement(
   sequence: uint64,
   acknowledgement: bytes) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the provided acknowledgement has been stored
+    // 验证提供的回执是否已存储
     assert(root.verifyMembership(path, hash(acknowledgement), proof))
 }
 
-function verifyPacketReceiptAbsence(
+function verifyPacketAcknowledgementAbsence(
   clientState: ClientState,
   height: uint64,
   prefix: CommitmentPrefix,
@@ -315,13 +311,13 @@ function verifyPacketReceiptAbsence(
   channelIdentifier: Identifier,
   sequence: uint64) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that no acknowledgement has been stored
+    // 验证没有承诺被存储
     assert(root.verifyNonMembership(path, proof))
 }
 
@@ -334,41 +330,41 @@ function verifyNextSequenceRecv(
   channelIdentifier: Identifier,
   nextSequenceRecv: uint64) {
     path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/nextSequenceRecv")
-    // check that the client is at a sufficient height
+    // 检查客户端是否处于足够的高度
     assert(clientState.latestHeight >= height)
-    // check that the client is unfrozen or frozen at a higher height
+    // 检查客户端是否解冻或冻结在更高的高度
     assert(clientState.frozenHeight === null || clientState.frozenHeight > height)
-    // fetch the previously verified commitment root & verify membership
+    // 获取先前验证的承诺根并验证成员资格
     root = get("clients/{identifier}/consensusStates/{height}")
-    // verify that the nextSequenceRecv is as claimed
+    // 验证 nextSequenceRecv 是否如声明的那样
     assert(root.verifyMembership(path, nextSequenceRecv, proof))
 }
 ```
 
-### Properties & Invariants
+### 属性与不变性
 
-Correctness guarantees as provided by the GRANDPA light client algorithm.
+正确性保证和 GRANDPA 轻客户端算法相同。
 
-## Backwards Compatibility
+## 向后兼容性
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 向前兼容性
 
-Not applicable. Alterations to the client verification algorithm will require a new client standard.
+不适用。更改客户端验证算法将需要新的客户端标准。
 
-## Example Implementation
+## 示例实现
 
-None yet.
+暂无。
 
-## Other Implementations
+## 其他实现
 
-None at present.
+目前暂无。
 
-## History
+## 历史
 
-March 15, 2020 - Initial version
+2020年3月15日-初始版本
 
-## Copyright
+## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。

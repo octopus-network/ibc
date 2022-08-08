@@ -1,91 +1,91 @@
 ---
-ics: 25
-title: Handler Interface
-stage: draft
+ics: '25'
+title: 处理程序接口
+stage: 草案
 category: IBC/TAO
-kind: instantiation
+kind: 实例化
 requires: 2, 3, 4, 23, 24
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-04-23
-modified: 2019-08-25
+created: '2019-04-23'
+modified: '2019-08-25'
 ---
 
-## Synopsis
+## 概要
 
-This document describes the interface exposed by the standard IBC implementation (referred to as the IBC handler) to modules within the same state machine, and the implementation of that interface by the IBC handler.
+本文档描述了标准 IBC 实现（称为 IBC 处理程序）向同一状态机内的模块公开的接口，以及 IBC 处理程序对该接口的实现。
 
-### Motivation
+### 动机
 
-IBC is an inter-module communication protocol, designed to facilitate reliable, authenticated message passing between modules on separate blockchains. Modules should be able to reason about the interface they interact with and the requirements they must adhere to in order to utilise the interface safely.
+IBC 是一种模块间通信协议，旨在促进独立区块链上的模块之间可靠、经过身份验证的消息传递。模块应该能够得知它们与之交互的接口以及它们必须遵守的要求，以便安全地使用接口。
 
-### Definitions
+### 定义
 
-Associated definitions are as defined in referenced prior standards (where the functions are defined), where appropriate.
+相关定义在参考的先前标准（定义了功能的地方）中适当地定义。
 
-### Desired Properties
+### 所需属性
 
-- Creation of clients, connections, and channels should be as permissionless as possible.
-- The module set should be dynamic: chains should be able to add and destroy modules, which can themselves bind to and unbind from ports, at will with a persistent IBC handler.
-- Modules should be able to write their own more complex abstractions on top of IBC to provide additional semantics or guarantees.
+- 客户端，连接和通道的创建应尽可能无需许可。
+- 模块集应为动态的：链应该能够添加和删除模块，这些模块本身可以使用持久性 IBC 处理程序任意绑定到端口或从端口取消绑定。
+- 模块应能在 IBC 之上编写自己的更复杂的抽象，以提供附加的语义或保证。
 
-## Technical Specification
+## 技术规范
 
-> Note: If the host state machine is utilising object capability authentication (see [ICS 005](../ics-005-port-allocation)), all functions utilising ports take an additional capability key parameter.
+> 注意：如果主机状态机正在使用对象能力认证（请参阅 [ICS 005](../ics-005-port-allocation) ），则所有使用端口的函数都将带有附加的能力键参数。
 
-### Client lifecycle management
+### 客户端生命周期管理
 
-By default, clients are unowned: any module may create a new client, query any existing client, update any existing client, and delete any existing client not in use.
+默认情况下，客户端是没有所有者的：任何模块都可以创建新客户端，查询任何现有客户端，更新任何现有客户端以及删除任何未使用的现有客户端。
 
-The handler interface exposes `createClient`, `updateClient`, `queryClientConsensusState`, `queryClient`, and `submitMisbehaviourToClient` as defined in [ICS 2](../ics-002-client-semantics).
+处理程序接口暴露 [ICS 2](../ics-002-client-semantics) 中定义的`createClient` ， `updateClient` ， `queryClientConsensusState` ， `queryClient`和`submitMisbehaviourToClient` 。
 
-### Connection lifecycle management
+### 连接生命周期管理
 
-The handler interface exposes `connOpenInit`, `connOpenTry`, `connOpenAck`, `connOpenConfirm`, and `queryConnection`, as defined in [ICS 3](../ics-003-connection-semantics).
+处理程序接口暴露 [ICS 3](../ics-003-connection-semantics) 中定义的`connOpenInit` ， `connOpenTry` ， `connOpenAck` ， `connOpenConfirm`和`queryConnection` 。
 
-The default IBC routing module SHALL allow external calls to `connOpenTry`, `connOpenAck`, and `connOpenConfirm`.
+默认的 IBC 路由模块应允许外部调用`connOpenTry` ， `connOpenAck`和`connOpenConfirm` 。
 
-### Channel lifecycle management
+### 通道生命周期管理
 
-By default, channels are owned by the creating port, meaning only the module bound to that port is allowed to inspect, close, or send on the channel. A module can create any number of channels utilising the same port.
+默认情况下，通道归创建端口所有，这意味着只有绑定到该端口的模块才允许在通道上检查、关闭或发送。一个模块可以使用同一端口创建任意数量的通道。
 
-The handler interface exposes `chanOpenInit`, `chanOpenTry`, `chanOpenAck`, `chanOpenConfirm`, `chanCloseInit`, `chanCloseConfirm`, and `queryChannel`, as defined in [ICS 4](../ics-004-channel-and-packet-semantics).
+处理程序接口暴露了 [ICS 4](../ics-004-channel-and-packet-semantics) 中定义的`chanOpenInit` ， `chanOpenTry` ， `chanOpenAck` ， `chanOpenConfirm` ， `chanCloseInit` ， `chanCloseConfirm`和`queryChannel` 。
 
-The default IBC routing module SHALL allow external calls to `chanOpenTry`, `chanOpenAck`, `chanOpenConfirm`, and `chanCloseConfirm`.
+默认的 IBC 路由模块应允许外部调用`chanOpenTry` ， `chanOpenAck` ， `chanOpenConfirm`和`chanCloseConfirm` 。
 
-### Packet relay
+### 数据包中继
 
-Packets are permissioned by channel (only a port which owns a channel can send or receive on it).
+数据包是需要通道许可的（只有拥有通道的端口可以在其上发送或接收）。
 
-The handler interface exposes `sendPacket`, `recvPacket`, `acknowledgePacket`, `timeoutPacket`, and `timeoutOnClose` as defined in [ICS 4](../ics-004-channel-and-packet-semantics).
+该处理程序接口暴露`sendPacket` ， `recvPacket` ， `acknowledgePacket` ， `timeoutPacket` ， `timeoutOnClose`和`cleanupPacket`，如 [ICS 4](../ics-004-channel-and-packet-semantics)中定义 。
 
-The default IBC routing module SHALL allow external calls to `sendPacket`, `recvPacket`, `acknowledgePacket`, `timeoutPacket`, and `timeoutOnClose`.
+默认  IBC 路由模块应允许外部调用`sendPacket` ， `recvPacket` ， `acknowledgePacket` ， `timeoutPacket` ， `timeoutOnClose`和`cleanupPacket` 。
 
-### Properties & Invariants
+### 属性与不变性
 
-The IBC handler module interface as defined here inherits properties of functions as defined in their associated specifications.
+此处定义的 IBC 处理程序模块接口继承了其关联规范中定义的功能属性。
 
-## Backwards Compatibility
+## 向后兼容性
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 向前兼容性
 
-This interface MAY change when implemented on new chains (or upgrades to an existing chain) as long as the semantics remain the same.
+只要在语义上相同，在新链上实现（或升级到现有链）时，此接口可以更改。
 
-## Example Implementation
+## 示例实现
 
-Coming soon.
+即将到来。
 
-## Other Implementations
+## 其他实现
 
-Coming soon.
+即将到来。
 
-## History
+## 历史
 
-Jun 9, 2019 - Draft written
+2019年6月9日-编写草案
 
-Aug 24, 2019 - Revisions, cleanup
+2019年8月24日-修订，清理
 
-## Copyright
+## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。

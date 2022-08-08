@@ -1,28 +1,27 @@
-# Upgrading Channels
+# 升级通道
 
-### Synopsis
+### 概要
 
-This standard document specifies the interfaces and state machine logic that IBC implementations must implement in order to enable existing channels to upgrade after the initial channel handshake.
+这个标准文档规定了 IBC 实现必须实现的接口和状态机逻辑，以便现存通道在初始连接握手后能够升级。
 
-### Motivation
+### 动机
 
-As new features get added to IBC, chains may wish the take advantage of new channel features without abandoning the accumulated state and network effect(s) of an already existing channel. The upgrade protocol proposed would allow chains to renegotiate an existing channel to take advantage of new features without having to create a new channel, thus preserving all existing packet state processed on the channel.
+随着新功能被添加到 IBC，链可能希望在不放弃现有通道的已积累的状态和网络效应的情况下，同时利用新的通道功能。提议的升级协议将允许链重新协商现有通道，这样可以使用新的功能而无需创建新通道，从而保留当前通道之上的所有的数据包状态。
 
-### Desired Properties
+### 所需属性
 
-- Both chains MUST agree to the renegotiated channel parameters.
-- Channel state and logic on both chains SHOULD either be using the old parameters or the new parameters, but MUST NOT be in an in-between state, e.g., it MUST NOT be possible for an application to run v2 logic, while its counterparty is still running v1 logic.
-- The channel upgrade protocol is atomic, i.e., 
-  - either it is unsuccessful and then the channel MUST fall-back to the original channel parameters; 
-  - or it is successful and then both channel ends MUST adopt the new channel parameters and the applications must process packet data appropriately.
-- The channel upgrade protocol should have the ability to change all channel-related parameters; however the channel upgrade protocol MUST NOT be able to change the underlying `ConnectionEnd`.
-The channel upgrade protocol MUST NOT modify the channel identifiers.
+- 两条链都必须认同重新协商后的通道参数。
+- 两条链上的通道状态和逻辑应该或者使用旧参数或者新参数，而不能是一个中间状态，例如，应用程序不能运行 v2 逻辑，而其对手方仍在运行 v1 逻辑。
+- 通道升级协议是原子性的，即
+    - 要么不成功，然后通道必须回退到原始通道参数；
+    - 要么成功，然后通道两端必须采用新的通道参数并妥善地处理数据包。
+- 通道升级协议应该具有改变所有通道相关参数的能力；但是通道升级协议不能改变下层的`ConnectionEnd` 。通道升级协议不得修改通道标识符。
 
-## Technical Specification
+## 技术规范
 
-### Data Structures
+### 数据结构
 
-The `ChannelState` and `ChannelEnd` are defined in [ICS-4](./README.md), they are reproduced here for the reader's convenience. `UPGRADE_INIT`, `UPGRADE_TRY` are additional states added to enable the upgrade feature.
+`ChannelState`和`ChannelEnd`在[ICS-4](./README.md)中定义。为方便读者，在此转载。 `UPGRADE_INIT` ， `UPGRADE_TRY`是新增的附加状态，以启用升级功能。
 
 ```typescript
 enum ChannelState {
@@ -34,8 +33,8 @@ enum ChannelState {
 }
 ```
 
-- The chain that is proposing the upgrade should set the channel state from `OPEN` to `UPGRADE_INIT`
-- The counterparty chain that accepts the upgrade should set the channel state from `OPEN` to `UPGRADE_TRY`
+- 提议升级的链应该将通道状态从`OPEN`修改置为`UPGRADE_INIT`
+- 接受升级的对方链应将通道状态从`OPEN`修改置为`UPGRADE_TRY`
 
 ```typescript
 interface ChannelEnd {
@@ -48,20 +47,22 @@ interface ChannelEnd {
 }
 ```
 
-The desired property that the channel upgrade protocol MUST NOT modify the underlying clients or channel identifiers, means that only some fields of `ChannelEnd` are upgradable by the upgrade protocol.
+通道升级协议不能修改下层客户端或通道标识符。这个所需要的属性意味着只有`ChannelEnd`的某些字段可以被升级协议升级。
 
-- `state`: The state is specified by the handshake steps of the upgrade protocol.
+- `state` ：状态由升级协议的握手步骤指定。
 
-MAY BE MODIFIED:
-- `version`: The version MAY be modified by the upgrade protocol. The same version negotiation that happens in the initial channel handshake can be employed for the upgrade handshake.
-- `ordering`: The ordering MAY be modified by the upgrade protocol. However, it MUST be the case that the previous ordering is a valid subset of the new ordering. Thus, the only supported change is from stricter ordering rules to less strict ordering. For example, switching from ORDERED to UNORDERED is supported, switching from UNORDERED to ORDERED is **unsupported**.
-- `connectionHops`: The connectionHops MAY be modified by the upgrade protocol.
+可被修改的：
 
-MUST NOT BE MODIFIED:
-- `counterpartyChannelIdentifier`: The counterparty channel identifier MUST NOT be modified by the upgrade protocol.
-- `counterpartyPortIdentifier`: The counterparty port identifier MUST NOT be modified by the upgrade protocol
+- `version` ：版本可以被升级协议修改。在初始通道握手中发生的相同版本协商可用于升级的握手中。
+- `ordering` ：升级协议可以修改排序规则。但是，必须满足先前排序是新排序的有效子集。因此，唯一支持的更改是从更严格的排序规则到不太严格的排序。例如，支持从 ORDERED 切换到 UNORDERED，**不支持**从 UNORDERED 切换到 ORDERED。
+- `connectionHops`: connectionHops 可被升级协议修改.
 
-NOTE: If the upgrade adds any fields to the `ChannelEnd` these are by default modifiable, and can be arbitrarily chosen by an Actor (e.g. chain governance) which has permission to initiate the upgrade.
+不能修改的：
+
+- `counterpartyChannelIdentifier`: 升级协议不能修改对方链的通道标识符
+- `counterpartyPortIdentifier`端口标识符：升级协议不得修改交易对手端口标识符
+
+注意：如果升级将任何字段添加到`ChannelEnd` ，这些是默认可修改的，并且可以被有权限发起升级的 Actor（例如链上治理）所任意选择。
 
 ```typescript
 interface UpgradeTimeout {
@@ -70,16 +71,16 @@ interface UpgradeTimeout {
 }
 ```
 
-- `timeoutHeight`: Timeout height indicates the height at which the counterparty must no longer proceed with the upgrade handshake. The chains will then preserve their original channel and the upgrade handshake is aborted.
-- `timeoutTimestamp`: Timeout timestamp indicates the time on the counterparty at which the counterparty must no longer proceed with the upgrade handshake. The chains will then preserve their original channel and the upgrade handshake is aborted.
+- `timeoutHeight` ：超时高度表示在此区块高度上，对方链不能再进行升级握手。此后，两条链将保留其原始通道，而升级握手被中止。
+- `timeoutTimestamp` ：超时时间戳表示对方链不能再进行升级握手的时间。此后，两条链将保留其原始通道，而升级握手被中止。
 
-At least one of the timeoutHeight or timeoutTimestamp MUST be non-zero.
+timeoutHeight 或 timeoutTimestamp，至少其中之一必须非零。
 
-### Store Paths
+### 储存路径
 
-#### Restore Channel Path
+#### 恢复通道路径
 
-The chain must store the previous channel end so that it may restore it if the upgrade handshake fails. This may be stored in the private store.
+链必须存储之前的通道端，以便在升级握手失败时可以恢复它。该数据可以存储在私有存储中。
 
 ```typescript
 function restorePath(portIdentifier: Identifier, channelIdentifier: Identifier): Path {
@@ -87,9 +88,9 @@ function restorePath(portIdentifier: Identifier, channelIdentifier: Identifier):
 }
 ```
 
-#### UpgradeError Path
+#### 升级错误路径
 
-The upgrade error path is a public path that can signal an error of the upgrade to the counterparty. It does not store anything in the successful case, but it will store a sentinel abort value in the case that a chain does not accept the proposed upgrade.
+升级错误路径是可以向对方链发出升级错误信号的公共路径。在成功的情况下它不存储任何内容，但在链不接受提议的升级的情况下，它将存储一个哨兵中止值。
 
 ```typescript
 function errorPath(portIdentifier: Identifier, channelIdentifier: Identifier): Path {
@@ -98,17 +99,17 @@ function errorPath(portIdentifier: Identifier, channelIdentifier: Identifier): P
 }
 ```
 
-The UpgradeError MUST have an associated verification membership and nonmembership function added to the connection interface so that a counterparty may verify that chain has stored an error in the UpgradeError path.
+UpgradeError 必须有一个关联的验证成员和非成员函数添加到连接接口，以便对方链可以验证本链是否在 UpgradeError 路径中存储了该错误。
 
 ```typescript
-// Connection VerifyChannelUpgradeError method
+// 连接的VerifyChannelUpgradeError的方法
 function verifyChannelUpgradeError(
   connection: ConnectionEnd,
   height: Height,
   proof: CommitmentProof,
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
-  upgradeErrorReceipt: []byte, 
+  upgradeErrorReceipt: []byte,
 ) {
     client = queryClient(connection.clientIdentifier)
     path = applyPrefix(connection.counterpartyPrefix, channelErrorPath(counterpartyPortIdentifier, counterpartyChannelIdentifier))
@@ -117,7 +118,7 @@ function verifyChannelUpgradeError(
 ```
 
 ```typescript
-// Connection VerifyChannelUpgradeErrorAbsence method
+// 连接的VerifyChannelUpgradeErrorAbsence的方法
 function verifyChannelUpgradeErrorAbsence(
   connection: ConnectionEnd,
   height: Height,
@@ -131,9 +132,9 @@ function verifyChannelUpgradeErrorAbsence(
 }
 ```
 
-#### TimeoutPath
+#### 超时路径
 
-The timeout path is a public path set by the upgrade initiator to determine when the TRY step should timeout. It stores the `timeoutHeight` and `timeoutTimestamp` by which point the counterparty must have progressed to the TRY step. The TRY step will prove the timeout values set by the initiating chain and ensure the timeout has not passed. Or in the case of a timeout, in which case counterparty proves that the timeout has passed on its chain and restores the channel.
+超时路径是升级发起者设置的公共路径，用于确定 TRY 步骤何时超时。它存储了`timeoutHeight`和`timeoutTimestamp` ，此时对方链必须已进入 TRY 步骤。TRY步骤将证明初始链设置的超时数值并确保没有超时。在超时的情况下，对方链证明已经超过了超时时间，并已经在其链上恢复通道。
 
 ```typescript
 function timeoutPath(portIdentifier: Identifier, channelIdentifier: Identifier) Path {
@@ -141,17 +142,17 @@ function timeoutPath(portIdentifier: Identifier, channelIdentifier: Identifier) 
 }
 ```
 
-The timeout path MUST have associated verification membership method on the connection interface in order for a counterparty to prove that a chain stored a particular `UpgradeTimeout`.
+超时路径必须在连接接口上具有关联的验证方法，以便对方链证明该链存储了特定的`UpgradeTimeout` 。
 
 ```typescript
-// Connection VerifyChannelUpgradeTimeout method
+// 连接的VerifyChannelUpgradeTimeout的方法
 function verifyChannelUpgradeTimeout(
   connection: ConnectionEnd,
   height: Height,
   proof: CommitmentProof,
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
-  upgradeTimeout: UpgradeTimeout, 
+  upgradeTimeout: UpgradeTimeout,
 ) {
     client = queryClient(connection.clientIdentifier)
     path = applyPrefix(connection.counterpartyPrefix, channelTimeoutPath(counterpartyPortIdentifier, counterpartyChannelIdentifier))
@@ -159,19 +160,18 @@ function verifyChannelUpgradeTimeout(
 }
 ```
 
-## Sub-Protocols
+## 子协议
 
-The Channel Upgrade process consists of three sub-protocols: `UpgradeChannelHandshake`, `CancelChannelUpgrade`, and `TimeoutChannelUpgrade`. In the case where both chains approve of the proposed upgrade, the upgrade handshake protocol should complete successfully and the ChannelEnd should upgrade successfully.
+通道升级过程由三个子协议组成： `UpgradeChannelHandshake` 、 `CancelChannelUpgrade`和`TimeoutChannelUpgrade` 。在两条链都同意提议的升级的情况下，升级握手协议应该成功完成并且<code>ChannelEnd</code>应该成功升级。
 
-### Utility Functions
+### 实用函数
 
-`restoreChannel()` is a utility function that allows a chain to abort an upgrade handshake in progress, and return the `channelEnd` to its original pre-upgrade state while also setting the `errorReceipt`. A relayer can then send a `ChanUpgradeCancelMsg` to the counterparty so that it can restore its `channelEnd` to its pre-upgrade state as well. Once both channel ends are back to the pre-upgrade state, packet processing will resume with the original channel and application parameters.
+`restoreChannel()`是一个实用函数，它允许链中止正在进行的升级握手，并将`channelEnd`返回到其原始升级前状态，同时还设置`errorReceipt` 。然后，中继器可以向对方链发送`ChanUpgradeCancelMsg` ，以便它也可以将其`channelEnd`恢复到其升级前状态。一旦两个通道端都恢复到升级前的状态，数据包将继续按照其原始连接参数进行处理。
 
 ```typescript
 function restoreChannel() {
-    // cancel upgrade
-    // write an error receipt into the error path
-    // and restore original channel
+    // 取消升级
+    // 将错误收据写入错误路径并恢复原始通道
     errorReceipt = []byte{1}
     provableStore.set(errorPath(portIdentifier, channelIdentifier), errorReceipt)
     originalChannel = privateStore.get(restorePath(portIdentifier, channelIdentifier))
@@ -179,43 +179,42 @@ function restoreChannel() {
     provableStore.delete(timeoutPath(portIdentifier, channelIdentifier))
     privateStore.delete(restorePath(portIdentifier, channelIdentifier))
 
-    // call modules onChanUpgradeRestore callback
+    // 调用模块 onChanUpgradeRestore的回调
     module = lookupModule(portIdentifier)
-    // restore callback must not return error and it must successfully restore
-    // application to its pre-upgrade state
+    // 恢复回调不能返回错误，它必须成功恢复应用到升级前的状态
     module.onChanUpgradeRestore(
         portIdentifier,
         channelIdentifier
     )
-    // caller should return as well
+    // 调用者也应该返回
 }
 ```
 
-### Upgrade Handshake
+### 升级握手
 
-The upgrade handshake defines four datagrams: *ChanUpgradeInit*, *ChanUpgradeTry*, *ChanUpgradeAck*, and *ChanUpgradeConfirm*
+升级握手定义了四个数据报文： *ChanUpgradeInit* 、 *ChanUpgradeTry* 、 *ChanUpgradeAck*和*ChanUpgradeConfirm*
 
-A successful protocol execution flows as follows (note that all calls are made through modules per ICS 25):
+一个成功的协议执行流程如下（注意，所有调用都是通过 ICS 25 的模块进行的）：
 
-| Initiator | Datagram             | Chain acted upon | Prior state (A, B)          | Posterior state (A, B)      |
-| --------- | -------------------- | ---------------- | --------------------------- | --------------------------- |
-| Actor     | `ChanUpgradeInit`    | A                | (OPEN, OPEN)                | (UPGRADE_INIT, OPEN)        |
-| Actor     | `ChanUpgradeTry`     | B                | (UPGRADE_INIT, OPEN)        | (UPGRADE_INIT, UPGRADE_TRY) |
-| Relayer   | `ChanUpgradeAck`     | A                | (UPGRADE_INIT, UPGRADE_TRY) | (OPEN, UPGRADE_TRY)         |
-| Relayer   | `ChanUpgradeConfirm` | B                | (OPEN, UPGRADE_TRY)         | (OPEN, OPEN)                |
+发起者 | 数据报文 | 操作的链 | 先前状态（A，B） | 其后状态（A，B）
+--- | --- | --- | --- | ---
+Actor | `ChanUpgradeInit` | A | (OPEN, OPEN) | (UPGRADE_INIT, OPEN)
+Actor | `ChanUpgradeTry` | B | (UPGRADE_INIT, OPEN) | (UPGRADE_INIT, UPGRADE_TRY)
+中继器 | `ChanUpgradeAck` | A | (UPGRADE_INIT, UPGRADE_TRY) | (OPEN, UPGRADE_TRY)
+中继器 | `ChanUpgradeConfirm` | B | (OPEN, UPGRADE_TRY) | (OPEN, OPEN)
 
-At the end of an upgrade handshake between two chains implementing the sub-protocol, the following properties hold:
+在两个实现子协议的链之间的升级握手结束时，以下属性成立：
 
-- Each chain is running their new upgraded channel end and is processing upgraded logic and state according to the upgraded parameters.
-- Each chain has knowledge of and has agreed to the counterparty's upgraded channel parameters.
+- 每条链都在运行它们新升级后的通道端，并根据升级后的参数处理升级后的逻辑和状态。
+- 每条链都知道并同意对方升级的通道参数。
 
-If a chain does not agree to the proposed counterparty `UpgradedChannel`, it may abort the upgrade handshake by writing an error receipt into the `errorPath` and restoring the original channel. The error receipt MAY be arbitrary bytes and MUST be non-empty.
+如果一个链不同意提议的对方链`UpgradedChannel` ，它可以通过将错误收据写入`errorPath`并恢复原始通道来中止升级握手。错误收据可以有任意字节但必须是非空的。
 
 `errorPath(id) => error_receipt`
 
-A relayer may then submit a `ChanUpgradeCancelMsg` to the counterparty. Upon receiving this message a chain must verify that the counterparty wrote a non-empty error receipt into its `UpgradeError` and if successful, it will restore its original channel as well thus cancelling the upgrade.
+之后中继器可以向对方链提交`ChanUpgradeCancelMsg` 。收到此消息后，链必须验证对方链是否在其`UpgradeError`中写入了非空错误收据，如果成功，它将恢复其原始通道，从而取消升级。
 
-If an upgrade message arrives after the specified timeout, then the message MUST NOT execute successfully. Again a relayer may submit a proof of this in a `ChanUpgradeTimeoutMsg` so that counterparty cancels the upgrade and restores it original channel as well.
+如果一个升级消息在指定的超时后到达，则消息不能成功执行。中继器可以再次在`ChanUpgradeTimeoutMsg`中提交证明，以便对方链取消升级并恢复其原始通道。
 
 ```typescript
 function chanUpgradeInit(
@@ -225,27 +224,26 @@ function chanUpgradeInit(
     counterpartyTimeoutHeight: Height,
     counterpartyTimeoutTimestamp: uint64,
 ) {
-    // current channel must be OPEN
+    // 当前通道必须是 OPEN
     currentChannel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnless(channel.state == OPEN)
 
-    // abort transaction if an unmodifiable field is modified
-    // upgraded channel state must be in `UPGRADE_INIT`
-    // NOTE: Any added fields are by default modifiable.
+    // 如果修改了不可修改的字段，则中止交易
+    // 升级后的通道状态必须是 `UPGRADE_INIT`
+    // 注意：默认情况下，任何添加的字段都是可修改的。
     abortTransactionUnless(
         proposedUpgradeChannel.state == UPGRADE_INIT &&
         proposedUpgradeChannel.counterpartyPortIdentier == currentChannel.counterpartyPortIdentifier &&
         proposedUpgradeChannel.counterpartyChannelIdentifier == currentChannel.counterpartyChannelIdentifier
     )
 
-    // current ordering must be a valid ordering of packets
-    // in the proposed ordering
-    // e.g. ORDERED -> UNORDERED, ORDERED -> DAG
+    // 当前排序必须是数据包按照建议的合法排序
+    // 例如 ORDERED -> UNORDERED, ORDERED -> DAG
     abortTransactionUnless(
         currentChannel.ordering.subsetOf(proposedUpgradeChannel.ordering)
     )
 
-    // either timeout height or timestamp must be non-zero
+    // 超时高度或时间戳必须非零
     abortTransactionUnless(counterpartyTimeoutHeight != 0 || counterpartyTimeoutTimestamp != 0)
 
     upgradeTimeout = UpgradeTimeout{
@@ -253,7 +251,7 @@ function chanUpgradeInit(
         timeoutTimestamp: counterpartyTimeoutTimestamp,
     }
 
-    // call modules onChanUpgradeInit callback
+    // 调用模块 onChanUpgradeInit的回调
     module = lookupModule(portIdentifier)
     version, err = module.onChanUpgradeInit(
         proposedUpgradeChannel.ordering,
@@ -264,11 +262,10 @@ function chanUpgradeInit(
         proposedUpgradeChannel.counterpartyChannelIdentifier,
         proposedUpgradeChannel.version
     )
-    // abort transaction if callback returned error
+    // 如果回调返回错误，则中止交易
     abortTransactionUnless(err != nil)
 
-    // replace channel version with the version returned by application
-    // in case it was modified
+    // 如果通道版本被修改，将通道版本替换为应用程序返回的版本
     proposedUpgradeChannel.version = version
 
     provableStore.set(timeoutPath(portIdentifier, channelIdentifier), upgradeTimeout)
@@ -277,8 +274,7 @@ function chanUpgradeInit(
 }
 ```
 
-NOTE: It is up to individual implementations how they will provide access-control to the `ChanUpgradeInit` function. E.g. chain governance, permissioned actor, DAO, etc.
-Access control on counterparty should inform choice of timeout values, i.e. timeout value should be large if counterparty's `UpgradeTry` is gated by chain governance.
+注意：如何为`ChanUpgradeInit`函数提供访问控制取决于各个实现。例如链上治理、获得许可的 actor、DAO 等。对方链的访问控制应提供超时值的选择，即如果对方链的`UpgradeTry`由链上治理所把关，则超时值应该很大。
 
 ```typescript
 function chanUpgradeTry(
@@ -292,84 +288,82 @@ function chanUpgradeTry(
     proofUpgradeTimeout: CommitmentProof,
     proofHeight: Height
 ) {
-    // current channel must be OPEN or UPGRADE_INIT (crossing hellos)
+    // 当前通道必须是 OPEN 或 UPGRADE_INIT (crossing hellos)
     currentChannel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnless(currentChannel.state == OPEN || currentChannel.state == UPGRADE_INIT)
 
-    // abort transaction if an unmodifiable field is modified
-    // upgraded channel state must be in `UPGRADE_TRY`
-    // NOTE: Any added fields are by default modifiable.
+    // 如果修改了不可修改的字段，则中止交易
+    // 升级后的通道状态必须是 `UPGRADE_TRY`
+    // 注意：默认情况下，任何添加的字段都是可修改的。
     abortTransactionUnless(
         proposedUpgradeChannel.state == UPGRADE_TRY &&
         proposedUpgradeChannel.counterpartyPortIdentifier == currentChannel.counterpartyPortIdentifier &&
         proposedUpgradeChannel.counterpartyChannelIdentifier == currentChannel.counterpartyChannelIdentifier
     )
 
-    // current ordering must be a valid ordering of packets
-    // in the proposed ordering
-    // e.g. ORDERED -> UNORDERED, ORDERED -> DAG
+    // 当前排序必须是有效数据包按照建议的排序
+    // 例如 ORDERED -> UNORDERED, ORDERED -> DAG
     abortTransactionUnless(
         currentChannel.ordering.subsetOf(proposedUpgradeChannel.ordering)
     )
 
-    // construct upgradeTimeout so it can be verified against counterparty state
+    // 构造 upgradeTimeout 以便可以针对交易对手状态进行验证
     upgradeTimeout = UpgradeTimeout{
         timeoutHeight: timeoutHeight,
         timeoutTimestamp: timeoutTimestamp,
     }
 
-    // get underlying connection for proof verification
+    // 获取底层连接以进行证明验证
     connection = getConnection(currentChannel.connectionIdentifier)
 
-    // verify proofs of counterparty state
+    // 验证交易对手状态的证明
     abortTransactionUnless(verifyChannelState(connection, proofHeight, proofChannel, currentChannel.counterpartyPortIdentifier, currentChannel.counterpartyChannelIdentifier, counterpartyChannel))
     abortTransactionUnless(verifyChannelUpgradeTimeout(connection, proofHeight, proofUpgradeTimeout, currentChannel.counterpartyPortIdentifier, currentChannel.counterpartyChannelIdentifier, upgradeTimeout))
 
     if currentChannel.state == UPGRADE_INIT {
-        // if there is a crossing hello, ie an UpgradeInit has been called on both channelEnds,
-        // then we must ensure that the proposedUpgrade by the counterparty is the same as the currentChannel
-        // except for the channel state (upgrade channel will be in UPGRADE_TRY and current channel will be in UPGRADE_INIT)
-        // if the proposed upgrades on either side are incompatible, then we will restore the channel and cancel the upgrade.
+    // 如果有交叉 hello，即在两个 channelEnds 上都调用了 UpgradeInit，
+    // 那么我们要保证对方提出的Upgrade和currentChannel一致
+    // 除通道状态外（升级通道将处于 UPGRADE_TRY，当前通道将处于 UPGRADE_INIT）
+    // 如果双方提议的升级不兼容，那么我们将恢复通道并取消升级。
         currentChannel.state = UPGRADE_TRY
         if !currentChannel.IsEqual(proposedUpgradeChannel) {
             restoreChannel()
             return
         }
     } else if currentChannel.state == OPEN {
-        // this is first message in upgrade handshake on this chain so we must store original channel in restore path
-        // in case we need to restore channel later.
+        // 这是此链上升级握手的第一条消息，因此我们必须将原始通道存储在恢复路径中
+        // 以防我们稍后需要恢复通道。
         privateStore.set(restorePath(portIdentifier, channelIdentifier), currentChannel)
     } else {
-        // abort transaction if current channel is not in state: UPGRADE_INIT or OPEN
+        // 如果当前通道的状态不是：UPGRADE_INIT 或 OPEN，则中止交易
         abortTransactionUnless(false)
     }
 
-    // either timeout height or timestamp must be non-zero
-    // if the upgrade feature is implemented on the TRY chain, then a relayer may submit a TRY transaction after the timeout.
-    // this will restore the channel on the executing chain and allow counterparty to use the ChanUpgradeCancelMsg to restore their channel.
+    // 超时高度或时间戳必须非零
+    // 如果升级功能是在 TRY 链上实现的，那么中继器可能会在超时后提交一个 TRY 交易。
+    // 这将恢复执行链上的通道，并允许交易对手使用 ChanUpgradeCancelMsg 恢复他们的通道。
     if timeoutHeight == 0 && timeoutTimestamp == 0 {
         restoreChannel()
         return
     }
     
 
-    // counterparty-specified timeout must not have exceeded
+    // 不能超过交易对手指定的超时时间
     if (currentHeight() > timeoutHeight && timeoutHeight != 0) ||
         (currentTimestamp() > timeoutTimestamp && timeoutTimestamp != 0) {
         restoreChannel()
         return
     }
 
-    // both channel ends must be mutually compatible.
-    // this function has been left unspecified since it will depend on the specific structure of the new channel.
-    // It is the responsibility of implementations to make sure that verification that the proposed new channels
-    // on either side are correctly constructed according to the new version selected.
+    // 两个通道端必须相互兼容。
+    // 此函数未指定，因为它将取决于新通道的特定结构。
+    // 实现的责任是确保验证提议两边的新通道都根据选择的新版本正确构造。
     if !IsCompatible(counterpartyChannel, proposedUpgradeChannel) {
         restoreChannel()
         return
     }
 
-    // call modules onChanUpgradeTry callback
+    // 调用模块 onChanUpgradeTry的回调
     module = lookupModule(portIdentifier)
     version, err = module.onChanUpgradeTry(
         proposedUpgradeChannel.ordering,
@@ -380,22 +374,20 @@ function chanUpgradeTry(
         proposedUpgradeChannel.counterpartyChannelIdentifier,
         proposedUpgradeChannel.version
     )
-    // restore channel if callback returned error
+    // 如果回调返回错误，则恢复通道
     if err != nil {
         restoreChannel()
         return
     }
 
-    // replace channel version with the version returned by application
-    // in case it was modified
+    // 如果通道版本被修改，将通道版本替换为应用程序返回的版本
     proposedUpgradeChannel.version = version
  
     provableStore.set(channelPath(portIdentifier, channelIdentifier), proposedUpgradeChannel)
 }
 ```
 
-NOTE: It is up to individual implementations how they will provide access-control to the `ChanUpgradeTry` function. E.g. chain governance, permissioned actor, DAO, etc. A chain may decide to have permissioned **or** permissionless `UpgradeTry`. In the permissioned case, both chains must explicitly consent to the upgrade, in the permissionless case; one chain initiates the upgrade and the other chain agrees to the upgrade by default. In the permissionless case, a relayer may submit the `ChanUpgradeTry` datagram.
-
+注意：如何为`ChanUpgradeTry`函数提供访问控制取决于各个实现。例如链上治理、许可的 actor、DAO 等。链可以决定是否有许可**或**无许可的`UpgradeTry` 。在许可的情况下，两个链都必须明确同意升级；在无许可的情况下，一条链发起升级，另一条链默认同意升级。在无许可的情况下，中继器可以提交`ChanUpgradeTry`数据报文。
 
 ```typescript
 function chanUpgradeAck(
@@ -405,33 +397,32 @@ function chanUpgradeAck(
     proofChannel: CommitmentProof,
     proofHeight: Height
 ) {
-    // current channel is in UPGRADE_INIT or UPGRADE_TRY (crossing hellos)
+    // 当前通道在 UPGRADE_INIT 或 UPGRADE_TRY 中 (crossing hellos)
     currentChannel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnless(currentChannel.state == UPGRADE_INIT || currentChannel.state == UPGRADE_TRY)
 
-    // get underlying connection for proof verification
+    // 获取底层连接以进行证明验证
     connection = getConnection(currentChannel.connectionIdentifier)
 
-    // verify proofs of counterparty state
+    // 验证交易对手状态的证明
     abortTransactionUnless(verifyChannelState(connection, proofHeight, proofChannel, currentChannel.counterpartyPortIdentifier, currentChannel.counterpartyChannelIdentifier, counterpartyChannel))
 
-    // counterparty must be in TRY state
+    // 交易对手必须处于 TRY 状态
     if counterpartyChannel.State != UPGRADE_TRY {
         restoreChannel()
         return
     }
 
-    // verify channels are mutually compatible
-    // this will also check counterparty chosen version is valid
-    // this function has been left unspecified since it will depend on the specific structure of the new channel.
-    // It is the responsibility of implementations to make sure that verification that the proposed new channels
-    // on either side are correctly constructed according to the new version selected.
+    // 验证通道是否相互兼容
+    // 这也将检查交易对手选择的版本是否有效
+    // 此函数未指定，因为它将取决于新通道的特定结构。
+    // 实现的责任是确保验证提议两边的新通道都根据选择的新版本正确构造。
     if !IsCompatible(counterpartyChannel, channel) {
         restoreChannel()
         return
     }
 
-    // call modules onChanUpgradeAck callback
+    // 调用模块 onChanUpgradeAck的回调
     module = lookupModule(portIdentifier)
     err = module.onChanUpgradeAck(
         portIdentifier,
@@ -439,14 +430,14 @@ function chanUpgradeAck(
         counterpartyChannel.channelIdentifier,
         counterpartyChannel.version
     )
-    // restore channel if callback returned error
+    // 如果回调返回错误，则恢复通道
     if err != nil {
         restoreChannel()
         return
     }
 
-    // upgrade is complete
-    // set channel to OPEN and remove unnecessary state
+    // 升级完成
+    // 将通道设置为 OPEN 并删除不必要的状态
     currentChannel.state = OPEN
     provableStore.set(channelPath(portIdentifier, channelIdentifier), currentChannel)
     provableStore.delete(timeoutPath(portIdentifier, channelIdentifier))
@@ -463,32 +454,32 @@ function chanUpgradeConfirm(
     proofUpgradeError: CommitmentProof,
     proofHeight: Height,
 ) {
-    // current channel is in UPGRADE_TRY
+    // 当前通道在 UPGRADE_TRY
     currentChannel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnless(channel.state == UPGRADE_TRY)
 
-    // counterparty must be in OPEN state
+    // 交易对手必须处于 OPEN 状态
     abortTransactionUnless(counterpartyChannel.State == OPEN)
 
-    // get underlying connection for proof verification
+    // 获取底层连接以进行证明验证
     connection = getConnection(currentChannel.connectionIdentifier)
 
-    // verify proofs of counterparty state
+    // 验证交易对手状态的证明
     abortTransactionUnless(verifyChannelState(connection, proofHeight, proofChannel, currentChannel.counterpartyPortIdentifier, currentChannel.counterpartyChannelIdentifier, counterpartyChannel))
-    // verify counterparty did not abort upgrade handshake by writing upgrade error
-    // must have absent value at upgradeError path
+    // 验证交易对手没有通过写入升级错误来中止升级握手
+    // upgradeError 路径必须有缺失值
     abortTransactionUnless(verifyUpgradeChannelErrorAbsence(connection, proofHeight, proofUpgradeError, currentChannel.counterpartyPortIdentifier, currentChannel.counterpartyChannelIdentifier))
 
-    // call modules onChanUpgradeConfirm callback
+    // 调用模块 onChanUpgradeConfirm的回调
     module = lookupModule(portIdentifier)
-    // confirm callback must not return error since counterparty successfully upgraded
+    // 由于交易对手升级成功，确认回调不能返回错误
     module.onChanUpgradeConfirm(
         portIdentifer,
         channelIdentifier
     )
     
-    // upgrade is complete
-    // set channel to OPEN and remove unnecessary state
+    // 升级完成
+    // 将通道设置为 OPEN 并删除不必要的状态
     currentChannel.state = OPEN
     provableStore.set(channelPath(portIdentifier, channelIdentifier), currentChannel)
     provableStore.delete(timeoutPath(portIdentifier, channelIdentifier))
@@ -496,10 +487,9 @@ function chanUpgradeConfirm(
 }
 ```
 
+### 取消升级过程
 
-### Cancel Upgrade Process
-
-During the upgrade handshake a chain may cancel the upgrade by writing an error receipt into the error path and restoring the original channel to `OPEN`. The counterparty must then restore its channel to `OPEN` as well. A relayer can facilitate this by sending `ChanUpgradeCancelMsg` to the handler:
+在升级握手期间，链可以通过将错误收据写入错误路径并将原始通道恢复到`OPEN`来取消升级。然后，对方链也必须恢复其与`OPEN`的通道。
 
 ```typescript
 function cancelChannelUpgrade(
@@ -509,30 +499,30 @@ function cancelChannelUpgrade(
     proofUpgradeError: CommitmentProof,
     proofHeight: Height,
 ) {
-    // current channel is in UPGRADE_INIT or UPGRADE_TRY
+    // 当前通道在 UPGRADE_INIT 或 UPGRADE_TRY
     currentChannel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnless(channel.state == UPGRADE_INIT || channel.state == UPGRADE_TRY)
 
     abortTransactionUnless(!isEmpty(errorReceipt))
 
-    // get underlying connection for proof verification
+    // 获取底层连接以进行证明验证
     connection = getConnection(currentChannel.connectionIdentifier)
-    // verify that a non-empty error receipt is written to the upgradeError path
+    // 验证非空错误回执写入 upgradeError 路径
     abortTransactionUnless(verifyChannelUpgradeError(connection, proofHeight, proofUpgradeError, currentChannel.counterpartyPortIdentifier, currentChannel.counterpartyChannelIdentifier, errorReceipt))
 
-    // cancel upgrade
-    // and restore original conneciton
-    // delete unnecessary state
+    // 取消升级
+    // 并恢复原始连接
+    // 删除不必要的状态
     originalChannel = privateStore.get(restorePath(portIdentifier, channelIdentifier))
     provableStore.set(channelPath(portIdentifier, channelIdentifier), originalChannel)
 
-    // delete auxilliary upgrade state
+    // 删除辅助升级状态
     provableStore.delete(timeoutPath(portIdentifier, channelIdentifier))
     privateStore.delete(restorePath(portIdentifier, channelIdentifier))
 
-    // call modules onChanUpgradeRestore callback
+    // 调用模块 onChanUpgradeRestore的回调
     module = lookupModule(portIdentifier)
-    // restore callback must not return error since counterparty successfully upgraded
+    // 由于交易对手升级成功，恢复回调不能返回错误
     module.onChanUpgradeRestore(
         portIdentifer,
         channelIdentifier
@@ -540,13 +530,13 @@ function cancelChannelUpgrade(
 }
 ```
 
-### Timeout Upgrade Process
+### 超时升级过程
 
-It is possible for the channel upgrade process to stall indefinitely on UPGRADE_TRY if the UPGRADE_TRY transaction simply cannot pass on the counterparty; for example, the upgrade feature may not be enabled on the counterparty chain.
+如果 UPGRADE_TRY 交易根本无法传递给对方链，则通道升级过程可能会在 UPGRADE_TRY 上无限期停止；例如，对方链上可能未启用升级功能。
 
-In this case, we do not want the initializing chain to be stuck indefinitely in the `UPGRADE_INIT` step. Thus, the `UpgradeInit` message will contain a `TimeoutHeight` and `TimeoutTimestamp`. The counterparty chain is expected to reject `UpgradeTry` message if the specified timeout has already elapsed.
+在这种情况下，我们不希望发起链无限期地停留在`UPGRADE_INIT`步骤中。因此， `UpgradeInit`消息将包含`TimeoutHeight`和`TimeoutTimestamp` 。如果指定的超时时间已经过去，则对方链应拒绝`UpgradeTry`消息。
 
-A relayer must then submit an `ChanUpgradeTimeoutMsg` message to the initializing chain which proves that the counterparty is still in its original state. If the proof succeeds, then the initializing chain shall also restore its original channel and cancel the upgrade.
+此后，中继器必须向发起链提交`UpgradeTimeout`消息，证明对方链仍处于其原始状态。如果证明成功，则发起链也应恢复其原始通道并取消升级。
 
 ```typescript
 function timeoutChannelUpgrade(
@@ -556,46 +546,45 @@ function timeoutChannelUpgrade(
     proofChannel: CommitmentProof,
     proofHeight: Height,
 ) {
-    // current channel must be in UPGRADE_INIT
+    // 当前通道必须在 UPGRADE_INIT
     currentChannel = provableStore.get(channelPath(portIdentifier, channelIdentifier))
     abortTransactionUnles(currentChannel.state == UPGRADE_INIT)
 
     upgradeTimeout = provableStore.get(timeoutPath(portIdentifier, channelIdentifier))
 
-    // proof must be from a height after timeout has elapsed. Either timeoutHeight or timeoutTimestamp must be defined.
-    // if timeoutHeight is defined and proof is from before timeout height
-    // then abort transaction
+    // 证明必须在超时后从某一高度进行。必须定义 timeoutHeight 或 timeoutTimestamp。
+    // 如果定义了 timeoutHeight 并且证明来自于 timeout 高度之前，则中止交易
     abortTransactionUnless(upgradeTimeout.timeoutHeight.IsZero() || proofHeight >= upgradeTimeout.timeoutHeight)
-    // if timeoutTimestamp is defined then the consensus time from proof height must be greater than timeout timestamp
+    // 如果定义了 timeoutTimestamp，那么从证明高度开始的共识时间必须大于 timeout 时间戳
     connection = queryConnection(currentChannel.connectionIdentifier)
     abortTransactionUnless(upgradeTimeout.timeoutTimestamp.IsZero() || getTimestampAtHeight(connection, proofHeight) >= upgradeTimeout.timestamp)
 
-    // get underlying connection for proof verification
+    // 获取底层连接以进行证明验证
     connection = getConnection(currentChannel.connectionIdentifier)
 
-    // counterparty channel must be proved to still be in OPEN state or UPGRADE_INIT state (crossing hellos)
+    // 必须证明交易对手通道仍处于 OPEN 状态或 UPGRADE_INIT 状态 (crossing hellos)
     abortTransactionUnless(counterpartyChannel.State === OPEN || counterpartyChannel.State == UPGRADE_INIT)
     abortTransactionUnless(verifyChannelState(connection, proofHeight, proofChannel, currentChannel.counterpartyPortIdentifier, currentChannel.counterpartyChannelIdentifier, counterpartyChannel))
 
     if counterpartyChannel.State == UPGRADE_INIT {
-        // if the counterparty is in UPGRADE_INIT and we have timed out then we should write and error receipt
-        // to ensure that counterparty aborts the handshake as well and returns to the original state
-        // write an error receipt into the error path
+    // 如果对方在 UPGRADE_INIT 并且我们已经超时，那么我们应该写错误回执
+    // 确保交易对手也中止握手并返回原始状态
+    // 将错误收据写入错误路径
         errorReceipt = []byte{1}
         provableStore.set(errorPath(portIdentifier, channelIdentifier), errorReceipt)
     }
 
-    // we must restore the channel since the timeout verification has passed
+    // 我们必须恢复通道，因为超时验证已经通过
     originalChannel = privateStore.get(restorePath(portIdentifier, channelIdentifier))
     provableStore.set(channelPath(portIdentifier, channelIdentifier), originalChannel)
 
-    // delete auxilliary upgrade state
+    // 删除辅助升级状态
     provableStore.delete(timeoutPath(portIdentifier, channelIdentifier))
     privateStore.delete(restorePath(portIdentifier, channelIdentifier))
 
-    // call modules onChanUpgradeRestore callback
+    // 调用模块 onChanUpgradeRestore的回调
     module = lookupModule(portIdentifier)
-    // restore callback must not return error since counterparty successfully upgraded
+    // 由于交易对手升级成功，恢复回调不能返回错误
     module.onChanUpgradeRestore(
         portIdentifer,
         channelIdentifier
@@ -603,10 +592,10 @@ function timeoutChannelUpgrade(
 }
 ```
 
-Note that the timeout logic only applies to the INIT step. This is to protect an upgrading chain from being stuck in a non-OPEN state if the counterparty cannot execute the TRY successfully. Once the TRY step succeeds, then both sides are guaranteed to have the upgrade feature enabled. Liveness is no longer an issue, because we can wait until liveness is restored to execute the ACK step which will move the channel definitely into an OPEN state (either a successful upgrade or a rollback).
+注意，超时逻辑仅适用于 INIT 步骤。这是为了防止升级链在交易对手无法成功执行 TRY 时卡在非 OPEN 状态。一旦 TRY 步骤成功，则保证双方都启用了升级功能。活性不再是一个问题，因为我们可以等到活性恢复后再执行 ACK 步骤，这必将会使通道进入 OPEN 状态（成功升级或回滚）。
 
-The TRY chain will receive the timeout parameters chosen by the counterparty on INIT, so that it can reject any TRY message that is received after the specified timeout. This prevents the handshake from entering into an invalid state, in which the INIT chain processes a timeout successfully and restores its channel to `OPEN` while the TRY chain at a later point successfully writes a `TRY` state.
+TRY 链将接收对方链在 INIT 上选择的超时参数，以便它可以拒绝在指定的超时时间后收到的任何 TRY 消息。这可以防止握手进入无效状态，在这种状态下，INIT 链成功处理超时并恢复其与`OPEN`的通道，而 TRY 链将在之后的一个时间点成功写入`TRY`状态。
 
-### Migrations
+### 迁移
 
-A chain may have to update its internal state to be consistent with the new upgraded channel. In this case, a migration handler should be a part of the chain binary before the upgrade process so that the chain can properly migrate its state once the upgrade is successful. If a migration handler is necessary for a given upgrade but is not available, then th executing chain must reject the upgrade so as not to enter into an invalid state. This state migration will not be verified by the counterparty since it will just assume that if the channel is upgraded to a particular channel version, then the auxilliary state on the counterparty will also be updated to match the specification for the given channel version. The migration must only run once the upgrade has successfully completed and the new channel is `OPEN` (ie. on `ACK` and `CONFIRM`).
+链可能必须要去更新其内部状态以与新升级的通道保持一致。在这种情况下，迁移的处理程序应该是升级过程之前链二进制文件的一部分，以便升级成功后链可以正确迁移其状态。如果一个升级需要迁移处理程序但该程序不可用，则执行链必须拒绝升级，以免进入无效状态。这种状态迁移不会被对方链验证，因为它只是假设如果通道升级到特定的通道版本，那么对方链的辅助状态也将被更新以匹配给定通道版本的规范。迁移只能在升级成功完成并且新通道`OPEN` （即在`ACK`和`CONFIRM`上）后运行。

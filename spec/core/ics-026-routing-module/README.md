@@ -1,59 +1,47 @@
 ---
-ics: 26
-title: Routing Module
-stage: Draft
+ics: '26'
+title: 路由模块
+stage: 草案
 category: IBC/TAO
-kind: instantiation
+kind: 实例化
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2019-06-09
-modified: 2019-08-25
+created: '2019-06-09'
+modified: '2019-08-25'
 ---
 
-## Synopsis
+## 概要
 
-The routing module is a default implementation of a secondary module which will accept external datagrams and call into the interblockchain communication protocol handler to deal with handshakes and packet relay.
-The routing module keeps a lookup table of modules, which it can use to look up and call a module when a packet is received, so that external relayers need only ever relay packets to the routing module.
+路由模块是一个辅助模块的默认实现，该模块将接受外部数据报并调用区块链间通信协议处理程序来处理握手和数据包中继。 路由模块维护一个模块的查找表，当收到数据包时，该表可用于查找和调用模块，因此外部中继器仅需要将数据包中继到路由模块。
 
-### Motivation
+### 动机
 
-The default IBC handler uses a receiver call pattern, where modules must individually call the IBC handler in order to bind to ports, start handshakes, accept handshakes, send and receive packets, etc. This is flexible and simple but is a bit tricky to understand and may require extra work on the part of relayer processes, who must track the state of many modules. This standard describes an IBC "routing module" to automate most common functionality, route packets, and simplify the task of relayers.
+默认的 IBC 处理程序使用接收方调用模式，其中模块必须单独调用 IBC 处理程序才能绑定到端口，开始握手，接受握手，发送和接收数据包等。这是灵活而简单的。 但是理解起来有些棘手，中继器进程可能需要额外的工作，中继器进程必须跟踪多个模块的状态。该标准描述了一个 IBC“路由模块”，以自动执行大部分常用功能，路由数据包并简化中继器的任务。
 
-The routing module can also play the role of the module manager as discussed in [ICS 5](../ics-005-port-allocation) and implement
-logic to determine when modules are allowed to bind to ports and what those ports can be named.
+路由模块还可以扮演 [ICS 5](../ics-005-port-allocation) 中讨论的模块管理器的角色，并实现确定何时允许模块绑定到端口以及可以命名哪些端口的逻辑。
 
-### Definitions
+### 定义
 
-All functions provided by the IBC handler interface are defined as in [ICS 25](../ics-025-handler-interface).
+IBC 处理程序接口提供的所有函数均在 [ICS 25](../ics-025-handler-interface) 中定义。
 
-The functions `newCapability` & `authenticateCapability` are defined as in [ICS 5](../ics-005-port-allocation).
+函数 `newCapability` 和 `authenticateCapability` 在 [ICS 5](../ics-005-port-allocation) 中定义。
 
-### Desired Properties
+### 所需属性
 
-- Modules should be able to bind to ports and own channels through the routing module.
-- No overhead should be added for packet sends and receives other than the layer of call indirection.
-- The routing module should call specified handler functions on modules when they need to act upon packets.
+- 模块应该能够通过路由模块绑定到端口和自己的通道。
+- 除了调用中间层外，不应为数据包发送和接收增加任何开销。
+- 当路由模块需要对数据包操作时，路由模块应在模块上调用指定的处理程序函数。
 
-## Technical Specification
+## 技术规范
 
-> Note: If the host state machine is utilising object capability authentication (see [ICS 005](../ics-005-port-allocation)), all functions utilising ports take an additional capability parameter.
+> 注意：如果主机状态机正在使用对象能力认证（请参阅 [ICS 005](../ics-005-port-allocation) ），则所有使用端口的函数都需要带有一个附加的能力参数。
 
-### Module callback interface
+### 模块回调接口
 
-Modules must expose the following function signatures to the routing module, which are called upon the receipt of various datagrams:
+模块必须向路由模块暴露以下函数签名，这些签名在收到各种数据报后即被调用：
 
 #### **ChanOpenInit**
 
-`onChanOpenInit` will verify that the relayer-chosen parameters
-are valid and perform any custom `INIT` logic.
-It may return an error if the chosen parameters are invalid
-in which case the handshake is aborted.
-If the provided version string is non-empty, `onChanOpenInit` should return
-the version string or an error if the provided version is invalid.
-If the version string is empty, `onChanOpenInit` is expected to
-return a default version string representing the version(s)
-it supports.
-If there is no default version string for the application,
-it should return an error if provided version is empty string.
+`onChanOpenInit`将验证中继器选择的参数是否有效并执行任何自定义的`INIT`逻辑。如果选择的参数无效，则可能会返回错误，在这种情况下握手将被中止。如果提供的版本字符串非空， `onChanOpenInit`应该返回版本字符串，如果提供的版本无效，则返回错误。如果版本字符串为空， `onChanOpenInit`应返回一个默认版本字符串，表示它支持的版本。如果应用程序没有默认的版本字符串，并且提供的版本为空字符串，它应该返回错误。
 
 ```typescript
 function onChanOpenInit(
@@ -64,21 +52,13 @@ function onChanOpenInit(
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
   version: string) => (version: string, err: Error) {
-    // defined by the module
+    // 由模块定义
 }
 ```
 
 #### **ChanOpenTry**
 
-`onChanOpenTry` will verify the INIT-chosen parameters along with the
-counterparty-chosen version string and perform custom `TRY` logic.
-If the INIT-chosen parameters
-are invalid, the callback must return an error to abort the handshake.
-If the counterparty-chosen version is not compatible with this modules
-supported versions, the callback must return an error to abort the handshake.
-If the versions are compatible, the try callback must select the final version
-string and return it to core IBC.
-`onChanOpenTry` may also perform custom initialization logic
+`onChanOpenTry`将验证 INIT 选择的参数以及交易对手选择的版本字符串并执行自定义`TRY`逻辑。如果 INIT 选择的参数无效，回调必须返回错误以中止握手。如果交易对手选择的版本与此模块支持的版本不兼容，回调必须返回错误以中止握手。如果版本兼容，try 回调必须选择最终版本字符串并将其返回给核心 IBC。 `onChanOpenTry`也可以执行自定义初始化逻辑。
 
 ```typescript
 function onChanOpenTry(
@@ -89,34 +69,33 @@ function onChanOpenTry(
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
   counterpartyVersion: string) => (version: string, err: Error) {
-    // defined by the module
+    // 由模块定义
 }
 ```
 
 #### **OnChanOpenAck**
 
-`onChanOpenAck` will error if the counterparty selected version string
-is invalid to abort the handshake. It may also perform custom ACK logic.
+如果交易对手选择的版本字符串无效以中止握手， `onChanOpenAck`将出错。它还可以执行自定义 ACK 逻辑。
 
 ```typescript
 function onChanOpenAck(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  counterpartyChannelIdentifier: Identifier, 
+  counterpartyChannelIdentifier: Identifier,
   counterpartyVersion: string) {
-    // defined by the module
+    // 由模块定义
 }
 ```
 
 #### **OnChanOpenConfirm**
 
-`onChanOpenConfirm` will perform custom CONFIRM logic and may error to abort the handshake.
+`onChanOpenConfirm`将执行自定义 CONFIRM 逻辑，并且可能会出错以中止握手。
 
 ```typescript
 function onChanOpenConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-    // defined by the module
+    // 由模块定义
 }
 ```
 
@@ -124,35 +103,35 @@ function onChanOpenConfirm(
 function onChanCloseInit(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-    // defined by the module
+    // 由模块定义
 }
 
 function onChanCloseConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier): void {
-    // defined by the module
+    // 由模块定义
 }
 
 function onRecvPacket(packet: Packet, relayer: string): bytes {
-    // defined by the module, returns acknowledgement
+    // 由模块定义， 返回回执
 }
 
 function onTimeoutPacket(packet: Packet, relayer: string) {
-    // defined by the module
+    // 由模块定义
 }
 
 function onAcknowledgePacket(packet: Packet, acknowledgement: bytes, relayer: string) {
-    // defined by the module
+    // 由模块定义
 }
 
 function onTimeoutPacketClose(packet: Packet, relayer: string) {
-    // defined by the module
+    // 由模块定义
 }
 ```
 
-Exceptions MUST be thrown to indicate failure and reject the handshake, incoming packet, etc.
+如果出现失败，必须抛出异常以拒绝握手和传入的数据包等。
 
-These are combined together in a `ModuleCallbacks` interface:
+它们在`ModuleCallbacks`接口中组合在一起：
 
 ```typescript
 interface ModuleCallbacks {
@@ -168,7 +147,7 @@ interface ModuleCallbacks {
 }
 ```
 
-Callbacks are provided when the module binds to a port.
+当模块绑定到端口时，将提供回调。
 
 ```typescript
 function callbackPath(portIdentifier: Identifier): Path {
@@ -176,7 +155,7 @@ function callbackPath(portIdentifier: Identifier): Path {
 }
 ```
 
-The calling module identifier is also stored for future authentication should the callbacks need to be altered.
+还将存储调用模块标识符以供将来更改回调时进行身份认证。
 
 ```typescript
 function authenticationPath(portIdentifier: Identifier): Path {
@@ -184,19 +163,18 @@ function authenticationPath(portIdentifier: Identifier): Path {
 }
 ```
 
-### Port binding as module manager
+### 端口绑定作为模块管理器
 
-The IBC routing module sits in-between the handler module ([ICS 25](../ics-025-handler-interface)) and individual modules on the host state machine.
+IBC 路由模块位于处理程序模块（ [ICS 25](../ics-025-handler-interface) ）与主机状态机上的各个模块之间。
 
-The routing module, acting as a module manager, differentiates between two kinds of ports:
+充当模块管理器的路由模块区分两种端口：
 
-- "Existing name” ports: e.g. “bank”, with standardised prior meanings, which should not be first-come-first-serve
-- “Fresh name” ports: new identity (perhaps a smart contract) w/no prior relationships, new random number port, post-generation port name can be communicated over another channel
+- “现有名称”端口：例如具有标准化优先含义的“bank”，不应以先到先得的方式使用
+- “新名称”端口：没有先前关系的新身份（可能是智能合约）、新的随机数端口、生成后的端口名称可以通过另一个通道进行通信
 
-A set of existing names are allocated, along with corresponding modules, when the routing module is instantiated by the host state machine.
-The routing module then allows allocation of fresh ports at any time by modules, but they must use a specific standardised prefix.
+当主机状态机实例化路由模块时，会分配一组现有名称以及相应的模块。 然后，路由模块允许模块随时分配新端口，但是它们必须使用特定的标准化前缀。
 
-The function `bindPort` can be called by a module in order to bind to a port, through the routing module, and set up callbacks.
+模块可以调用函数`bindPort`以便通过路由模块绑定到端口并设置回调。
 
 ```typescript
 function bindPort(
@@ -210,7 +188,7 @@ function bindPort(
 }
 ```
 
-The function `updatePort` can be called by a module in order to alter the callbacks.
+模块可以调用函数`updatePort`来更改回调。
 
 ```typescript
 function updatePort(
@@ -222,9 +200,9 @@ function updatePort(
 }
 ```
 
-The function `releasePort` can be called by a module in order to release a port previously in use.
+模块可以调用函数`releasePort`来释放以前使用的端口。
 
-> Warning: releasing a port will allow other modules to bind to that port and possibly intercept incoming channel opening handshakes. Modules should release ports only when doing so is safe.
+> 警告：释放端口将允许其他模块绑定到该端口，并可能拦截传入的通道创建握手请求。只有在安全的情况下，模块才应释放端口。
 
 ```typescript
 function releasePort(
@@ -237,7 +215,7 @@ function releasePort(
 }
 ```
 
-The function `lookupModule` can be used by the routing module to lookup the callbacks bound to a particular port.
+路由模块可以使用函数`lookupModule`查找绑定到特定端口的回调。
 
 ```typescript
 function lookupModule(portId: Identifier) {
@@ -245,18 +223,17 @@ function lookupModule(portId: Identifier) {
 }
 ```
 
-### Datagram handlers (write)
+### 数据报处理程序（写入）
 
-*Datagrams* are external data blobs accepted as transactions by the routing module. This section defines a *handler function* for each datagram,
-which is executed when the associated datagram is submitted to the routing module in a transaction.
+*数据报*是路由模块做为交易接受的外部数据 Blob。本部分为每个数据报定义一个*处理函数* ， 当关联的数据报在交易中提交给路由模块时执行。
 
-All datagrams can also be safely submitted by other modules to the routing module.
+所有数据报也可以由其他模块安全的提交给路由模块。
 
-No message signatures or data validity checks are assumed beyond those which are explicitly indicated.
+除了明确指出，不假定任何消息签名或数据有效性检查。
 
-#### Client lifecycle management
+#### 客户端生命周期管理
 
-`ClientCreate` creates a new light client with the specified identifier & consensus state.
+`ClientCreate`使用指定的标识符和共识状态创建一个新的轻客户端。
 
 ```typescript
 interface ClientCreate {
@@ -272,7 +249,7 @@ function handleClientCreate(datagram: ClientCreate) {
 }
 ```
 
-`ClientUpdate` updates an existing light client with the specified identifier & new header.
+`ClientUpdate`使用指定的标识符和新区块头更新现有的轻客户端。
 
 ```typescript
 interface ClientUpdate {
@@ -287,7 +264,7 @@ function handleClientUpdate(datagram: ClientUpdate) {
 }
 ```
 
-`ClientSubmitMisbehaviour` submits proof-of-misbehaviour to an existing light client with the specified identifier.
+`ClientSubmitMisbehaviour`使用指定的标识符向现有的轻客户端提交不良行为证明。
 
 ```typescript
 interface ClientMisbehaviour {
@@ -302,9 +279,9 @@ function handleClientMisbehaviour(datagram: ClientUpdate) {
 }
 ```
 
-#### Connection lifecycle management
+#### 连接生命周期管理
 
-The `ConnOpenInit` datagram starts the connection handshake process with an IBC module on another chain.
+`ConnOpenInit`数据报开始与另一个链上的 IBC 模块的连接的握手过程。
 
 ```typescript
 interface ConnOpenInit {
@@ -328,7 +305,7 @@ function handleConnOpenInit(datagram: ConnOpenInit) {
 }
 ```
 
-The `ConnOpenTry` datagram accepts a handshake request from an IBC module on another chain.
+`ConnOpenTry`数据报接受从另一个链上的 IBC 模块发来的握手请求。
 
 ```typescript
 interface ConnOpenTry {
@@ -340,8 +317,8 @@ interface ConnOpenTry {
   counterpartyVersion: string
   proofInit: CommitmentProof
   proofConsensus: CommitmentProof
-  proofHeight: Height
-  consensusHeight: Height
+  proofHeight: uint64
+  consensusHeight: uint64
 }
 ```
 
@@ -362,7 +339,7 @@ function handleConnOpenTry(datagram: ConnOpenTry) {
 }
 ```
 
-The `ConnOpenAck` datagram confirms a handshake acceptance by the IBC module on another chain.
+`ConnOpenAck`数据报确认另一条链上的 IBC 模块接受了握手。
 
 ```typescript
 interface ConnOpenAck {
@@ -370,8 +347,8 @@ interface ConnOpenAck {
   version: string
   proofTry: CommitmentProof
   proofConsensus: CommitmentProof
-  proofHeight: Height
-  consensusHeight: Height
+  proofHeight: uint64
+  consensusHeight: uint64
 }
 ```
 
@@ -388,13 +365,13 @@ function handleConnOpenAck(datagram: ConnOpenAck) {
 }
 ```
 
-The `ConnOpenConfirm` datagram acknowledges a handshake acknowledgement by an IBC module on another chain & finalises the connection.
+`ConnOpenConfirm`数据报确认另一个链上的 IBC 模块的握手回执并完成连接。
 
 ```typescript
 interface ConnOpenConfirm {
   identifier: Identifier
   proofAck: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
 }
 ```
 
@@ -408,7 +385,7 @@ function handleConnOpenConfirm(datagram: ConnOpenConfirm) {
 }
 ```
 
-#### Channel lifecycle management
+#### 通道生命周期管理
 
 ```typescript
 interface ChanOpenInit {
@@ -455,7 +432,7 @@ interface ChanOpenTry {
   channelIdentifier: Identifier
   counterpartyPortIdentifier: Identifier
   counterpartyChannelIdentifier: Identifier
-  version: string // deprecated
+  version: string // 弃用
   counterpartyVersion: string
   proofInit: CommitmentProof
   proofHeight: Height
@@ -482,7 +459,7 @@ function handleChanOpenTry(datagram: ChanOpenTry) {
       datagram.channelIdentifier,
       datagram.counterpartyPortIdentifier,
       datagram.counterpartyChannelIdentifier,
-      version, // pass in version returned by callback
+      version, // 由回调返回的版本号
       datagram.counterpartyVersion,
       datagram.proofInit,
       datagram.proofHeight
@@ -494,10 +471,9 @@ function handleChanOpenTry(datagram: ChanOpenTry) {
 interface ChanOpenAck {
   portIdentifier: Identifier
   channelIdentifier: Identifier
-  counterpartyChannelIdentifier: Identifier
-  counterpartyVersion: string
+  version: string
   proofTry: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
 }
 ```
 
@@ -527,7 +503,7 @@ interface ChanOpenConfirm {
   portIdentifier: Identifier
   channelIdentifier: Identifier
   proofAck: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
 }
 ```
 
@@ -575,7 +551,7 @@ interface ChanCloseConfirm {
   portIdentifier: Identifier
   channelIdentifier: Identifier
   proofInit: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
 }
 ```
 
@@ -596,21 +572,21 @@ function handleChanCloseConfirm(datagram: ChanCloseConfirm) {
 }
 ```
 
-#### Packet relay
+#### 数据包中继
 
-Packets are sent by the module directly (by the module calling the IBC handler).
+数据包直接由模块发送（由模块调用 IBC 处理程序）。
 
 ```typescript
 interface PacketRecv {
   packet: Packet
   proof: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
 }
 ```
 
 ```typescript
 function handlePacketRecv(datagram: PacketRecv) {
-    module = lookupModule(datagram.packet.destPort)
+    module = lookupModule(datagram.packet.sourcePort)
     acknowledgement = module.onRecvPacket(datagram.packet)
     handler.recvPacket(
       datagram.packet,
@@ -626,7 +602,7 @@ interface PacketAcknowledgement {
   packet: Packet
   acknowledgement: string
   proof: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
 }
 ```
 
@@ -646,13 +622,13 @@ function handlePacketAcknowledgement(datagram: PacketAcknowledgement) {
 }
 ```
 
-#### Packet timeouts
+#### 数据包超时
 
 ```typescript
 interface PacketTimeout {
   packet: Packet
   proof: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
   nextSequenceRecv: Maybe<uint64>
 }
 ```
@@ -674,7 +650,7 @@ function handlePacketTimeout(datagram: PacketTimeout) {
 interface PacketTimeoutOnClose {
   packet: Packet
   proof: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
 }
 ```
 
@@ -690,53 +666,53 @@ function handlePacketTimeoutOnClose(datagram: PacketTimeoutOnClose) {
 }
 ```
 
-#### Closure-by-timeout & packet cleanup
+#### 超时关闭和数据包清理
 
 ```typescript
 interface PacketCleanup {
   packet: Packet
   proof: CommitmentProof
-  proofHeight: Height
+  proofHeight: uint64
   nextSequenceRecvOrAcknowledgement: Either<uint64, bytes>
 }
 ```
 
-### Query (read-only) functions
+### 查询（只读）函数
 
-All query functions for clients, connections, and channels should be exposed (read-only) directly by the IBC handler module.
+客户端，连接和通道的所有查询函数应直接由 IBC 处理程序模块暴露出来（只读）。
 
-### Interface usage example
+### 接口用法示例
 
-See [ICS 20](../../app/ics-020-fungible-token-transfer) for a usage example.
+有关用法示例，请参见 [ICS 20](../../app/ics-020-fungible-token-transfer) 。
 
-### Properties & Invariants
+### 属性与不变性
 
-- Proxy port binding is first-come-first-serve: once a module binds to a port through the IBC routing module, only that module can utilise that port until the module releases it.
+- 代理端口绑定是先到先服务：模块通过  IBC路由模块绑定到端口后，只有该模块才能使用该端口，直到模块释放它为止。
 
-## Backwards Compatibility
+## 向后兼容性
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 向前兼容性
 
-routing modules are closely tied to the IBC handler interface.
+路由模块与 IBC 处理程序接口紧密相关。
 
-## Example Implementation
+## 示例实现
 
-Coming soon.
+即将到来。
 
-## Other Implementations
+## 其他实现
 
-Coming soon.
+即将到来。
 
-## History
+## 历史
 
-Jun 9, 2019 - Draft submitted
+2019年6月9日-提交的草案
 
-Jul 28, 2019 - Major revisions
+2019年7月28日-重大修订
 
-Aug 25, 2019 - Major revisions
+2019年8月25日-重大修订
 
-## Copyright
+## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。

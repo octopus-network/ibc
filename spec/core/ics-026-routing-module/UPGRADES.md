@@ -1,28 +1,27 @@
-# Application Upgrade Callbacks
+# 应用升级回调
 
-## Synopsis
+## 概要
 
-This standard document specifies the interfaces and state machine logic that IBC applications must implement in order to enable existing channels to upgrade their applications after the initial channel handshake.
+这个标准文档规定了 IBC 应用必须实现的接口和状态机逻辑，以便现存通道在初始连接握手后能够升级。
 
-### Motivation
+### 动机
 
-As new features get added to IBC applications, chains may wish the take advantage of new application features without abandoning the accumulated state and network effect(s) of an already existing channel. The upgrade protocol proposed would allow applications to renegotiate an existing channel to take advantage of new features without having to create a new channel, thus preserving all existing application state while upgradng to new application logic.
+随着新功能被添加到 IBC，链可能希望在不放弃现有通道的已积累的状态和网络效应的情况下，同时利用新的应用功能。提议的升级协议将允许应用重新协商现有通道，这样可以使用新的功能而无需创建新通道，从而在升级应用逻辑时可以保留现有的应用状态。
 
+### 所需属性
 
-### Desired Properties
+- 两端的应用都必须认同重新协商后的应用的参数。
+- 两条链上的应用的状态和逻辑应该或者使用旧参数或者新参数，而不能是一个中间状态，例如，应用程序不能运行 v2 逻辑，而其对手方仍在运行 v1 逻辑。
+- 应用的升级协议是原子性的，即
+    - 要么不成功，然后应用必须回退到原始应用的参数；
+    - 要么成功，然后两端的应用必须采用新的应用的参数并妥善地处理 数据包。
+- 应用程序必须能够维护几个不同的受支持版本。这样的话，如果一个通道在版本`v1`上，另一个通道在版本`v2`上，应用程序可以根据通道的应用程序版本相应地处理通道状态和逻辑。
 
-- Both applications MUST agree to the renegotiated application parameters.
-- Application state and logic on both chains SHOULD either be using the old parameters or the new parameters, but MUST NOT be in an in-between state, e.g., it MUST NOT be possible for an application to run v2 logic, while its counterparty is still running v1 logic.
-- The application upgrade protocol is atomic, i.e., 
-  - either it is unsuccessful and then the application MUST fall-back to the original application parameters; 
-  - or it is successful and then both applications MUST adopt the new application parameters and the applications must process packet data appropriately.
-- The application must be able to maintain several different supported versions such that one channel may be on version `v1` and another channel may be on version `v2` and the application can handle the channel state and logic accordingly depending on the application version for the respective channel.
+应用程序升级协议不得修改通道标识符。
 
-The application upgrade protocol MUST NOT modify the channel identifiers.
+## 技术规范
 
-## Technical Specification
-
-In order to support channel upgrades, the application must implement the following interface:
+为了支持通道升级，应用程序必须实现以下接口：
 
 ```typescript
 interface ModuleUpgradeCallbacks {
@@ -36,20 +35,11 @@ interface ModuleUpgradeCallbacks {
 
 #### **OnChanUpgradeInit**
 
-`onChanUpgradeInit` will verify that the upgrade parameters 
-are valid and perform any custom `UpgradeInit` logic.
-It may return an error if the chosen parameters are invalid 
-in which case the upgrade handshake is aborted.
-If the provided version string is empty, `onChanUpgradeInit` should return 
-a default version string or an error if the provided version is invalid.
-Note that if the upgrade provides an empty string, this is an indication to upgrade
-to the default version which MAY be a new default from when the channel was first initiated.
-If there is no default version string for the application,
-it should return an error if provided version is empty string.
+`onChanUpgradeInit`将验证升级的参数是否有效并执行任何自定义的`UpgradeInit`逻辑。如果选择的参数无效，则可能会返回错误，在这种情况下握手将被中止。如果提供的版本字符串空， `onChanUpgradeInit`应该返回版本字符串，如果提供的版本无效，则返回错误。如果升级提供了空字符串，这意味着将升级到默认版本，此默认版本可能是一个新的默认版本，与通道创建时的默认版本不一样。如果应用程序没有默认的版本字符串，并且提供的版本为空字符串，它应该返回错误。
 
-If an error is returned, then core IBC will revert any changes made by `onChanUpgradeInit` and abort the handshake.
+如果返回错误，则核心 IBC 将撤销`onChanUpgradeInit`所做的任何更改并中止握手。
 
-`onChanUpgradeInit` is also responsible for making sure that the application is recoverable to its pre-upgrade state. The application may either store any new metadata in separate paths, or store the previous metadata under a different path so it can be restored.
+`onChanUpgradeInit`还负责确保应用程序可以恢复到其升级前的状态。应用程序可以将任何新的元数据存储在单独的路径中，或者将以前的元数据存储在不同的路径下以便可以恢复。
 
 ```typescript
 function onChanUpgradeInit(
@@ -60,23 +50,17 @@ function onChanUpgradeInit(
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
   version: string) => (version: string, err: Error) {
-    // defined by the module
+    // 由此模块定义
 }
 ```
 
 #### **OnChanUpgradeTry**
 
-`onChanUpgradeTry` will verify the upgrade-chosen parameters and perform custom `TRY` logic. 
-If the upgrade-chosen parameters are invalid, the callback must return an error to abort the handshake. 
-If the counterparty-chosen version is not compatible with this modules
-supported versions, the callback must return an error to abort the handshake. 
-If the versions are compatible, the try callback must select the final version
-string and return it to core IBC.
-`onChanUpgradeTry` may also perform custom initialization logic.
+`onChanUpgradeTry`将验证升级选择的参数并执行自定义`TRY`逻辑。如果升级选择的参数无效，回调必须返回错误以中止握手。如果交易对手选择的版本与此模块支持的版本不兼容，回调必须返回错误以中止握手。如果版本兼容，try 回调必须选择最终版本字符串并将其返回给核心 IBC。 `onChanUpgradeTry`也可以执行自定义初始化逻辑。
 
-If an error is returned, then core IBC will revert any changes made by `onChanUpgradeTry` and abort the handshake.
+如果返回错误，则核心 IBC 将撤销`onChanUpgradeTry`所做的任何更改并中止握手。
 
-`onChanUpgradeTry` is also responsible for making sure that the application is recoverable to its pre-upgrade state. The application may either store any new metadata in separate paths, or store the previous metadata under a different path so it can be restored.
+`onChanUpgradeTry`还负责确保应用程序可以恢复到其升级前的状态。应用程序可以将任何新的元数据存储在单独的路径中，或者将以前的元数据存储在不同的路径下以便可以恢复。
 
 ```typescript
 function onChanUpgradeTry(
@@ -87,61 +71,58 @@ function onChanUpgradeTry(
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
   counterpartyVersion: string) => (version: string, err: Error) {
-    // defined by the module
+    // 由此模块定义
 }
 ```
 
 #### **OnChanUpgradeAck**
 
-`onChanUpgradeAck` will error if the counterparty selected version string
-is invalid. If an error is returned by the callback, core IBC will revert any changes made by `onChanUpgradeAck` and abort the handshake.
+如果交易对手选择的版本字符串无效， `onChanUpgradeAck`将出错。如果回调返回错误，核心 IBC 将撤销`onChanUpgradeAck`所做的任何更改并中止握手。
 
-The `onChanUpgradeAck` callback may also perform custom ACK logic.
+`onChanUpgradeAck`回调也可以执行自定义 ACK 逻辑。
 
-After `onChanUpgradeAck` returns successfully, the application upgrade is complete on this end so any 
-auxilliary data stored for the purposes of recovery is no longer needed and may be deleted.
+在`onChanUpgradeAck`成功返回后，应用程序升级到此结束，任何为错误恢复而存储的辅助数据都不再需要，可能会被删除。
 
-If the callback returns successfully, the application MUST have its state fully migrated to start processing packet data according to the new application parameters.
+如果回调成功返回，应用程序必须完全迁移其状态以根据新的应用程序参数开始处理数据包。
 
 ```typescript
 function onChanUpgradeAck(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
-  counterpartyChannelIdentifier: Identifier, 
+  counterpartyChannelIdentifier: Identifier,
   counterpartyVersion: string) {
-    // defined by the module
+    // 由此模块定义
 } => Error
 ```
 
 #### **OnChanUpgradeConfirm**
 
-`onChanUpgradeConfirm` will perform custom CONFIRM logic. It MUST NOT error since the counterparty has already approved the handshake, and transitioned to using the new upgrade parameters.
+`onChanUpgradeConfirm`将执行自定义 CONFIRM 逻辑。此逻辑不能有错误返回， 因为交易对手已经批准了握手，并已经使用新的升级参数。
 
-After `onChanUpgradeConfirm` returns, the application upgrade is complete so any 
-auxilliary data stored for the purposes of recovery is no longer needed and may be deleted.
+在`onChanUpgradeConfirm`返回后，应用程序升级到此结束，任何为错误恢复而存储的辅助数据都不再需要，可能会被删除。
 
-The application MUST have its state fully migrated to start processing packet data according to the new application parameters by the time the callback returns.
+应用程序必须完全迁移其状态，以便在回调返回时根据新的应用程序参数开始处理数据包。
 
 ```typescript
 function onChanUpgradeConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-    // defined by the module
+    // 由此模块定义
 }
 ```
 
 #### **OnChanUpgradeRestore**
 
-`onChanUpgradeRestore` will be called on `cancelChannelUpgrade` and `timeoutChannelUpgrade` to restore the application to its pre-upgrade state.
+`onChanUpgradeRestore`将在`cancelChannelUpgrade`和`timeoutChannelUpgrade`被调用以将应用程序恢复到其升级前状态。
 
-After the upgrade restore callback is returned, the application must have any application metadata back to its pre-upgrade state. Any temporary metadata stored for the purpose of transitioning to the upgraded state may be deleted.
+升级恢复的回调被返回后，应用程序必须将任何应用程序元数据恢复到其升级前状态。为升级而存储的任何临时元数据都可以删除。
 
-The application MUST have its state fully migrated to start processing packet data according to the original application parameters by the time the callback returns.
+应用程序必须完全迁移其状态，以便在回调返回时根据初始的应用程序参数开始处理数据包。
 
 ```typescript
 function onChanUpgradeRestore(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-    // defined by the module
+    // 由此模块定义
 }
 ```

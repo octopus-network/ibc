@@ -1,63 +1,63 @@
 ---
-ics: 20
-title: Fungible Token Transfer
-stage: draft
+ics: '20'
+title: 同质通证转移
+stage: 草案
 category: IBC/APP
 requires: 25, 26
-kind: instantiation
+kind: 实例化
 author: Christopher Goes <cwgoes@interchain.berlin>
-created: 2019-07-15 
-modified: 2020-02-24
+created: '2019-07-15'
+modified: '2020-02-24'
 ---
 
-## Synopsis
+## 概要
 
-This standard document specifies packet data structure, state machine handling logic, and encoding details for the transfer of fungible tokens over an IBC channel between two modules on separate chains. The state machine logic presented allows for safe multi-chain denomination handling with permissionless channel opening. This logic constitutes a "fungible token transfer bridge module", interfacing between the IBC routing module and an existing asset tracking module on the host state machine.
+该标准规定了通过 IBC 通道在各自链上的两个模块之间进行通证转移的数据包的数据结构、状态机处理逻辑以及编码细节。本文所描述的状态机逻辑允许在无许可通道打开的情况下安全的处理多个链的通证。该逻辑通过在节点状态机上的 IBC 路由模块和一个现存的资产跟踪模块之间建立实现了一个同质通证转移的桥接模块。
 
-### Motivation
+### 动机
 
-Users of a set of chains connected over the IBC protocol might wish to utilise an asset issued on one chain on another chain, perhaps to make use of additional features such as exchange or privacy protection, while retaining fungibility with the original asset on the issuing chain. This application-layer standard describes a protocol for transferring fungible tokens between chains connected with IBC which preserves asset fungibility, preserves asset ownership, limits the impact of Byzantine faults, and requires no additional permissioning.
+基于 IBC 协议连接的一组链的用户可能希望在一条链上能利用在另一条链上发行的资产来使用该链上的附加功能，例如交易或隐私保护，同时保持发行链上的原始资产的同质性。该应用层标准描述了一个在基于 IBC 连接的链间转移同质通证的协议，该协议保留了资产的同质性和资产所有权，限制了拜占庭错误（Byzantine faults）的影响，并且无需额外许可。
 
-### Definitions
+### 定义
 
-The IBC handler interface & IBC routing module interface are as defined in [ICS 25](../../core/ics-025-handler-interface) and [ICS 26](../../core/ics-026-routing-module), respectively.
+[ICS 25](../../core/ics-025-handler-interface) 和 [ICS 26](../../core/ics-026-routing-module) 分别定义了 IBC 处理程序接口和 IBC 路由模块接口。
 
-### Desired Properties
+### 所需属性
 
-- Preservation of fungibility (two-way peg).
-- Preservation of total supply (constant or inflationary on a single source chain & module).
-- Permissionless token transfers, no need to whitelist connections, modules, or denominations.
-- Symmetric (all chains implement the same logic, no in-protocol differentiation of hubs & zones).
-- Fault containment: prevents Byzantine-inflation of tokens originating on chain `A`, as a result of chain `B`'s Byzantine behaviour (though any users who sent tokens to chain `B` may be at risk).
+- 保持同质性（双向锚定）。
+- 保持供应量不变（在单一源链和模块上保持不变或通胀）。
+- 无许可的通证转移，无需将连接（connections）、模块或通证面额加入白名单。
+- 对称（所有链实现相同的逻辑，hubs 和 zones 无协议差别）。
+- 故障遏制：防止源自链`A`的通证由于链`B`的拜占庭行为而发生拜占庭膨胀（尽管任何将通证发送到链`B`的用户都可能面临风险）。
 
-## Technical Specification
+## 技术规范
 
-### Data Structures
+### 数据结构
 
-Only one packet data type is required: `FungibleTokenPacketData`, which specifies the denomination, amount, sending account, and receiving account.
+仅需要一个数据包数据类型`FungibleTokenPacketData`，该类型指定了面额，数量，发送账户，接受账户以及发送链是否为资产的发行链。
 
 ```typescript
 interface FungibleTokenPacketData {
-  denom: string
+  denomination: string
   amount: uint256
   sender: string
   receiver: string
 }
 ```
 
-As tokens are sent across chains using the ICS 20 protocol, they begin to accrue a record of channels for which they have been transferred across. This information is encoded into the `denom` field. 
+当通证使用 ICS 20 协议跨链发送时，它们开始记录它们已使用的通道。此信息被编码到`denom`字段中。
 
-The ics20 token denominations are represented the form `{ics20Port}/{ics20Channel}/{denom}`, where `ics20Port` and `ics20Channel` are an ics20 port and channel on the current chain for which the funds exist. The prefixed port and channel pair indicate which channel the funds were previously sent through. If `{denom}` contains `/`, then it must also be in the ics20 form which indicates that this token has a multi-hop record. Note that this requires that the `/` (slash character) is prohibited in non-IBC token denomination names.
+ics20 通证面额以`{ics20Port}/{ics20Channel}/{denom}`形式表示，其中`ics20Port`和`ics20Channel`是当前链上资金使用的 ics20 端口和通道。前缀端口和通道表示资金先前通过哪个通道发送。如果`{denom}`包含`/` ，那么它也必须是 ics20 形式，表示该通证具有多跳记录。请注意，这要求在非 IBC 通证面额名称中禁止使用`/` （斜线字符）。
 
-A sending chain may be acting as a source or sink zone. When a chain is sending tokens across a port and channel which are not equal to the last prefixed port and channel pair, it is acting as a source zone. When tokens are sent from a source zone, the destination port and channel will be prefixed onto the denomination (once the tokens are received) adding another hop to a tokens record. When a chain is sending tokens across a port and channel which are equal to the last prefixed port and channel pair, it is acting as a sink zone. When tokens are sent from a sink zone, the last prefixed port and channel pair on the denomination is removed (once the tokens are received), undoing the last hop in the tokens record. A more complete explanation is [present in the ibc-go implementation](https://github.com/cosmos/ibc-go/blob/457095517b7832c42ecf13571fee1e550fec02d0/modules/apps/transfer/keeper/relay.go#L18-L49).
+发送链可以充当源zone或接收zone。当链通过不等于最后一个前缀端口和通道对的端口和通道发送通证时，它充当源zone。当从源zone发送通证时，目标端口和通道将作为面额的前缀（一旦接收到通证），将另一个跃点添加到通证记录。当链通过端口和通道发送通证时，它等于最后一个前缀端口和通道对，它充当接收zone。当通证从接收zone发送时，面额上的最后一个前缀端口和通道对被删除（一旦收到通证），撤消通证记录中的最后一跳。 [ibc-go implementation ](https://github.com/cosmos/ibc-go/blob/457095517b7832c42ecf13571fee1e550fec02d0/modules/apps/transfer/keeper/relay.go#L18-L49)中有更完整的解释。
 
-The acknowledgement data type describes whether the transfer succeeded or failed, and the reason for failure (if any).
+回执数据类型描述转账是成功还是失败，以及失败的原因（如果有）。
 
 ```typescript
 type FungibleTokenPacketAcknowledgement = FungibleTokenPacketSuccess | FungibleTokenPacketError;
 
 interface FungibleTokenPacketSuccess {
-  // This is binary 0x01 base64 encoded
+  // 这是二进制 0x01 base64 编码
   result: "AQ=="
 }
 
@@ -66,9 +66,9 @@ interface FungibleTokenPacketError {
 }
 ```
 
-Note that both the `FungibleTokenPacketData` as well as `FungibleTokenPacketAcknowledgement` must be JSON-encoded (not Protobuf encoded) when they serialized into packet data. Also note that `uint256` is string encoded when converted to JSON, but must be a valid decimal number of the form `[0-9]+`.
+请注意，当`FungibleTokenPacketData`和`FungibleTokenPacketAcknowledgement`序列化为数据包数据时，它们都必须是 JSON 编码的（不是 Protobuf 编码的）。另请注意， `uint256`在转换为 JSON 时是字符串编码的，但必须是`[0-9]+`形式的有效十进制数。
 
-The fungible token transfer bridge module tracks escrow addresses associated with particular channels in state. Fields of the `ModuleState` are assumed to be in scope.
+同质化通证转移桥模块跟踪与特定通道相关的托管地址。假定`ModuleState`的字段在范围内。
 
 ```typescript
 interface ModuleState {
@@ -76,13 +76,13 @@ interface ModuleState {
 }
 ```
 
-### Sub-protocols
+### 子协议
 
-The sub-protocols described herein should be implemented in a "fungible token transfer bridge" module with access to a bank module and to the IBC routing module.
+本文所述的子协议应该在“同质通证转移桥接”模块中实现，并且可以访问 bank 模块和 IBC 路由模块。
 
-#### Port & channel setup
+#### 端口 &amp; 通道设置
 
-The `setup` function must be called exactly once when the module is created (perhaps when the blockchain itself is initialised) to bind to the appropriate port and create an escrow address (owned by the module).
+当创建“同质通证转移桥接”模块时（也可能是区块链本身初始化时），必须仅调用一次`setup`函数用于绑定到对应的端口并创建一个托管地址（该地址由模块所有）。
 
 ```typescript
 function setup() {
@@ -102,20 +102,18 @@ function setup() {
 }
 ```
 
-Once the `setup` function has been called, channels can be created through the IBC routing module between instances of the fungible token transfer module on separate chains.
+调用`setup`函数后，通过在不同链上的同质通证转移模块之间的 IBC 路由模块创建通道。
 
-An administrator (with the permissions to create connections & channels on the host state machine) is responsible for setting up connections to other state machines & creating channels
-to other instances of this module (or another module supporting this interface) on other chains. This specification defines packet handling semantics only, and defines them in such a fashion
-that the module itself doesn't need to worry about what connections or channels might or might not exist at any point in time.
+管理员（具有在节点的状态机上创建连接和通道的权限）负责在本地链与其他链的状态机之间创建连接，在本地链与其他链的该模块（或支持该接口的其他模块）的实例之间创建通道。本规范仅定义了数据包处理语义，模块本身在任意时间点都无需关心连接或通道是否存在。
 
-#### Routing module callbacks
+#### 路由模块回调
 
-##### Channel lifecycle management
+##### 通道生命周期管理
 
-Both machines `A` and `B` accept new channels from any module on another machine, if and only if:
+机器`A`和机器`B`在当且仅当以下情况下接受来自第三台机器上任何模块的新通道创建请求：
 
-- The channel being created is unordered.
-- The version string is `ics20-1`.
+- 创建的通道是无序的。
+- 版本是`ics20-1` 。
 
 ```typescript
 function onChanOpenInit(
@@ -126,11 +124,11 @@ function onChanOpenInit(
   counterpartyPortIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
   version: string) {
-  // only unordered channels allowed
+  // 只允许无序通道
   abortTransactionUnless(order === UNORDERED)
-  // assert that version is "ics20-1"
+  // 断言版本是“ics20-1”
   abortTransactionUnless(version === "ics20-1")
-  // allocate an escrow address
+  // 分配一个托管地址
   channelEscrowAddresses[channelIdentifier] = newAddress()
 }
 ```
@@ -145,12 +143,12 @@ function onChanOpenTry(
   counterpartyChannelIdentifier: Identifier,
   version: string,
   counterpartyVersion: string) {
-  // only unordered channels allowed
+  // 只允许无序通道
   abortTransactionUnless(order === UNORDERED)
-  // assert that version is "ics20-1"
+  // 断言：版本是“ics20-1”
   abortTransactionUnless(version === "ics20-1")
   abortTransactionUnless(counterpartyVersion === "ics20-1")
-  // allocate an escrow address
+  // 分配一个托管地址
   channelEscrowAddresses[channelIdentifier] = newAddress()
 }
 ```
@@ -161,8 +159,8 @@ function onChanOpenAck(
   channelIdentifier: Identifier,
   counterpartyChannelIdentifier: Identifier,
   counterpartyVersion: string) {
-  // port has already been validated
-  // assert that counterparty selected version is "ics20-1"
+  // 端口已经被验证
+  // 断言：交易对手选择的版本是“ics20-1”
   abortTransactionUnless(counterpartyVersion === "ics20-1")
 }
 ```
@@ -171,7 +169,7 @@ function onChanOpenAck(
 function onChanOpenConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-  // accept channel confirmations, port has already been validated, version has already been validated
+  // 接受通道确认，端口已经验证，版本已经验证
 }
 ```
 
@@ -179,7 +177,7 @@ function onChanOpenConfirm(
 function onChanCloseInit(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-    // always abort transaction
+    // 总是中止交易
     abortTransactionUnless(FALSE)
 }
 ```
@@ -188,22 +186,20 @@ function onChanCloseInit(
 function onChanCloseConfirm(
   portIdentifier: Identifier,
   channelIdentifier: Identifier) {
-  // no action necessary
+  // 无需操作
 }
 ```
 
-##### Packet relay
+##### 数据包中继
 
-In plain English, between chains `A` and `B`:
+用简单文字来描述就是，在 `A` 和`B`两个链间：
 
-- When acting as the source zone, the bridge module escrows an existing local asset denomination on the sending chain and mints vouchers on the receiving chain.
-- When acting as the sink zone, the bridge module burns local vouchers on the sending chains and unescrows the local asset denomination on the receiving chain.
-- When a packet times-out, local assets are unescrowed back to the sender or vouchers minted back to the sender appropriately.
-- Acknowledgement data is used to handle failures, such as invalid denominations or invalid destination accounts. Returning
-  an acknowledgement of failure is preferable to aborting the transaction since it more easily enables the sending chain
-  to take appropriate action based on the nature of the failure.
+- 在源 zone 上，桥接模块会在发送链上托管现有的本地资产面额，并在接收链上生成凭证。
+- 在接收 zone 上，桥接模块会在发送链上销毁本地凭证，并在接收链上解除对本地资产面额的托管。
+- 当数据包超时时，本地资产将解除托管并退还给发送者，或将凭证发回给发送者。
+- 回执数据用于处理失败，例如无效面额或无效目标帐户。返回失败的回执比终止交易更可取，因为它更容易使发送链根据失败的类型而采取适当的措施。
 
-`sendFungibleTokens` must be called by a transaction handler in the module which performs appropriate signature checks, specific to the account owner on the host state machine.
+`sendFungibleTokens`必须由模块中的交易处理程序调用，该处理程序对于宿主状态机上特定的帐户所有者，执行适当的签名检查。
 
 ```typescript
 function sendFungibleTokens(
@@ -216,22 +212,22 @@ function sendFungibleTokens(
   timeoutHeight: Height,
   timeoutTimestamp: uint64) {
     prefix = "{sourcePort}/{sourceChannel}/"
-    // we are the source if the denomination is not prefixed
+    // 如果面额没有前缀，我们就是源链
     source = denomination.slice(0, len(prefix)) !== prefix
     if source {
-      // determine escrow account
+      // 确定托管账户
       escrowAccount = channelEscrowAddresses[sourceChannel]
-      // escrow source tokens (assumed to fail if balance insufficient)
+      // 托管源通证（如果余额不足，则假定失败）
       bank.TransferCoins(sender, escrowAccount, denomination, amount)
     } else {
-      // receiver is source chain, burn vouchers
+      // 接收者为源链，销毁凭证
       bank.BurnCoins(sender, denomination, amount)
     }
 
-    // create FungibleTokenPacket data
+    // 创建 FungibleTokenPacket 数据
     data = FungibleTokenPacketData{denomination, amount, sender, receiver}
 
-    // send packet using the interface defined in ICS4
+    // 使用 ICS4 中定义的接口发送数据包
     handler.sendPacket(
       getCapability("port"),
       sourcePort,
@@ -243,28 +239,28 @@ function sendFungibleTokens(
 }
 ```
 
-`onRecvPacket` is called by the routing module when a packet addressed to this module has been received.
+当路由模块收到一个数据包后调用`onRecvPacket`。
 
 ```typescript
 function onRecvPacket(packet: Packet) {
   FungibleTokenPacketData data = packet.data
-  // construct default acknowledgement of success
+  // 构造默认的成功回执
   FungibleTokenPacketAcknowledgement ack = FungibleTokenPacketAcknowledgement{true, null}
   prefix = "{packet.sourcePort}/{packet.sourceChannel}/"
-  // we are the source if the packets were prefixed by the sending chain
+  // 如果数据包以发送链为前缀，我们就是源链
   source = data.denom.slice(0, len(prefix)) === prefix
   if source {
-    // receiver is source chain: unescrow tokens
-    // determine escrow account
+    // 接收者是源链：取消托管通证
+    // 确定托管账户
     escrowAccount = channelEscrowAddresses[packet.destChannel]
-    // unescrow tokens to receiver (assumed to fail if balance insufficient)
+    // 将通证取消托管并发给接收者（如果余额不足，则失败）
     err = bank.TransferCoins(escrowAccount, data.receiver, data.denom.slice(len(prefix)), data.amount)
     if (err !== nil)
       ack = FungibleTokenPacketAcknowledgement{false, "transfer coins failed"}
   } else {
     prefix = "{packet.destPort}/{packet.destChannel}/"
     prefixedDenomination = prefix + data.denom
-    // sender was source, mint vouchers to receiver (assumed to fail if balance insufficient)
+    // 发送者是来源，将凭证铸造给接收者（如果余额不足，则失败）
     err = bank.MintCoins(data.receiver, prefixedDenomination, data.amount)
     if (err !== nil)
       ack = FungibleTokenPacketAcknowledgement{false, "mint coins failed"}
@@ -273,41 +269,41 @@ function onRecvPacket(packet: Packet) {
 }
 ```
 
-`onAcknowledgePacket` is called by the routing module when a packet sent by this module has been acknowledged.
+当由路由模块发送的数据包被确认后，该模块调用`onAcknowledgePacket`。
 
 ```typescript
 function onAcknowledgePacket(
   packet: Packet,
   acknowledgement: bytes) {
-  // if the transfer failed, refund the tokens
+  // 如果转账失败，退还通证
   if (!ack.success)
     refundTokens(packet)
 }
 ```
 
-`onTimeoutPacket` is called by the routing module when a packet sent by this module has timed-out (such that it will not be received on the destination chain).
+当由路由模块发送的数据包超时（例如数据包没有被目标链接收到）后，路由模块调用`onTimeoutPacket`。
 
 ```typescript
 function onTimeoutPacket(packet: Packet) {
-  // the packet timed-out, so refund the tokens
+  // 数据包超时，所以退还通证
   refundTokens(packet)
 }
 ```
 
-`refundTokens` is called by both `onAcknowledgePacket`, on failure, and `onTimeoutPacket`, to refund escrowed tokens to the original sender.
+`refundTokens`会在两处被调用，失败时的`onAcknowledgePacket` 和`onTimeoutPacket`，用来退还托管的通证给原始发送者。
 
 ```typescript
 function refundTokens(packet: Packet) {
   FungibleTokenPacketData data = packet.data
   prefix = "{packet.sourcePort}/{packet.sourceChannel}/"
-  // we are the source if the denomination is not prefixed
+  // 如果面额没有前缀，我们就是来源
   source = data.denom.slice(0, len(prefix)) !== prefix
   if source {
-    // sender was source chain, unescrow tokens back to sender
+    // 发送人是源链，取消托管通证返回给发送人
     escrowAccount = channelEscrowAddresses[packet.srcChannel]
     bank.TransferCoins(escrowAccount, data.sender, data.denom, data.amount)
   } else {
-    // receiver was source chain, mint vouchers back to sender
+    // 接收者是源链，将铸造凭证返还给发送者
     bank.MintCoins(data.sender, data.denom, data.amount)
   }
 }
@@ -315,64 +311,63 @@ function refundTokens(packet: Packet) {
 
 ```typescript
 function onTimeoutPacketClose(packet: Packet) {
-  // can't happen, only unordered channels allowed
+  // 不会发生，只允许无序通道
 }
 ```
 
-#### Reasoning
+#### 原理
 
-##### Correctness
+##### 正确性
 
-This implementation preserves both fungibility & supply.
+该实现保持了同质性和供应量不变。
 
-Fungibility: If tokens have been sent to the counterparty chain, they can be redeemed back in the same denomination & amount on the source chain.
+同质性：如果通证已发送到目标链，则可以以相同面额和数量兑换回源链。
 
-Supply: Redefine supply as unlocked tokens. All send-recv pairs sum to net zero. Source chain can change supply.
+供应量：将供应重新定义为未锁定的通证。所有源链的发送量等于目标链的接受量。源链可以改变通证的供应量。
 
-##### Multi-chain notes
+##### 多链注意事项
 
-This specification does not directly handle the "diamond problem", where a user sends a token originating on chain A to chain B, then to chain D, and wants to return it through D -> C -> A — since the supply is tracked as owned by chain B (and the denomination will be "{portOnD}/{channelOnD}/{portOnB}/{channelOnB}/denom"), chain C cannot serve as the intermediary. It is not yet clear whether that case should be dealt with in-protocol or not — it may be fine to just require the original path of redemption (and if there is frequent liquidity and some surplus on both paths the diamond path will work most of the time). Complexities arising from long redemption paths may lead to the emergence of central chains in the network topology.
+此规范不能直接处理“菱形问题”，在该问题中，用户将源自链 A 的通证发送到链 B，然后又发送给链 D，并希望通过 D-&gt; C-&gt; A 归还它，由于此时通证的供应量被认为是由链 B 控制（面额将为“ {portOnD} / {channelOnD} / {portOnB} / {channelOnB} / denom”），链 C 不能充当中介。尚不清楚该场景是否应按协议处理—可能只需要原路返回就可以了（如果在这两个途径上都有频繁的流动性和一定的结余，菱形路径将在大多数情况下适用）。较长的赎回路径引起的复杂性可能导致网络拓扑结构中出现中心链。
 
-In order to track all of the denominations moving around the network of chains in various paths, it may be helpful for a particular chain to implement a registry which will track the "global" source chain for each denomination. End-user service providers (such as wallet authors) may want to integrate such a registry or keep their own mapping of canonical source chains and human-readable names in order to improve UX.
+为了跟踪沿着各种路径在链网络中移动的所有面额，对于特定的链实现一个注册表将有助于跟踪每个面额的“全局”源链。最终用户服务提供商（例如钱包作者）可能希望集成这样的注册表，或保留自己的典范源链和人类可读名称的映射，以改善用户体验。
 
-#### Optional addenda
+#### 可选附录
 
-- Each chain, locally, could elect to keep a lookup table to use short, user-friendly local denominations in state which are translated to and from the longer denominations when sending and receiving packets. 
-- Additional restrictions may be imposed on which other machines may be connected to & which channels may be established.
+- 每个本地链都可以选择保留一个查找表，以在状态中使用简短，用户友好的本地面额，在发送和接收数据包时，它们会与较长的面额进行转换。
+- 可以对可以连接哪些其他机器以及可以建立哪些通道施加额外的限制。
 
-## Backwards Compatibility
+## 向后兼容性
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 向前兼容性
 
-This initial standard uses version "ics20-1" in the channel handshake.
+此初始标准在通道握手中使用版本“ ics20-1”。
 
-A future version of this standard could use a different version in the channel handshake,
-and safely alter the packet data format & packet handler semantics.
+该标准的未来版本可以在通道握手中使用其他版本，并安全的更改数据包数据格式和数据包处理程序的语义。
 
-## Example Implementation
+## 示例实现
 
-Coming soon.
+即将到来。
 
-## Other Implementations
+## 其他实现
 
-Coming soon.
+即将到来。
 
-## History
+## 历史
 
-Jul 15, 2019 - Draft written
+2019年7月15 - 草案完成
 
-Jul 29, 2019 - Major revisions; cleanup
+2019年7月29 - 主要修订；整理
 
-Aug 25, 2019 - Major revisions, more cleanup
+2019年8月25 - 主要修订；进一步整理
 
-Feb 3, 2020 - Revisions to handle acknowledgements of success & failure
+2020年2月3日-进行修订，以处理对成功和失败的回执
 
-Feb 24, 2020 - Revisions to infer source field, inclusion of version string
+2020年2月24日-用来推断来源字段的修订，包括版本字符串
 
-July 27, 2020 - Re-addition of source field
+2020年7月27日-重新添加源字段
 
-## Copyright
+## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本文中的所有内容均根据 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 获得许可。

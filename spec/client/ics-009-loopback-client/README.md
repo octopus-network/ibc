@@ -1,37 +1,37 @@
 ---
-ics: 9
-title: Loopback Client
-stage: draft
+ics: '9'
+title: 回环客户端
+stage: 草案
 category: IBC/TAO
-kind: instantiation
+kind: 实例化
 author: Christopher Goes <cwgoes@tendermint.com>
-created: 2020-01-17
-modified: 2020-01-17
-requires: 2
-implements: 2
+created: '2020-01-17'
+modified: '2020-01-17'
+requires: '2'
+implements: '2'
 ---
 
-## Synopsis
+## 概要
 
-This specification describes a loop-back client, designed to be used for interaction over the IBC interface with modules present on the same ledger.
+本规范描述了一种回环客户端，该客户端旨在通过 IBC 接口与同一帐本中存在的模块进行交互。
 
-### Motivation
+### 动机
 
-Loop-back clients may be useful in cases where the calling module does not have prior knowledge of where precisely the destination module lives and would like to use the uniform IBC message-passing interface (similar to `127.0.0.1` in TCP/IP).
+如果调用模块不了解目标模块的确切位置，并且希望使用统一的 IBC 消息传递接口（类似于 TCP/IP 中的 `127.0.0.1` ），则回环客户端可能会派上用场。
 
-### Definitions
+### 定义
 
-Functions & terms are as defined in [ICS 2](../../core/ics-002-client-semantics).
+函数和术语定义见 [ICS 2](../../core/ics-002-client-semantics)。
 
-### Desired Properties
+### 所需属性
 
-Intended client semantics should be preserved, and loop-back abstractions should be negligible cost.
+应保留预期的客户端语义，而且回环抽象的成本应可忽略不计。
 
-## Technical Specification
+## 技术指标
 
-### Data structures
+### 数据结构
 
-No client state, consensus state, headers, or evidence data structures are required for a loopback client.
+回环客户端不需要客户端状态、共识状态、区块头或证据数据结构。
 
 ```typescript
 type ClientState object
@@ -40,12 +40,12 @@ type ConsensusState object
 
 type Header object
 
-type Misbehaviour object
+type Evidence object
 ```
 
-### Client initialisation
+### 客户端初始化
 
-No initialisation is necessary for a loopback client; an empty state is returned.
+回环客户端不需要初始化。将返回一个空状态。
 
 ```typescript
 function initialise(): ClientState {
@@ -53,9 +53,9 @@ function initialise(): ClientState {
 }
 ```
 
-### Validity predicate
+### 合法性判定
 
-No validity checking is necessary in a loopback client; the function should never be called.
+在回环客户端中，无需进行合法性检查；该函数永远不应该被调用。
 
 ```typescript
 function checkValidityAndUpdateState(
@@ -65,21 +65,21 @@ function checkValidityAndUpdateState(
 }
 ```
 
-### Misbehaviour predicate
+### 不良行为判定
 
-No misbehaviour checking is necessary in a loopback client; the function should never be called.
+在回环客户端中无需进行任何不良行为检查；该函数永远不应该被调用。
 
 ```typescript
 function checkMisbehaviourAndUpdateState(
   clientState: ClientState,
-  misbehaviour: Misbehaviour) {
+  evidence: Evidence) {
     return
 }
 ```
 
-### State verification functions
+### 状态验证函数
 
-Loop-back client state verification functions simply read the local state. Note that they will need (read-only) access to keys outside the client prefix.
+回环客户端状态验证函数仅读取本地状态。请注意，他们将需要（只读）访问客户端前缀之外的键。
 
 ```typescript
 function verifyClientConsensusState(
@@ -142,7 +142,7 @@ function verifyPacketAcknowledgement(
     assert(get(path) === acknowledgement)
 }
 
-function verifyPacketReceiptAbsence(
+function verifyPacketAcknowledgementAbsence(
   clientState: ClientState,
   height: uint64,
   prefix: CommitmentPrefix,
@@ -150,7 +150,7 @@ function verifyPacketReceiptAbsence(
   portIdentifier: Identifier,
   channelIdentifier: Identifier,
   sequence: uint64) {
-    path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/receipts/{sequence}")
+    path = applyPrefix(prefix, "ports/{portIdentifier}/channels/{channelIdentifier}/acknowledgements/{sequence}")
     assert(get(path) === nil)
 }
 
@@ -167,30 +167,30 @@ function verifyNextSequenceRecv(
 }
 ```
 
-### Properties & Invariants
+### 属性与不变性
 
-Semantics are as if this were a remote client of the local ledger.
+语义上类似一个本地帐本的远程客户端。
 
-## Backwards Compatibility
+## 向后兼容性
 
-Not applicable.
+不适用。
 
-## Forwards Compatibility
+## 向前兼容性
 
-Not applicable. Alterations to the client algorithm will require a new client standard.
+不适用。更改客户端算法将需要新的客户端标准。
 
-## Example Implementation
+## 示例实现
 
-Coming soon.
+即将到来。
 
-## Other Implementations
+## 其他实现
 
-None at present.
+目前暂无。
 
-## History
+## 历史
 
-2020-01-17 - Initial version
+2020-01-17-初始版本
 
-## Copyright
+## 版权
 
-All content herein is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+本规范所有内容均采用 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 许可授权。
