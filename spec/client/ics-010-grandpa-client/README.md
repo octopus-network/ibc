@@ -48,6 +48,16 @@ interface ClientState {
 }
 ```
 
+### Consensus state
+
+The GRANDPA client tracks the commitment root for all previously verified consensus states (these can be pruned after the unbonding period has passed, but should not be pruned beforehand).
+
+```typescript
+interface ConsensusState {
+  commitmentRoot: []byte
+}
+```
+
 ### Validator set
 
 The validator set of a GRANDPA client consists of the set id, a merkle root of validator addresses and the number of validator in the set.
@@ -60,60 +70,61 @@ interface ValidatorSet {
 }
 ```
 
-### Commitment
+### SignedMMRRoot
 
-A commitment signed by GRANDPA validators as part of BEEFY protocol.
-The commitment contains a payload extracted from the finalized block at
-height block_number.
-GRANDPA validators collect signatures on commitments and a stream of such signed commitments
-
-```typescript
-interface Commitment {
-  payload: []byte
-  blockNumber: uint32
-  validatorSetId: uint64
-}
-```
-
-### SignedCommitment
-
-A commitment with validators' signatures
+An MMR root signed by GRANDPA validators as part of BEEFY protocol.
+The MMR root also contains the height of the MMR root is stored and the related validator set id.
 
 ```typescript
 
 type Signature = [65]byte
 
-interface SignedCommitment {
-  commitment: Commitment
+interface SignedMMRRoot {
+  root: []byte
+  blockNumber: uint64
+  validatorSetId: uint64
   signatures: []Maybe<Signature>
 }
 ```
 
-### NewCommitment
+### MMRRoot
 
 ```typescript
-interface NewCommitment {
-  signedCommitment: SignedCommitment
-  validatorProofs: MerkleProof
+interface MMRRoot {
+  signedMMRRoot: SignedMMRRoot
+  validatorProofs: []MerkleProof
+}
+```
+
+MMRRoot implements `ClientMessage` interface.
+
+### Headers
+
+The GRANDPA headers include the height, the commitment root and the MMR proof of the header. We use MMR root to advance the client state.
+
+```typescript
+interface Header {
+  height: uint64
+  commitmentRoot: []byte
   leaf: MMRLeaf
   proof: MMRProof
 }
 ```
 
-NewCommitment implements `ClientMessage` interface.
+Header implements `ClientMessage` interface.
 
 ### Misbehaviour
  
 The `Misbehaviour` type is used for detecting misbehaviour and freezing the client - to prevent further packet flow - if applicable.
-GRANDPA client `Misbehaviour` consists of two signed commitments at the same height both of which the light client would have considered valid.
+GRANDPA client `Misbehaviour` consists of two signed MMR roots at the same height both of which the light client would have considered valid.
 
 ```typescript
 interface Misbehaviour {
   fromHeight: uint64
-  signedCommitment1: SignedCommitment
-  validatorProofs1: MerkleProof
-  signedCommitment2: SignedCommitment
-  validatorProofs2: MerkleProof
+  signedMMRRooti1: SignedMMRRoot
+  validatorProofs1: []MerkleProof
+  signedMMRRoot2: SignedMMRRoot
+  validatorProofs2: []MerkleProof
 }
 ```
 
@@ -146,28 +157,29 @@ function latestClientHeight(clientState: ClientState): Height {
 
 ### Validity predicate
 
-GRANDPA client validity checking verifies a commitment is signed by the current validator set and verifies the authority set proof to determine if there is a expected change to the authority set. If the provided commitment is valid, the client state is updated & the newly verified commitment written to the store.
+GRANDPA client validity checking verifies an MMR root is signed by the current validator set. If the provided MMR root is valid, the client state is updated & the newly verified MMR root written to the store. The validity also checking a provided header can be validated by the MMR root, if the provided header is valid, the consensus state is updated.
 
 ```typescript
 function verifyClientMessage(
   clientMsg: ClientMessage) {
     switch typeof(clientMsg) {
-      case NewCommitment:
-        verifyCommitment(clientMsg.signedCommitment, clientMsg.validatorProofs)
-        verifyMMR(clientMsg.signedCommitment.commitment.payload, clientMsg.leaf, clientMsg.proof)
+      case MMRRoot:
+        verifyMMRRoot(clientMsg.signedMMRRoot, clientMsg.validatorProofs)
+      case Header:
+        verifyCommitment(clientMsg.commitmentRoot, clientMsg.leaf, clientMsg.proof)
       case Misbehaviour:
-        verifyCommitment(clientMsg.signedCommitment1, clientMsg.validatorProofs1)
-        verifyCommitment(clientMsg.signedCommitment2, clientMsg.validatorProofs2)
+        verifyMMRRoot(clientMsg.signedMMRRoot1, clientMsg.validatorProofs1)
+        verifyMMRRoot(clientMsg.signedMMRRoot2, clientMsg.validatorProofs2)
     }
 }
 ```
 
 ```typescript
-function verifyCommitment(signedCommitment: SignedCommitment, validatorProofs: []MerkleProof) {
+function verifyMMRRoot(signedMMRRoot: SignedMMRRoot, validatorProofs: []MerkleProof) {
     clientState = get("clients/{header.identifier}/clientState")
-    // the block height of the new commitment must be greater than the latest height
-    assert(signedCommitment.commitment.blockNumber > clientState.latestHeight)
-    for _, signature := range signedCommitment.signatures {
+    // the block height of the new MMR root must be greater than the latest height
+    assert(signedMMRRoot.blockNumber > clientState.latestHeight)
+    for _, signature := range signedMMRRoot.signatures {
       validator = secp256k1Recover(signature)
       assert(validator != null)
       found = false
@@ -182,44 +194,65 @@ function verifyCommitment(signedCommitment: SignedCommitment, validatorProofs: [
 }
 ```
 
+```typescript
+function verifyCommitment(height: uint64, root: []byte, leaf: MMRLeaf, proof: MMRProof) {
+    clientState = get("clients/{header.identifier}/clientState")
+    // the block height of the header must be less than the latest height
+    assert(height < clientState.latestHeight)
+    assert(verifyMMRProof(root, leaf, proof))
+}
+```
+
 ### Misbehaviour predicate
 
-GRANDPA client misbehaviour checking determines whether or not two conflicting signed commitment at the same height would have convinced the light client.
+GRANDPA client misbehaviour checking determines whether or not two conflicting signed MMR root at the same height would have convinced the light client.
 
 ```typescript
 function checkForMisbehaviour(
   clientMsg: clientMessage) => bool {
     clientState = get("clients/{clientMsg.identifier}/clientState")
     switch typeof(clientMsg) {
+      case MMRRoot:
       case Header:
       case Misbehaviour:
-        // assert that the commitments are different
-        assert(misbehaviour.signedCommitment1.commitment.payload !== misbehaviour.signedCommitment2.commitment.payload )
+        // assert that the MMR root are different
+        assert(misbehaviour.signedMMRRoot1.root !== misbehaviour.signedMMRRoot2.root)
     }
 }
 ```
 
 ### UpdateState
 
-UpdateState will perform a regular update for the GRANDPA client. If the height of the new commitment is higher than the latest height on the clientState, then the clientState will be updated.
+UpdateState will perform a regular update for the GRANDPA client. If the height of the new MMR root is higher than the latest height on the clientState, then the clientState will be updated. And commitment roots validated by MMR root will be stored in consensus state.
 
 ```typescript
 function updateState(
   clientMsg: clientMessage) {
     clientState = get("clients/{clientMsg.identifier}/clientState)
-    (commitment, nextValidatorSet) = NewCommitment(clientMessage)
-    // only update the clientstate if the commitment height is higher
-    // than clientState latest height
-    if clientState.height < commitment.blockNumber {
-      // update latest height
-      clientState.latestHeight = commitment.blockNumber
-      clientState.latestMMRRoot = commitment.payload
-      if clientState.currentValidatorSet.id + 1 == nextValidatorSet.id {
-        clientState.currentValidatorSet = beefyNextAuthoritySet
-      }
+    switch typeof(clientMsg) {
+      case MMRRoot:
+        signedMMRRoot = MMRRoot(clientMessage)
+        // only update the clientstate if the MMR height is higher
+        // than clientState latest height
+        if clientState.height < signedMMRRoot.blockNumber {
+          // update latest height
+          clientState.latestHeight = signedMMRRoot.blockNumber
+          clientState.latestMMRRoot = signedMMRRoot.root
+          // save the client
+          set("clients/{clientMsg.identifier}/clientState", clientState)
+        }
+      case Header:
+        header = MMRRoot(clientMessage)
+        // create recorded consensus state, save it
+        consensusState = ConsensusState{header.commitmentRoot}
+        set("clients/{clientMsg.identifier}/consensusStates/{header.height}", consensusState)
 
-      // save the client
-      set("clients/{clientMsg.identifier}/clientState", clientState)
+        if clientState.currentValidatorSet.id + 1 == header.leaf.nextValidatorSet.id {
+          clientState.currentValidatorSet = header.leaf.nextValidatorSet
+        }
+        // save the client
+        set("clients/{clientMsg.identifier}/clientState", clientState)
+      case Misbehaviour:
     }
 }
 ```
@@ -237,7 +270,6 @@ function updateStateOnMisbehaviour(clientMsg: clientMessage) {
 }
 ```
 
-### Upgrades
 ### State verification functions
 
 GRANDPA client state verification functions check a Merkle proof against a previously validated commitment root.
