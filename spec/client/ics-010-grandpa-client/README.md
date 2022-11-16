@@ -60,7 +60,7 @@ interface ConsensusState {
 
 ### Validator set
 
-The validator set of a GRANDPA client consists of the set id, a merkle root of validator addresses and the number of validator in the set.
+The validator set verified by a GRANDPA client consists of the set id, a merkle root of validator addresses and the number of validator in the set.
 
 ```typescript
 interface ValidatorSet {
@@ -72,8 +72,8 @@ interface ValidatorSet {
 
 ### SignedMMRRoot
 
-An MMR root signed by GRANDPA validators as part of BEEFY protocol.
-The MMR root also contains the height of the MMR root is stored and the related validator set id.
+An MMR root signed by GRANDPA validators is part of BEEFY protocol.
+The MMR root also contains the height and the validator set id when the MMR root is stored.
 
 ```typescript
 
@@ -166,7 +166,7 @@ function verifyClientMessage(
       case MMRRoot:
         verifyMMRRoot(clientMsg.signedMMRRoot, clientMsg.validatorProofs)
       case Header:
-        verifyCommitment(clientMsg.commitmentRoot, clientMsg.leaf, clientMsg.proof)
+        verifyCommitment(clientMsg.signedMMRRoot.blockNumber, clientMsg.commitmentRoot, clientMsg.leaf, clientMsg.proof)
       case Misbehaviour:
         verifyMMRRoot(clientMsg.signedMMRRoot1, clientMsg.validatorProofs1)
         verifyMMRRoot(clientMsg.signedMMRRoot2, clientMsg.validatorProofs2)
@@ -198,7 +198,7 @@ function verifyMMRRoot(signedMMRRoot: SignedMMRRoot, validatorProofs: []MerklePr
 function verifyCommitment(height: uint64, root: []byte, leaf: MMRLeaf, proof: MMRProof) {
     clientState = get("clients/{header.identifier}/clientState")
     // the block height of the header must be less than the latest height
-    assert(height < clientState.latestHeight)
+    assert(height <= clientState.latestHeight)
     assert(verifyMMRProof(root, leaf, proof))
 }
 ```
